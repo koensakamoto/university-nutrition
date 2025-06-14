@@ -15,14 +15,41 @@ TARGET_URL = "https://dineoncampus.com/utah/whats-on-the-menu"
 
 # --- Scraper Function for Connection Test -
 
-def extract_data(){
-    BreakfastFilter = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.ID, "__BVID_5667__BV_tab_button__")))
+def extract_data(driver):
+    print("inside")
 
-    print("continer good")
+    try:
+        meal_filter = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "nav.nav-tabs"))
+        )
+
+        
         
 
-    return true;
-}
+    except Exception as e:
+        print("❌ Error clicking dinner tab:", e)
+
+    return True
+
+def select_previous_month_date(driver):
+    print("🗓️ Opening date picker...")
+
+    # Step 1: Click input to open calendar
+    date_input = WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.CLASS_NAME, "vc-appearance-none"))
+    )
+    date_input.click()
+
+    # Step 2: Wait for calendar wrapper
+    calendar_wrapper = WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, "vc-popover-content-wrapper"))
+    )
+
+    print("📅 Calendar opened")
+
+    time.sleep(8)
+
+
 
 
 
@@ -46,12 +73,14 @@ def test_chromedriver_connection(url):
         )
         driver.get(url)
 
+        select_previous_month_date(driver)
+
+
         dropdown_button = WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.ID, "menu-location-selector__BV_toggle_")))
         dropdown_button.click()
 
         print("clicked")
-        expectedHall = 'City Edge @ Kahlert Village'
 
         dropdown_menu = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "dropdown-menu.show"))
@@ -72,12 +101,13 @@ def test_chromedriver_connection(url):
                 dining_hall_ul = item.find_elements(By.TAG_NAME, "ul")
 
                 for dh_ul in dining_hall_ul:
-                    dh_lis = dh_ul.find_elements(By.TAG_NAME, "li")
+                    dh_lis = dh_ul.find_elements(By.XPATH, "./li")
                     for dh in dh_lis:
                         try:
                             button = dh.find_element(By.TAG_NAME, "button")
                             dining_hall_name = button.text.strip()
                             print(f"🍽️ Dining Hall: {dining_hall_name}")
+                            extract_data(driver)
                         except:
                             print("⚠️ Couldn't find button inside dining hall li")
                             continue
