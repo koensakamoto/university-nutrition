@@ -3,7 +3,7 @@
 node_modules/
 
 # Python virtual environments
-.venv/
+**/.venv/
 venv/
 __pycache__/
 
