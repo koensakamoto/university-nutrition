@@ -16,8 +16,16 @@ The Campus Nutrition App is a web-based tool that helps students make informed f
 
 ## Tech Stack
 
+
 - React 
 - Tailwind CSS 
 - Recharts 
 - MongoDB
 - Python
+
+- React (frontend framework)
+- Tailwind CSS (styling)
+- Recharts (data visualization)
+- Database: MongoDB
+
+
