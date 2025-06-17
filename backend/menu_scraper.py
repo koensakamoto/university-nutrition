@@ -14,6 +14,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC # Not needed for just connection test
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
+import re
+
 
 # --- Configuration ---
 TARGET_URL = "https://dineoncampus.com/utah/whats-on-the-menu"
@@ -68,15 +70,32 @@ def _extract_nutrition_details_for_item(driver, item_name):
                    strong_tag = li.find('strong')
                    if strong_tag:
                        label = strong_tag.text.strip()
+                       # Standardize key: remove colons, parentheses, units, and convert to snake_case
+                       label_clean = re.sub(r'\([^)]*\)', '', label)  # Remove parentheses and contents
+                       label_clean = label_clean.replace(':', '')      # Remove colons
+                       label_clean = label_clean.strip()
+                       label_clean = label_clean.lower().replace(' ', '_') # snake_case
+                       # Remove trailing underscores (if any)
+                       label_clean = re.sub(r'_and$', '', label_clean)
                        texts = []
                        for sibling in strong_tag.next_siblings:
                            if isinstance(sibling, NavigableString):
                                texts.append(str(sibling))
                            else:
                                break # Stop if another tag is encountered
+                       # Mapping for problematic keys
+                       NUTRIENT_KEY_RENAMES = {
+                           "saturated_fat_+_trans_fat": "saturated_and_trans_fat",
+                           "vitamin_a_re": "vitamin_a",
+                           "calories_from_fat": "calories_from_fat",
+                           # Add more mappings as needed
+                       }
+                       label_clean = re.sub(r'_+', '_', label_clean)  # Collapse multiple underscores
+                       # Apply mapping if key is in renames
+                       label_final = NUTRIENT_KEY_RENAMES.get(label_clean, label_clean)
                        value = ''.join(texts).strip()
-                       if label and value:
-                           nutrients[label] = value
+                       if label_final and value:
+                           nutrients[label_final] = value
            nutrition_details["nutrients"] = nutrients
 
 
@@ -169,11 +188,18 @@ def getMenu(driver, dining_hall_name, meal_type):
                nutrition_info = _extract_nutrition_details_for_item(driver, item_name)
 
 
+               # Parse ingredients into a list, remove '^' symbol
+               raw_ingredients = nutrition_info.get("ingredients", "N/A")
+               if raw_ingredients and raw_ingredients != "N/A":
+                   ingredients_list = [i.strip().replace('^', '') for i in raw_ingredients.split(',') if i.strip()]
+               else:
+                   ingredients_list = []
+
                items_in_station.append({
                    "name": item_name,
                    "description": "", # Removed as requested
                    "labels": labels,
-                   "ingredients": nutrition_info.get("ingredients", "N/A"),
+                   "ingredients": ingredients_list,
                    "nutrients": nutrition_info.get("nutrients", {})
                })
       
@@ -188,7 +214,7 @@ def getMenu(driver, dining_hall_name, meal_type):
 
 def extract_data(driver, dining_hall_name):
    print("inside extract_data")
-   meals_data = [] # Stores data for all meal periods for this dining hall
+   meals_data = [] # Now a list of meal objects
 
 
    try:
@@ -230,10 +256,11 @@ def extract_data(driver, dining_hall_name):
            stations = getMenu(driver, dining_hall_name, tab_name)
           
            if stations: # Only add meal type if it has stations/items
-               meals_data.append({
-                   "type": tab_name,
-                   "stations": stations
-               })
+               if tab_name != "Daily Menu": # Only include if not "Daily Menu"
+                   meals_data.append({
+                       "meal_name": tab_name,
+                       "stations": stations
+                   })
            break # Added for faster testing: Process only the first meal type
 
 
@@ -259,7 +286,6 @@ def scrape_full_menu_data(url):
    driver = None
    all_dining_hall_data = {
        "date": datetime.date.today().isoformat(),
-       "meal_type": "Daily Menu", # This will be adjusted per meal tab
        "dining_halls": []
    }
 
