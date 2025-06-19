@@ -65,7 +65,6 @@ const FilterBar = ({
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
                             <CalendarIcon size={16} />
                         </div>
-                        {/* <CalendarIcon className="pointer-events-none absolute right-0" /> */}
 
                     </div>
                 </div>

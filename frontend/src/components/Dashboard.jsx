@@ -100,16 +100,97 @@ const mockFoodStations = [
   },
 ]
 const Dashboard = ({ isLoggedIn, addToTracker }) => {
-  const [diningHall, setDiningHall] = useState('Main Hall')
+  const transformFoodData = (data) => {
+    if (!Array.isArray(data)) {
+      console.warn("transformFoodData received invalid input:", data);
+      return [];
+    }
+
+    const stationMap = {};
+
+    data.forEach(item => {
+      const stationName = item.station || "Other";
+      const station_id = item.station_id || stationName; // fallback to name if id missing
+
+      if (!stationMap[station_id]) {
+        stationMap[station_id] = {
+          name: stationName,
+          description: "",
+          items: [],
+          station_id: station_id
+        };
+      }
+
+      const n = item.nutrients || {};
+      stationMap[station_id].items.push({
+        id: item._id,
+        name: item.name,
+        description: item.description,
+        portionSize: item.portion_size || '1 serving',
+        tags: item.labels || [],
+        allergens: item.allergens || [],
+        ingredients: item.ingredients,
+
+
+        calories: parseInt(n.calories) || 0,
+        protein: parseInt(n.protein) || 0,
+        carbs: parseInt(n.total_carbohydrates) || 0,
+        sugar: parseFloat(n.sugar) || 0,
+        totalFat: parseFloat(n.total_fat) || 0,
+        saturatedFat: parseFloat(n.saturated_fat) || 0,
+        cholesterol: parseFloat(n.cholesterol) || 0,
+        dietaryFiber: parseFloat(n.dietary_fiber) || 0,
+        sodium: parseFloat(n.sodium) || 0,
+        potassium: parseFloat(n.potassium) || 0,
+        calcium: parseFloat(n.calcium) || 0,
+        iron: parseFloat(n.iron) || 0,
+        transFat: parseFloat(n.trans_fat) || 0,
+        vitaminD: n.vitamin_d || '-',
+        vitaminA: n.vitamin_a || '-',
+        vitaminC: n.vitamin_c,
+        saturatedAndTransFat: n.saturated_and_trans_fat || '-'
+      });
+    });
+
+    return Object.values(stationMap);
+  };
+
+
+
+  const [diningHall, setDiningHall] = useState("Urban Bytes @ Kahlert Village")
   const [date, setDate] = useState(new Date())
-  const [mealType, setMealType] = useState('Lunch')
+  const [mealType, setMealType] = useState("Breakfast")
   const [foodStations, setFoodStations] = useState([])
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   useEffect(() => {
-    // In a real app, we would fetch data based on selected filters
-    // For now, we'll just use our mock data
-    setFoodStations(mockFoodStations)
-  }, [diningHall, date, mealType])
+    const params = new URLSearchParams({
+      dining_hall: diningHall,
+      meal_name: mealType,
+      date: date.toISOString().split('T')[0],
+    });
+
+    fetch(`http://localhost:8000/foods?${params}`)
+      .then((res) => {
+        console.log("Fetch response:", res);
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.json();
+      })
+      .then((data) => {
+        console.log("Raw fetched data:", data);
+        const stations = transformFoodData(data);
+        setFoodStations(stations);
+      })
+      .catch((err) => {
+        console.error('Failed to fetch foods:', err);
+        const stations = transformFoodData(mockFoodStations.flatMap(station => station.items.map(item => ({...item, station: station.name}))));
+        setFoodStations(stations);
+      });
+  }, [diningHall, date, mealType]);
+
+  useEffect(() => {
+    console.log('Updated food stations:', foodStations);
+  }, [foodStations]);
+
   const toggleAIAssistant = () => {
     setShowAIAssistant(!showAIAssistant)
   }
