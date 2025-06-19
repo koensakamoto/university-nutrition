@@ -120,7 +120,6 @@ def _extract_nutrition_details_for_item(driver, item_name):
                if ingredients_text:
                    nutrition_details["ingredients"] = ingredients_text
 
-
        print("   Extracted data from modal.")
 
 
@@ -182,6 +181,17 @@ def getMenu(driver, dining_hall_name, meal_type):
        for row in table.find('tbody').find_all('tr'):
            # Find td elements by their data-label attribute
            item_td = row.find('td', {'data-label': 'Menu item'})
+           portion_td = row.find('td', {'data-label': 'Portion'}) 
+
+           portion_size = None
+           if portion_td:
+                portion_div = portion_td.find('div')
+                if portion_div:
+                    portion_size = portion_div.text.strip()
+                else:
+                    portion_size = portion_td.text.strip()
+           else:
+                portion_size = "1 serving"  # fallback default
           
            if item_td: # Ensure item cell is found
                item_name_wrapper = item_td.find('span', class_='category-items_itemNameWrapper_zaBfp')
@@ -214,9 +224,10 @@ def getMenu(driver, dining_hall_name, meal_type):
 
                items_in_station.append({
                    "name": item_name,
-                   "description": "", # Removed as requested
+                   "description": "", 
                    "labels": labels,
                    "ingredients": ingredients_list,
+                   "portion_size": portion_size,
                    "nutrients": nutrition_info.get("nutrients", {})
                })
       
@@ -412,18 +423,24 @@ def scrape_full_menu_data(url):
            print("ChromeDriver session closed.")
 
 
-# --- Utility: Save foods to JSON ---
 def save_foods_to_json(all_dining_hall_data, filename="foods.json"):
+    import uuid  # Ensure uuid is imported
     foods = []
+    date = all_dining_hall_data.get("date")  # Get the date from the top-level dict
+
     for hall in all_dining_hall_data.get("dining_halls", []):
+        dining_hall_id = str(uuid.uuid4())
         for meal in hall.get("meals", []):
             for station in meal.get("stations", []):
+                station_id = str(uuid.uuid4())
                 for item in station.get("items", []):
-                    # Optionally add dining hall, meal, and station context
                     food_doc = item.copy()
                     food_doc["dining_hall"] = hall["name"]
+                    food_doc["dining_hall_id"] = dining_hall_id
                     food_doc["meal_name"] = meal["meal_name"]
                     food_doc["station"] = station["name"]
+                    food_doc["station_id"] = station_id
+                    food_doc["date"] = date
                     foods.append(food_doc)
     with open(filename, "w") as f:
         json.dump(foods, f, indent=4)
