@@ -1,4 +1,6 @@
 import time
+import datetime
+
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
@@ -15,6 +17,14 @@ from selenium.webdriver.support import expected_conditions as EC # Not needed fo
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 import re
+
+import os
+import certifi
+from dotenv import load_dotenv
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
+
+import json
 
 
 # --- Configuration ---
@@ -45,7 +55,7 @@ def _extract_nutrition_details_for_item(driver, item_name):
            return {"nutrients": {"error": f"Button not found or clickable: {str(e)}"}, "ingredients": "N/A"}
 
 
-       # 1. Wait until nutrition info pops up (assuming modal with class 'modal-content')
+       # 1. Wait until nutrition info pops up
        try:
            WebDriverWait(driver, 10).until(
                EC.visibility_of_element_located((By.CLASS_NAME, "modal-content"))
@@ -60,7 +70,6 @@ def _extract_nutrition_details_for_item(driver, item_name):
        nutrition_details_html = driver.page_source
        nutrition_soup = BeautifulSoup(nutrition_details_html, 'html.parser')
       
-       # Assuming the details are in ul > li inside modal-body
        modal_body = nutrition_soup.find('div', class_='modal-body')
        if modal_body:
            nutrients = {}
@@ -88,7 +97,6 @@ def _extract_nutrition_details_for_item(driver, item_name):
                            "saturated_fat_+_trans_fat": "saturated_and_trans_fat",
                            "vitamin_a_re": "vitamin_a",
                            "calories_from_fat": "calories_from_fat",
-                           # Add more mappings as needed
                        }
                        label_clean = re.sub(r'_+', '_', label_clean)  # Collapse multiple underscores
                        # Apply mapping if key is in renames
@@ -146,10 +154,8 @@ def getMenu(driver, dining_hall_name, meal_type):
    html_content = driver.page_source
    soup = BeautifulSoup(html_content, 'html.parser')
 
-
    # This will hold the stations and their items for the current meal type
    stations_data = []
-
 
    # Find all menu tables, which are identified by the class 'menu-items'
    menu_tables = soup.find_all('table', class_='menu-items')
@@ -162,9 +168,13 @@ def getMenu(driver, dining_hall_name, meal_type):
        "/img/howgood-climate-friendly-new.png": "Climate Friendly"
    }
 
-
    for table in menu_tables:
-       station_name = table.find('caption').text.strip() if table.find('caption') else "Unknown Station"
+       caption_tag = table.find('caption')
+       if caption_tag:
+           station_name = caption_tag.text.strip()
+       else:
+           station_name = "Unknown Station"
+           
        items_in_station = []
 
 
@@ -175,7 +185,14 @@ def getMenu(driver, dining_hall_name, meal_type):
           
            if item_td: # Ensure item cell is found
                item_name_wrapper = item_td.find('span', class_='category-items_itemNameWrapper_zaBfp')
-               item_name = item_name_wrapper.find('strong', class_='menu-item').text.strip() if item_name_wrapper and item_name_wrapper.find('strong', class_='menu-item') else "N/A"
+               if item_name_wrapper:
+                   strong_tag = item_name_wrapper.find('strong', class_='menu-item')
+                   if strong_tag:
+                       item_name = strong_tag.text.strip()
+                   else:
+                       item_name = "N/A"
+               else:
+                   item_name = "N/A"
               
                # Dietary preferences are now 'labels'
                labels = []
@@ -213,9 +230,7 @@ def getMenu(driver, dining_hall_name, meal_type):
 
 
 def extract_data(driver, dining_hall_name):
-   print("inside extract_data")
-   meals_data = [] # Now a list of meal objects
-
+   meals_data = [] 
 
    try:
        # Wait for the meal filter tabs container to be present
@@ -256,7 +271,6 @@ def extract_data(driver, dining_hall_name):
            stations = getMenu(driver, dining_hall_name, tab_name)
           
            if stations: # Only add meal type if it has stations/items
-               if tab_name != "Daily Menu": # Only include if not "Daily Menu"
                    meals_data.append({
                        "meal_name": tab_name,
                        "stations": stations
@@ -272,7 +286,6 @@ def extract_data(driver, dining_hall_name):
    return meals_data
 
 
-import datetime
 
 
 def scrape_full_menu_data(url):
@@ -298,14 +311,14 @@ def scrape_full_menu_data(url):
        time.sleep(12)  # Initial wait for the page to load completely
 
 
-       # --- First Pass: Collect all dining hall names ---
+       # Collect all dining hall names
        all_dining_hall_names = []
        try:
+           
            dropdown_button = WebDriverWait(driver, 10).until(
                EC.element_to_be_clickable((By.ID, "menu-location-selector__BV_toggle_"))
            )
            dropdown_button.click()
-
 
            dropdown_menu = WebDriverWait(driver, 10).until(
                EC.presence_of_element_located((By.CLASS_NAME, "dropdown-menu.show"))
@@ -364,12 +377,9 @@ def scrape_full_menu_data(url):
                    EC.element_to_be_clickable((By.XPATH, f".//button[normalize-space()='{dining_hall_name}']"))
                )
 
-
                print(f" Clicking: {dining_hall_name}")
                target_button.click()
-               time.sleep(5) # Add a wait after clicking a dining hall for content to load
-
-
+              
                # Call extract_data after clicking and content loads
                meals_for_dining_hall = extract_data(driver, dining_hall_name)
               
@@ -382,16 +392,15 @@ def scrape_full_menu_data(url):
 
 
            except Exception as e:
-               print(f"⚠️ Failed to process {dining_hall_name}: {e}")
+               print(f" Failed to process {dining_hall_name}: {e}")
                # Continue to the next dining hall even if one fails
                continue
 
 
        print(f"Successfully connected to {url} and processed all dining halls.")
-       import json
        print("--- ALL EXTRACTED MENU DATA ---")
        print(json.dumps(all_dining_hall_data, indent=4))
-       return True
+       return all_dining_hall_data
 
 
    except Exception as e:
@@ -403,10 +412,70 @@ def scrape_full_menu_data(url):
            print("ChromeDriver session closed.")
 
 
+# --- Utility: Save foods to JSON ---
+def save_foods_to_json(all_dining_hall_data, filename="foods.json"):
+    foods = []
+    for hall in all_dining_hall_data.get("dining_halls", []):
+        for meal in hall.get("meals", []):
+            for station in meal.get("stations", []):
+                for item in station.get("items", []):
+                    # Optionally add dining hall, meal, and station context
+                    food_doc = item.copy()
+                    food_doc["dining_hall"] = hall["name"]
+                    food_doc["meal_name"] = meal["meal_name"]
+                    food_doc["station"] = station["name"]
+                    foods.append(food_doc)
+    with open(filename, "w") as f:
+        json.dump(foods, f, indent=4)
+    print(f"Saved {len(foods)} foods to {filename}")
+
+
+# --- Utility: Upload foods.json to MongoDB ---
+def upload_foods_to_mongodb(json_file="foods.json"):
+    uri = os.getenv("MONGODB_URI")
+    if not uri:
+        print("MONGODB_URI not set in environment.")
+        return
+    try:
+        client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+        db = client["nutritionapp"]
+        collection = db["foods"]
+        with open(json_file, "r") as f:
+            data = json.load(f)
+        if isinstance(data, list):
+            result = collection.insert_many(data)
+            print(f"Inserted {len(result.inserted_ids)} documents into 'foods' collection.")
+        else:
+            result = collection.insert_one(data)
+            print("Inserted 1 document into 'foods' collection.")
+    except Exception as e:
+        print("Failed to upload foods to MongoDB:", e)
+
+
 # --- Main Execution ---
 if __name__ == "__main__":
-   if scrape_full_menu_data(TARGET_URL):
-       print("ChromeDriver connection test PASSED.")
-   else:
-       print("ChromeDriver connection test FAILED.")
+    load_dotenv() 
+    uri = os.getenv("MONGODB_URI")
+    try:
+        client = MongoClient(uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+        client.admin.command('ping')
+        print("Databases:", client.list_database_names())
+    except Exception as e:
+        print("MongoDB connection failed:", e)
+
+    # Scrape and save foods
+    all_dining_hall_data = None
+    try:
+        all_dining_hall_data = scrape_full_menu_data(TARGET_URL)
+    except Exception as e:
+        print("Scraping failed:", e)
+    if all_dining_hall_data and isinstance(all_dining_hall_data, dict):
+        save_foods_to_json(all_dining_hall_data, "foods.json")
+        upload_foods_to_mongodb("foods.json")
+        print("Scraping and upload complete.")
+    else:
+        print("No data scraped or scraping failed.")
+
+
+
 
