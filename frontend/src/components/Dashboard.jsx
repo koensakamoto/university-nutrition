@@ -229,7 +229,12 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
       </button>
       {/* Desktop AI Assistant Panel */}
       <div className="hidden md:block mt-6">
-        <AIAssistant />
+        <AIAssistant
+          addToTracker={addToTracker}
+          diningHall={diningHall}
+          mealType={mealType}
+          date={date}
+        />
       </div>
       {/* Mobile AI Assistant Panel (when active) */}
       {showAIAssistant && (
@@ -254,7 +259,13 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
                 </svg>
               </button>
             </div>
-            <AIAssistant isMobile={true} />
+            <AIAssistant
+              isMobile={true}
+              addToTracker={addToTracker}
+              diningHall={diningHall}
+              mealType={mealType}
+              date={date}
+            />
           </div>
         </div>
       )}

@@ -7,6 +7,9 @@ import os
 from dotenv import load_dotenv
 import certifi
 from models.food import Food
+from models.agent import AgentQuery
+from agent import agent_executor
+from langchain_core.messages import HumanMessage, AIMessage
 
 app = FastAPI()
 

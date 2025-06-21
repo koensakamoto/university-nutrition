@@ -21,3 +21,5 @@ yarn-debug.log*
 
 #scraped json output
 /backend/foods.json
+
+/backend/requirements.txt
