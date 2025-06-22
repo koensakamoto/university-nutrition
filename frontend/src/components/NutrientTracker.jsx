@@ -20,7 +20,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
                 calories: acc.calories + item.calories,
                 protein: acc.protein + item.protein,
                 carbs: acc.carbs + item.carbs,
-                fat: acc.fat + item.fat,
+                fat: acc.fat + item.totalFat,
             }
         },
         {

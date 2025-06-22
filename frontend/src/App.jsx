@@ -5,10 +5,12 @@ import {
   Route,
   Navigate,
 } from 'react-router-dom'
-import Header from './components/Header'
+import HomeLayout from './components/HomeLayout'
 import Dashboard from './components/Dashboard'
 import Login from './components/Login'
 import NutrientTracker from './components/NutrientTracker'
+import ProfilePage from './components/ProfilePage'
+import {ProfileSettings} from "./components/ProfileSettings/ProfileSettings"
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -30,34 +32,38 @@ export default function App() {
   }
   return (
     <Router>
-      <div className="flex flex-col min-h-screen bg-gray-50">
-        <Header isLoggedIn={isLoggedIn} onLogout={handleLogout} />
-        <div className="flex flex-grow w-full">
-          <Routes>
-            <Route
-              path="/dashboard"
-              element={
-                <div className="flex flex-col md:flex-row w-full">
-                  <Dashboard
-                    isLoggedIn={isLoggedIn}
-                    addToTracker={addToTracker}
-                  />
-                  <NutrientTracker
-                    trackedItems={trackedItems}
-                    removeItem={removeFromTracker}
-                    clearItems={clearTracker}
-                  />
-                </div>
-              }
-            />
-            <Route path="/login" element={<Login onLogin={handleLogin} />} />
-            <Route
-              path="*"
-              element={<Navigate to={isLoggedIn ? '/dashboard' : '/login'} />}
-            />
-          </Routes>
-        </div>
-      </div>
+      <Routes>
+        <Route 
+          path="/" 
+          element={<HomeLayout isLoggedIn={isLoggedIn} onLogout={handleLogout} />}
+        >
+          <Route index element={<Navigate to={isLoggedIn ? 'dashboard' : 'login'} />} />
+          <Route
+            path="dashboard"
+            element={
+              <div className="flex flex-col md:flex-row w-full">
+                <Dashboard
+                  isLoggedIn={isLoggedIn}
+                  addToTracker={addToTracker}
+                />
+                <NutrientTracker
+                  trackedItems={trackedItems}
+                  removeItem={removeFromTracker}
+                  clearItems={clearTracker}
+                />
+              </div>
+            }
+          />
+
+          <Route path="login" element={<Login onLogin={handleLogin} />} />
+          <Route path="profile" element={<ProfileSettings />} />
+          
+          <Route 
+            path="*"
+            element={<Navigate to="/" />}
+          />
+        </Route>
+      </Routes>
     </Router>
   )
 }

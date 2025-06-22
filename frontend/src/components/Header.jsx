@@ -36,13 +36,13 @@ const Header = ({ isLoggedIn, onLogout }) => {
           <nav className="hidden md:flex items-center space-x-6">
             {isLoggedIn ? (
               <>
-                <Link to="/dashboard" className="hover:text-red-200">
+                <Link to="dashboard" className="hover:text-red-200">
                   Dashboard
                 </Link>
-                <Link to="/saved-meals" className="hover:text-red-200">
+                <Link to="saved-meals" className="hover:text-red-200">
                   Saved Meals
                 </Link>
-                <Link to="/nutrition-goals" className="hover:text-red-200">
+                <Link to="nutrition-goals" className="hover:text-red-200">
                   My Goals
                 </Link>
                 <div className="relative">
@@ -58,7 +58,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
               </>
             ) : (
               <Link
-                to="/login"
+                to="login"
                 className="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100"
               >
                 Sign In
@@ -76,19 +76,19 @@ const Header = ({ isLoggedIn, onLogout }) => {
             {isLoggedIn ? (
               <>
                 <Link
-                  to="/dashboard"
+                  to="dashboard"
                   className="block py-2 hover:text-red-200"
                 >
                   Dashboard
                 </Link>
                 <Link
-                  to="/saved-meals"
+                  to="saved-meals"
                   className="block py-2 hover:text-red-200"
                 >
                   Saved Meals
                 </Link>
                 <Link
-                  to="/nutrition-goals"
+                  to="nutrition-goals"
                   className="block py-2 hover:text-red-200"
                 >
                   My Goals
@@ -105,7 +105,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
               </>
             ) : (
               <Link
-                to="/login"
+                to="login"
                 className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100"
               >
                 Sign In

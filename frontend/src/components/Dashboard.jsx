@@ -158,7 +158,7 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
 
 
   const [diningHall, setDiningHall] = useState("Urban Bytes @ Kahlert Village")
-  const [date, setDate] = useState(new Date())
+  const [date, setDate] = useState(new Date(new Date().getFullYear(), 5, 25))
   const [mealType, setMealType] = useState("Breakfast")
   const [foodStations, setFoodStations] = useState([])
   const [showAIAssistant, setShowAIAssistant] = useState(false)

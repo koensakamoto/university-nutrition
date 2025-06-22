@@ -23,7 +23,7 @@ const ProfileMenu = ({ onLogout }) => {
         className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
       >
         <SettingsIcon size={16} className="mr-2" />
-        <span>Preferences</span>
+        <span>Your Account</span>
       </Link>
       <div className="border-t border-gray-200 mt-1">
         <button

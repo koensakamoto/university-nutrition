@@ -1,11 +1,13 @@
+import { Outlet } from 'react-router-dom'
 import Header from './Header'
-import Dashboard from './Dashboard'
 
-export default function HomeLayout() {
+export default function HomeLayout({ isLoggedIn, onLogout }) {
     return (
-        <div className="bg-gray-100 min-h-screen">
-            <Header isLoggedIn={true} onLogout={true}/>
-            <Dashboard />
+        <div className="flex flex-col min-h-screen bg-gray-50">
+            <Header isLoggedIn={isLoggedIn} onLogout={onLogout}/>
+            <main className="flex flex-grow w-full">
+                <Outlet />
+            </main>
         </div>
     )
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import {
   PlusIcon,
+  MinusIcon,
   InfoIcon,
   LeafIcon,
   SaladIcon,
@@ -74,20 +75,46 @@ const FoodItem = ({ item, addToTracker }) => {
           </div>
         </div>
         <div className="flex items-start space-x-2">
-          <button
-            onClick={toggleDetails}
-            className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-500"
-          >
-            <InfoIcon size={20} />
-          </button>
-          <button
-            onClick={() => addToTracker(item)}
-            className="p-1 rounded-full text-blue-600 hover:bg-blue-100"
-          >
-            <PlusIcon size={20} />
-          </button>
+
+
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center bg-gray-100 rounded-lg">
+              <button
+                onClick={() => console.log("...")}
+                className="p-1 hover:bg-gray-200 rounded-l-lg"
+                aria-label="Decrease servings"
+              >
+                <MinusIcon className="h-4 w-4" />
+              </button>
+              <div className="px-2 min-w-[3rem] text-center">{1}x</div>
+              <button
+                onClick={() => console.log("...")}
+                className="p-1 hover:bg-gray-200 rounded-r-lg"
+                aria-label="Increase servings"
+              >
+                <PlusIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              onClick={() => console.log("added item with x servings")}
+              className="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded-full"
+              aria-label="Add item to plate"
+            >
+              <PlusIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
+
+      <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="flex items-center mt-3 text-sm text-blue-600 hover:text-blue-800"
+        >
+          <InfoIcon className="h-3 w-3 mr-1" />
+          {showDetails ? 'Hide details' : 'Show details'}
+        </button>
+
+
       {showDetails && (
         <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700">
           <div className="space-y-2">

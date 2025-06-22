@@ -11,7 +11,7 @@ const FilterBar = ({
     setMealType,
 }) => {
     const diningHalls = [
-        'Main Hall',
+        'Urban Bytes @ Kahlert Village',
         'North Campus',
         'West Commons',
         'Science Center',
