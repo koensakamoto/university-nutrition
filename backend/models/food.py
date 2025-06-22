@@ -18,8 +18,8 @@ class Food(BaseModel):
     portion_size: Optional[str] = None
 
     class Config:
-        allow_population_by_field_name = True
-        schema_extra = {
+        populate_by_name = True
+        json_schema_extra = {
             "example": {
                 "_id": "656e...",
                 "name": "Apple",
