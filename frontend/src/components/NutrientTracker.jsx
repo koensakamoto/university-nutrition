@@ -11,7 +11,7 @@ import {
     Legend,
     Tooltip,
 } from 'recharts'
-import { XIcon, DownloadIcon, TrashIcon } from 'lucide-react'
+import { XIcon, DownloadIcon, TrashIcon, ClipboardPlus } from 'lucide-react'
 const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
     // Calculate nutrition totals
     const totals = trackedItems.reduce(
@@ -76,8 +76,8 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
         alert('Export functionality would go here!')
     }
     return (
-        <div className="hidden md:block md:w-1/4 bg-white border-l border-gray-200 p-4 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-lg p-4 flex flex-col h-full">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">My Plate</h2>
                 <div className="flex space-x-2">
                     <button
@@ -96,9 +96,12 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
                     </button>
                 </div>
             </div>
+            <div className="flex-grow overflow-y-auto">
             {trackedItems.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                    <p>Add items from the menu to track nutrition.</p>
+                <div className="text-center h-full px-4 text-gray-500 flex flex-col items-center justify-center">
+                    <ClipboardPlus size={48} className="text-gray-300 mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-700">Your plate is empty</h3>
+                    <p className="text-sm mt-1">Add items from the menu to see your nutrition breakdown.</p>
                 </div>
             ) : (
                 <>
@@ -169,61 +172,66 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
                             % Daily Values
                         </h3>
                         <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={barData}
-                  layout="vertical"
-                  margin={{left:0}}
-                >
-                  <XAxis
-                    type="number"
-                    domain={[0, 100]}
-                  />
-                  <YAxis type="category" dataKey="name" width={70} /> {/* Added Y-axis for category names */}
-                  <Tooltip
-                    formatter={(value) => [`${Math.round(value)}%`, '']}
-                  />
-                  <Bar dataKey="percent" radius={[0, 4, 4, 0]}>
-                    {barData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-4">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart
+                                    data={barData}
+                                    layout="vertical"
+                                    margin={{ left: 0 }}
+                                >
+                                    <XAxis
+                                        type="number"
+                                        domain={[0, 100]}
+                                    />
+                                    <YAxis type="category" dataKey="name" width={70} /> {/* Added Y-axis for category names */}
+                                    <Tooltip
+                                        formatter={(value) => [`${Math.round(value)}%`, '']}
+                                    />
+                                    <Bar dataKey="percent" radius={[0, 4, 4, 0]}>
+                                        {barData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                    <div className="border-t border-gray-200 pt-4">
                     </div>
                     <div className="border-t border-gray-200 pt-4">
                         <h3 className="text-sm font-medium text-gray-700 mb-2">
                             Items on your plate
                         </h3>
                         <ul className="divide-y divide-gray-200">
-                            {trackedItems.map((item) => (
-                                <li
-                                    key={`plate-${item.id}`}
-                                    className="py-2 flex justify-between items-center"
-                                >
-                                    <div>
-                                        <p className="text-sm font-medium text-gray-800">
-                                            {item.name}
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {item.calories} cal · {item.portionSize}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => removeItem(item.id)}
-                                        className="text-gray-400 hover:text-gray-600"
+                            {trackedItems.map((item) => {
+                                console.log("item", item)
+                                return (
+                                    <li
+                                        key={item.uniqueId}
+                                        className="py-2 flex justify-between items-center"
                                     >
-                                        <XIcon size={16} />
-                                    </button>
-                                </li>
-                            ))}
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-800">
+                                                {item.name}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {item.calories} cal · {item.portionSize}
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => removeItem(item.uniqueId)}
+                                            className="text-gray-400 hover:text-gray-600"
+                                        >
+                                            <XIcon size={16} />
+                                        </button>
+                                    </li>
+                                );
+                            })}
+
                         </ul>
                     </div>
                 </>
             )}
+            </div>
         </div>
     )
 }

@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 
 
-
 const FoodItem = ({ item, addToTracker }) => {
   const [showDetails, setShowDetails] = useState(false)
 
@@ -96,7 +95,7 @@ const FoodItem = ({ item, addToTracker }) => {
               </button>
             </div>
             <button
-              onClick={() => console.log("added item with x servings")}
+              onClick={()=> addToTracker(item)}
               className="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded-full"
               aria-label="Add item to plate"
             >

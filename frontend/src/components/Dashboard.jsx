@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
 import AIAssistant from './AIAssistant'
-import { MessageCircleIcon } from 'lucide-react'
+import CustomMealForm from './CustomMealForm'
+import { MessageCircleIcon, PlusCircleIcon } from 'lucide-react'
+import NutrientTracker from './NutrientTracker'
 // Mock data for food stations
 const mockFoodStations = [
   {
@@ -99,7 +101,7 @@ const mockFoodStations = [
     ],
   },
 ]
-const Dashboard = ({ isLoggedIn, addToTracker }) => {
+const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, removeItem, clearItems }) => {
   const transformFoodData = (data) => {
     if (!Array.isArray(data)) {
       console.warn("transformFoodData received invalid input:", data);
@@ -158,10 +160,11 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
 
 
   const [diningHall, setDiningHall] = useState("Urban Bytes @ Kahlert Village")
-  const [date, setDate] = useState(new Date(new Date().getFullYear(), 5, 25))
+  const [date, setDate] = useState(new Date(new Date().getFullYear(), 5, 19))
   const [mealType, setMealType] = useState("Breakfast")
   const [foodStations, setFoodStations] = useState([])
   const [showAIAssistant, setShowAIAssistant] = useState(false)
+  const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
   useEffect(() => {
     const params = new URLSearchParams({
       dining_hall: diningHall,
@@ -195,7 +198,7 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
     setShowAIAssistant(!showAIAssistant)
   }
   return (
-    <div className="flex flex-col flex-grow w-full md:w-3/4 p-4">
+    <div className="flex flex-col flex-grow w-full md:w-3/4 p-4 bg-white rounded-lg">
       <Filter
         diningHall={diningHall}
         setDiningHall={setDiningHall}
@@ -204,22 +207,43 @@ const Dashboard = ({ isLoggedIn, addToTracker }) => {
         mealType={mealType}
         setMealType={setMealType}
       />
-      <div className="mt-6">
-        <h2 className="text-xl font-bold text-gray-800">
-          {diningHall} - {mealType} Menu
-        </h2>
-        <p className="text-gray-600">
-          {date.toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </p>
+      <div className="md:hidden mt-4 border rounded-lg flex flex-col flex-grow">
+          <NutrientTracker
+            trackedItems={trackedItems}
+            removeItem={removeItem}
+            clearItems={clearItems}
+          />
+      </div>
+      <div className="mt-6 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-gray-800">
+            {diningHall} - {mealType} Menu
+          </h2>
+          <p className="text-gray-600">
+            {date.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+        </div>
+        <button
+          onClick={() => setIsCustomMealFormOpen(true)}
+          className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+        >
+          <PlusCircleIcon size={20} className="mr-2" />
+          <span>Add Custom Meal</span>
+        </button>
       </div>
       <div className="mt-4">
         <FoodStations stations={foodStations} addToTracker={addToTracker} />
       </div>
+      <CustomMealForm
+        isOpen={isCustomMealFormOpen}
+        onClose={() => setIsCustomMealFormOpen(false)}
+        onAddItem={addToTracker}
+      />
       {/* Mobile AI Assistant FAB */}
       <button
         onClick={toggleAIAssistant}

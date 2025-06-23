@@ -7,6 +7,10 @@ import {
   LogOutIcon,
   SettingsIcon,
   BookmarkIcon,
+  ChartBarBig,
+  Settings,
+  LayoutDashboard
+
 } from 'lucide-react'
 import ProfileMenu from './ProfileMenu'
 import ULogo from "../images/ULogo.png"
@@ -36,16 +40,29 @@ const Header = ({ isLoggedIn, onLogout }) => {
           <nav className="hidden md:flex items-center space-x-6">
             {isLoggedIn ? (
               <>
-                <Link to="dashboard" className="hover:text-red-200">
+                <Link to="dashboard" className="hover:text-red-200 flex items-center">
+                  <LayoutDashboard className="mr-2" size={20} />
                   Dashboard
                 </Link>
-                <Link to="saved-meals" className="hover:text-red-200">
-                  Saved Meals
+
+                <Link to="history" className="hover:text-red-200 flex items-center">
+                  <ChartBarBig className="mr-2" size={20} />
+                  Nutrition History
                 </Link>
-                <Link to="nutrition-goals" className="hover:text-red-200">
-                  My Goals
+
+                <Link to="profile" className="hover:text-red-200 flex items-center">
+                  <UserIcon className="mr-2" size={20} />
+                  Profile
                 </Link>
-                <div className="relative">
+
+
+                <Link to="account" className="hover:text-red-200 flex items-center">
+                  <Settings className="mr-2" size={20} />
+                  Account
+                </Link>
+
+
+                {/* <div className="relative">
                   <button
                     onClick={toggleProfileMenu}
                     className="flex items-center space-x-1 hover:text-red-200"
@@ -54,7 +71,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
                     <span>Profile</span>
                   </button>
                   {profileMenuOpen && <ProfileMenu onLogout={onLogout} />}
-                </div>
+                </div> */}
               </>
             ) : (
               <Link
@@ -77,21 +94,34 @@ const Header = ({ isLoggedIn, onLogout }) => {
               <>
                 <Link
                   to="dashboard"
-                  className="block py-2 hover:text-red-200"
+                  className="flex py-2 hover:text-red-200"
                 >
+                  <LayoutDashboard className="mr-2" size={20} />
                   Dashboard
                 </Link>
                 <Link
-                  to="saved-meals"
-                  className="block py-2 hover:text-red-200"
+                  to="history"
+                  className="flex py-2 hover:text-red-200"
                 >
-                  Saved Meals
+                  <ChartBarBig className="mr-2" size={20} />
+                  Nutrition History
                 </Link>
+
                 <Link
-                  to="nutrition-goals"
-                  className="block py-2 hover:text-red-200"
+                to="profile"
+                className="flex py-2 hover:text-red-200"
                 >
-                  My Goals
+                <UserIcon className="mr-2" size={20} />
+                Profile
+                </Link>
+
+
+                <Link
+                  to="account"
+                  className="flex py-2 hover:text-red-200"
+                >
+                 <Settings className="mr-2" size={20} />
+                  Account
                 </Link>
                 <div className="border-t border-red-500 pt-2 mt-2">
                   <button

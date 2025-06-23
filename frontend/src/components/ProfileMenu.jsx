@@ -18,6 +18,7 @@ const ProfileMenu = ({ onLogout }) => {
         <BookmarkIcon size={16} className="mr-2" />
         <span>Saved Meals</span>
       </Link>
+
       <Link
         to="/settings"
         className="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100"
