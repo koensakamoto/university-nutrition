@@ -11,11 +11,12 @@ from models.food import Food
 from models.agent import AgentQuery
 
 from models.user import UserCreate, UserProfile
-from auth.auth_utils import (
+
+from auth_util import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
     get_user_by_email, get_current_user
 )
-from auth.jwt_utils import create_access_token
+from jwt_util import create_access_token
 
 
 
@@ -38,6 +39,7 @@ MONGODB_URI = os.getenv("MONGODB_URI")
 client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where())
 db = client["nutritionapp"]
 foods_collection = db["foods"]
+users_collection = db["users"]
 
 # Helper to convert ObjectId to string
 def fix_id(food):

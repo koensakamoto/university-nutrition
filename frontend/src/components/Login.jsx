@@ -7,19 +7,16 @@ import { useAuth } from "../AuthProvider"
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const[error, setError] = useState('')
-  const[loading, setLoading] = useState(false)
-  const { login } = useAuth()
+  const { login, error, loading } = useAuth()
   const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    // TODO: Add real authentication logic here
-    login({ email }); // Set user in context
-    navigate('/dashboard');
-    setLoading(false);
+    const success = await login(email, password);
+    if(success){
+      navigate('/dashboard');
+    }
+    // No setLoading or setError here; handled by context
   }
 
   return (

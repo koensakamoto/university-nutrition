@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Response, Request, Depends
 from pymongo.collection import Collection
-from .jwt_utils import create_access_token, decode_access_token
+from jwt_util import create_access_token, decode_access_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
