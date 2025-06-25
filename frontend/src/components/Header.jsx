@@ -14,10 +14,12 @@ import {
 } from 'lucide-react'
 import ProfileMenu from './ProfileMenu'
 import ULogo from "../images/ULogo.png"
+import { useAuth } from '../AuthProvider'
 
-const Header = ({ isLoggedIn, onLogout }) => {
+const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+  const { user, logout } = useAuth();
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen)
   }
@@ -38,7 +40,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
           </div>
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-6">
-            {isLoggedIn ? (
+            {user ? (
               <>
                 <Link to="dashboard" className="hover:text-red-200 flex items-center">
                   <LayoutDashboard className="mr-2" size={20} />
@@ -60,6 +62,17 @@ const Header = ({ isLoggedIn, onLogout }) => {
                   <Settings className="mr-2" size={20} />
                   Account
                 </Link>
+
+                <Link to="login"  className="hover:text-red-200 flex items-center">
+                  <button
+                    className="flex items-center space-x-2 py-2 hover:text-red-200"
+                    onClick={logout}
+                  >
+                    <LogOutIcon size={18} />
+                    <span>Sign Out</span>
+                  </button>         
+                </Link>
+
 
 
                 {/* <div className="relative">
@@ -90,7 +103,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <nav className="md:hidden mt-3 pb-3 space-y-3">
-            {isLoggedIn ? (
+            {user ? (
               <>
                 <Link
                   to="dashboard"
@@ -126,7 +139,7 @@ const Header = ({ isLoggedIn, onLogout }) => {
                 <div className="border-t border-red-500 pt-2 mt-2">
                   <button
                     className="flex items-center space-x-2 py-2 hover:text-red-200"
-                    onClick={onLogout}
+                    onClick={logout}
                   >
                     <LogOutIcon size={18} />
                     <span>Sign Out</span>

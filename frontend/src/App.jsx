@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
   BrowserRouter as Router,
   Routes,
@@ -9,19 +9,15 @@ import HomeLayout from './components/HomeLayout'
 import Dashboard from './components/Dashboard'
 import Login from './components/Login'
 import NutrientTracker from './components/NutrientTracker'
-import {ProfileSettings} from "./components/ProfileSettings/ProfileSettings"
-import {NutritionHistory} from "./components/nutritionHistory/NutritionHistory"
-import UserAccount from './components/accountPage/UserAccount';
+import ProfileSettings from "./components/ProfileSettings/ProfileSettings"
+import NutritionHistory from './components/nutritionHistory/NutritionHistory.jsx'
+import UserAccount from './components/accountPage/UserAccount'
+import { useAuth } from './AuthProvider'
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [trackedItems, setTrackedItems] = useState([])
-  const handleLogin = () => {
-    setIsLoggedIn(true)
-  }
-  const handleLogout = () => {
-    setIsLoggedIn(false)
-  }
+  const { user, logout } = useAuth();
+  const [trackedItems, setTrackedItems] = React.useState([])
+
   const addToTracker = (item, quantity = 1) => {
     const newItem = {
       ...item,
@@ -30,31 +26,28 @@ export default function App() {
     };
     setTrackedItems((prev) => [...prev, newItem]);
   }
- const removeFromTracker = (itemId) => {
-  console.log("Before removal:", trackedItems);
-  setTrackedItems(prev => {
-    const updated = prev.filter(item => item.id !== itemId);
-    console.log("After removal:", updated);
-    return updated;
-  });
-};
+
+  const removeFromTracker = (itemId) => {
+    setTrackedItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
   const clearTracker = () => {
     setTrackedItems([])
   }
+
   return (
     <Router>
       <Routes>
         <Route 
           path="/" 
-          element={<HomeLayout isLoggedIn={isLoggedIn} onLogout={handleLogout} />}
+          element={<HomeLayout isLoggedIn={!!user} onLogout={logout} />}
         >
-          <Route index element={<Navigate to={isLoggedIn ? 'dashboard' : 'login'} />} />
+          <Route index element={<Navigate to={user ? 'dashboard' : 'login'} />} />
           <Route
             path="dashboard"
             element={
               <div className="flex flex-col md:flex-row w-full flex-grow p-4 gap-4">
                 <Dashboard
-                  isLoggedIn={isLoggedIn}
                   addToTracker={addToTracker}
                   trackedItems={trackedItems}
                   removeItem={removeFromTracker}
@@ -71,7 +64,7 @@ export default function App() {
             }
           />
 
-          <Route path="login" element={<Login onLogin={handleLogin} />} />
+          <Route path="login" element={<Login />} />
           <Route path="profile" element={<ProfileSettings />} />
           <Route path="history" element={<NutritionHistory/> }/>
           <Route path="account" element={<UserAccount/>}/>

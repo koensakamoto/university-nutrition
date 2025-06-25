@@ -2,15 +2,26 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MailIcon, LockIcon, LogInIcon, ChromeIcon } from 'lucide-react'
 import ULogo from '../images/ULogo.png'
-const Login = ({ onLogin }) => {
+import { useAuth } from "../AuthProvider"
+
+const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const[error, setError] = useState('')
+  const[loading, setLoading] = useState(false)
+  const { login } = useAuth()
   const navigate = useNavigate()
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onLogin()
-    navigate('/dashboard')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    // TODO: Add real authentication logic here
+    login({ email }); // Set user in context
+    navigate('/dashboard');
+    setLoading(false);
   }
+
   return (
     <div className="flex flex-col items-center justify-center w-full min-h-screen bg-gray-50 px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
