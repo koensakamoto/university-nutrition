@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, status
+from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from pymongo import MongoClient
@@ -6,8 +6,18 @@ from bson import ObjectId
 import os
 from dotenv import load_dotenv
 import certifi
+
 from models.food import Food
 from models.agent import AgentQuery
+
+from models.user import UserCreate, UserProfile
+from auth.auth_utils import (
+    hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
+    get_user_by_email, get_current_user
+)
+from auth.jwt_utils import create_access_token
+
+
 
 app = FastAPI()
 
@@ -96,3 +106,49 @@ def delete_food(food_id: str):
 @app.get("/")
 def read_root():
     return {"message": "Hello World"}
+
+
+
+
+
+@app.post("/auth/register")
+def register(user: UserCreate, response: Response):
+    if get_user_by_email(users_collection, user.email):
+        raise HTTPException(status_code=400, detail="Email already registered")
+    hashed_pw = hash_password(user.password)
+    users_collection.insert_one({
+        "email": user.email,
+        "hashed_password": hashed_pw,
+        "profile": {}  # or default profile fields
+    })
+    token = create_access_token({"sub": user.email})
+    set_auth_cookie(response, token)
+    return {"message": "Registered"}
+
+@app.post("/auth/login")
+def login(user: UserCreate, response: Response):
+    db_user = get_user_by_email(users_collection, user.email)
+    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token({"sub": user.email})
+    set_auth_cookie(response, token)
+    return {"message": "Logged in"}
+
+@app.post("/auth/logout")
+def logout(response: Response):
+    clear_auth_cookie(response)
+    return {"message": "Logged out"}
+
+@app.get("/profile")
+def get_profile(request: Request):
+    user = get_current_user(request, users_collection)
+    return user.get("profile", {})
+
+@app.put("/profile")
+def update_profile(profile: UserProfile, request: Request):
+    user = get_current_user(request, users_collection)
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$set": {"profile": profile.dict()}}
+    )
+    return {"message": "Profile updated"}
