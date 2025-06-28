@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends
+from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from pymongo import MongoClient
@@ -6,6 +6,7 @@ from bson import ObjectId
 import os
 from dotenv import load_dotenv
 import certifi
+from datetime import datetime
 
 from models.food import Food
 from models.agent import AgentQuery
@@ -141,16 +142,94 @@ def logout(response: Response):
     clear_auth_cookie(response)
     return {"message": "Logged out"}
 
-@app.get("/profile")
+@app.get("/api/profile")
 def get_profile(request: Request):
     user = get_current_user(request, users_collection)
     return user.get("profile", {})
 
-@app.put("/profile")
-def update_profile(profile: UserProfile, request: Request):
+@app.put("/api/profile")
+def update_profile(request: Request, data: dict = Body(...)):
     user = get_current_user(request, users_collection)
     users_collection.update_one(
         {"email": user["email"]},
-        {"$set": {"profile": profile.dict()}}
+        {"$set": {f"profile.{k}": v for k, v in data.items()}}
     )
     return {"message": "Profile updated"}
+
+def calculate_bmr(sex, weight_kg, height_cm, age):
+    if sex == 'male':
+        return 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+    else:
+        return 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+
+def get_activity_multiplier(activity_level):
+    return {
+        'sedentary': 1.2,
+        'light': 1.375,
+        'moderate': 1.55,
+        'active': 1.725,
+        'very_active': 1.9
+    }.get(activity_level, 1.2)
+
+@app.get("/api/profile/energy-target")
+def get_energy_target(request: Request):
+    user = get_current_user(request, users_collection)
+    profile = user.get("profile", {})
+    sex = profile.get("sex", "male")
+    weight_lbs = profile.get("weight", 150)
+    height_in = profile.get("height", 68)
+    birthday = profile.get("birthday")
+    activity_level = profile.get("activity_level", "sedentary")
+    weight_goal_type = profile.get("weight_goal_type", "maintain")
+    weight_goal_rate = profile.get("weight_goal_rate", 0)
+    weight_goal_custom_rate = profile.get("weight_goal_custom_rate", 0)
+
+    weight_kg = float(weight_lbs) * 0.453592
+    height_cm = float(height_in) * 2.54
+
+    # Calculate age
+    if birthday:
+        if isinstance(birthday, str):
+            birthdate = datetime.strptime(birthday[:10], "%Y-%m-%d")
+        else:
+            birthdate = birthday
+        today = datetime.today()
+        age = today.year - birthdate.year - ((today.month, today.day) < (birthdate.month, birthdate.day))
+    else:
+        age = 30  # default
+
+    bmr = calculate_bmr(sex, weight_kg, height_cm, age)
+    tdee = bmr * get_activity_multiplier(activity_level)
+
+    # Adjust for weight goal
+    if weight_goal_type == "lose":
+        if str(weight_goal_rate) == "custom":
+            try:
+                custom_rate = float(weight_goal_custom_rate)
+            except Exception:
+                custom_rate = 0
+            tdee -= 500 * custom_rate
+        else:
+            try:
+                tdee -= 500 * float(weight_goal_rate)
+            except Exception:
+                pass
+    elif weight_goal_type == "gain":
+        if str(weight_goal_rate) == "custom":
+            try:
+                custom_rate = float(weight_goal_custom_rate)
+            except Exception:
+                custom_rate = 0
+            tdee += 500 * custom_rate
+        else:
+            try:
+                tdee += 500 * float(weight_goal_rate)
+            except Exception:
+                pass
+    elif weight_goal_type == "custom":
+        try:
+            tdee += 500 * float(weight_goal_custom_rate)
+        except Exception:
+            pass
+
+    return {"energy_target": round(tdee)}
