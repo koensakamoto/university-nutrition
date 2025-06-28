@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
-      const res = await fetch("http://localhost:8000/profile", {
+      const res = await fetch("/api/profile", {
         credentials: "include",
       });
       setLoading(false);
@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     });
   
     if (res.ok) {
-      const profileRes = await fetch("http://localhost:8000/profile", {
+      const profileRes = await fetch("/api/profile", {
         credentials: "include"
       });
   
@@ -67,7 +67,7 @@ const login = async (email, password) => {
   })
 
   if (res.ok) {
-    const profileRes = await fetch("http://localhost:8000/profile", {
+    const profileRes = await fetch("/api/profile", {
       credentials: "include"
     })
 

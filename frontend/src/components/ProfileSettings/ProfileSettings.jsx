@@ -1,14 +1,26 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ProfileSection } from './ProfileSection';
 import { WeightGoalSection } from './WeightGoalSection';
 import { MacroTargetsSection } from './MacroTargetsSection';
-import { EnergyExpenditureSection } from './EnergyExpenditureSection';
+// import { EnergyExpenditureSection } from './EnergyExpenditureSection';
 import { ActivityLevelSection } from './ActivityLevelSection';
 import { DietaryPreferencesSection } from './DietaryPreferencesSection';
 import { AllergensSection } from './AllergensSection';
 import { WeightGoalRateSection } from './WeightGoalRateSection';
 
 export default function ProfileSettings(props) {
+  const [energyTarget, setEnergyTarget] = useState(null);
+
+  const fetchEnergyTarget = useCallback(() => {
+    fetch('/api/profile/energy-target', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setEnergyTarget(data.energy_target));
+  }, []);
+
+  useEffect(() => {
+    fetchEnergyTarget();
+  }, [fetchEnergyTarget]);
+
   return (
     <div className="max-w-4xl w-full mx-auto px-4 py-8">
       <div className="min-h-screen bg-gray-50">
@@ -20,10 +32,10 @@ export default function ProfileSettings(props) {
           
           <ProfileSection />
           <WeightGoalSection />
-          <WeightGoalRateSection/>
+          <WeightGoalRateSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
           <ActivityLevelSection />
-          <MacroTargetsSection />
-          <EnergyExpenditureSection />
+          <MacroTargetsSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
+          {/* <EnergyExpenditureSection /> */}
           <DietaryPreferencesSection />
           <AllergensSection />
         </div>
