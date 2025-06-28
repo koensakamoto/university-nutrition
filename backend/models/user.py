@@ -9,12 +9,14 @@ class UserCreate(BaseModel):
 class UserProfile(BaseModel):
     sex: str
     birthday: date
-    height_cm: float
-    weight_kg: float
+    height: float
+    weight: float
     body_fat_percent: Optional[float]
     bmi: Optional[float]
     weight_goal: float
     weight_goal_rate: str
+    weight_goal_type: str
+    weight_goal_custom_rate: float
     activity_level: str
     protein_target: str
     carb_target: str
@@ -23,6 +25,16 @@ class UserProfile(BaseModel):
     meal_preference: List[str]
     cultural_preference: str
     allergens: List[str]
+    foode_sensitivities: List[str]
+    allergen_notes: str
+    protein_ratio: int
+    carb_ratio: int
+    fat_ratio: int
+    fixed_protein: int
+    fixed_carb: int
+    fixed_fat: int
+
+    
 
 
 class User(BaseModel):
