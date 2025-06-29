@@ -482,13 +482,13 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
                       <span className="font-medium">Protein</span>
                     </div>
                     <div className="flex items-center">
-                      <input
-                        type="number"
-                        min="50"
-                        max="300"
+                      <input 
+                        type="number" 
+                        min="50" 
+                        max="300" 
                         value={proteinTargetGrams}
                         onChange={(e) => handleProteinGrams(parseInt(e.target.value) || 0)}
-                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right"
+                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right" 
                       />
                       <span className="ml-2">grams</span>
                     </div>
@@ -511,13 +511,13 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
                       <span className="font-medium">Net Carbs</span>
                     </div>
                     <div className="flex items-center">
-                      <input
-                        type="number"
-                        min="20"
-                        max="500"
+                      <input 
+                        type="number" 
+                        min="20" 
+                        max="500" 
                         value={carbTargetGrams}
                         onChange={(e) => handleCarbGrams(parseInt(e.target.value) || 0)}
-                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right"
+                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right" 
                       />
                       <span className="ml-2">grams</span>
                     </div>
@@ -540,13 +540,13 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
                       <span className="font-medium">Fat</span>
                     </div>
                     <div className="flex items-center">
-                      <input
-                        type="number"
-                        min="10"
-                        max="200"
+                      <input 
+                        type="number" 
+                        min="10" 
+                        max="200" 
                         value={fatTargetGrams}
                         onChange={(e) => handleFatGrams(parseInt(e.target.value) || 0)}
-                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right"
+                        className="w-20 border border-gray-300 rounded px-2 py-1 text-right" 
                       />
                       <span className="ml-2">grams</span>
                     </div>
