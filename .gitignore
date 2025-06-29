@@ -24,3 +24,5 @@ yarn-debug.log*
 
 /backend/requirements.txt
 
+/backend/static/profile_images
+
