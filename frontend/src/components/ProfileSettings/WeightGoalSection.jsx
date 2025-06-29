@@ -157,7 +157,6 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
             </div>
           </div>
         </div>
-
       </div>
       <ProfileInfoTooltip
         isOpen={showTooltip}
