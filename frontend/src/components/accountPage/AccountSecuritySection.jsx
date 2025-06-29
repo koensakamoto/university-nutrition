@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Info, Key, Lock, ShieldCheck } from 'lucide-react';
+import { AccountInfoToolTip } from './AccountInfoToolTip';
 
 export const AccountSecuritySection = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,6 +11,7 @@ export const AccountSecuritySection = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [showTooltip, setShowTooltip] = useState(false);
 
   const handlePasswordUpdate = () => {
     // Mock validation
@@ -37,9 +39,21 @@ export const AccountSecuritySection = () => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Account Security</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show account security info"
+          >
+            <Info size={16} />
+          </button>
         </div>
       </div>
+      <AccountInfoToolTip
+        isOpen={showTooltip}
+        onClose={() => setShowTooltip(false)}
+        section="security"
+      />
       
       <div className="space-y-6">
         <div>

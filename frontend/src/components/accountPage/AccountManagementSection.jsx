@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Download, CircleHelp, Info, LogOut, Trash2 } from 'lucide-react';
+import { useAuth } from '../../AuthProvider';
+import { Link } from 'react-router-dom'
+import { AccountInfoToolTip } from './AccountInfoToolTip';
 
 export const AccountManagementSection = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const { logout } = useAuth();
+  const [showTooltip, setShowTooltip] = useState(false);
 
   return (
     <>
@@ -11,17 +16,32 @@ export const AccountManagementSection = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <h2 className="text-xl font-semibold text-gray-800">Account Management</h2>
-            <Info size={16} className="ml-2 text-gray-400" />
+            <button
+              type="button"
+              className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+              onClick={() => setShowTooltip(true)}
+              aria-label="Show account management info"
+            >
+              <Info size={16} />
+            </button>
           </div>
         </div>
+        
+        <AccountInfoToolTip
+          isOpen={showTooltip}
+          onClose={() => setShowTooltip(false)}
+          section="management"
+        />
         
         <div className="space-y-6">
           <div>
             <h3 className="font-medium text-gray-800 mb-3">Session Management</h3>
-            <button className="flex items-center text-[#c41e3a] hover:text-[#a41930]">
+            <Link to="/login"  className="hover:text-red-200 flex items-center">
+            <button className="flex items-center text-[#c41e3a] hover:text-[#a41930]" onClick={logout}>
               <LogOut size={18} className="mr-2" />
               <span>Log Out</span>
             </button>
+            </Link>
             <p className="text-sm text-gray-500 mt-1">
               Sign out from your current session on this device.
             </p>
