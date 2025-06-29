@@ -34,7 +34,7 @@ export function AuthProvider({ children }) {
 
   const register = async (email, password) => {
     setError(null);
-    const res = await fetch("http://localhost:8000/auth/register", {
+    const res = await fetch("/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
@@ -59,7 +59,7 @@ export function AuthProvider({ children }) {
   };
 
 const login = async (email, password) => {
-  const res = await fetch("http://localhost:8000/auth/login", {
+  const res = await fetch("/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
@@ -86,7 +86,7 @@ const login = async (email, password) => {
 }
 
 const logout = async () => {
-  const res = await fetch("http://localhost:8000/auth/logout", {
+  const res = await fetch("/auth/logout", {
     method: "POST",
     credentials: "include"
   });
