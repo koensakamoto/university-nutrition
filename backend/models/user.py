@@ -33,11 +33,10 @@ class UserProfile(BaseModel):
     fixed_protein: int
     fixed_carb: int
     fixed_fat: int
-
-    
-
+    image: Optional[str] = None
 
 class User(BaseModel):
     id: str
     email: EmailStr
+    name: str
     profile: UserProfile
