@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends, Body
+from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 from pymongo import MongoClient
@@ -7,6 +7,9 @@ import os
 from dotenv import load_dotenv
 import certifi
 from datetime import datetime
+import shutil
+import uuid
+from fastapi.staticfiles import StaticFiles
 
 from models.food import Food
 from models.agent import AgentQuery
@@ -156,6 +159,21 @@ def update_profile(request: Request, data: dict = Body(...)):
     )
     return {"message": "Profile updated"}
 
+@app.post("/api/profile/image")
+async def upload_profile_image(request: Request, image: UploadFile = File(...)):
+    user = get_current_user(request, users_collection)
+    # Generate a unique filename
+    ext = os.path.splitext(image.filename)[-1]
+    filename = f"{uuid.uuid4().hex}{ext}"
+    save_dir = "static/profile_images"
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, filename)
+    with open(save_path, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+    # Construct the URL
+    url = f"/static/profile_images/{filename}"
+    return {"url": url}
+
 def calculate_bmr(sex, weight_kg, height_cm, age):
     if sex == 'male':
         return 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
@@ -244,3 +262,6 @@ def get_energy_target(request: Request):
             pass
 
     return {"energy_target": round(tdee)}
+
+# Serve static files (if not already present)
+app.mount("/static", StaticFiles(directory="static"), name="static")
