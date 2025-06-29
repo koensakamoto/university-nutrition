@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Info, Check } from 'lucide-react';
+import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const activityLevels = [
   { id: "sedentary", label: "Sedentary", description: "Little to no exercise, desk job", multiplier: 1.2 },
@@ -9,12 +10,13 @@ const activityLevels = [
   { id: "extra", label: "Extremely Active", description: "Very hard exercise, physical job or training twice a day", multiplier: 1.9 },
 ];
 
-export const ActivityLevelSection = () => {
+export const ActivityLevelSection = ({ refreshEnergyTarget }) => {
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [originalLevel, setOriginalLevel] = useState(null);
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     fetch('/api/profile', { credentials: 'include' })
@@ -54,6 +56,8 @@ export const ActivityLevelSection = () => {
       setOriginalLevel(selectedLevel);
       setShowSaveButton(false);
       setSaveSuccess(true);
+      if (refreshEnergyTarget) refreshEnergyTarget();
+      
     } catch (err) {
       console.error(err);
       setSaveSuccess(false);
@@ -67,9 +71,21 @@ export const ActivityLevelSection = () => {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Activity Level</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show activity level info"
+          >
+            <Info size={18} />
+          </button>
         </div>
       </div>
+      <ProfileInfoTooltip
+        isOpen={showTooltip}
+        onClose={() => setShowTooltip(false)}
+        section="activity"
+      />
       <p className="text-gray-600 mb-6">
         Your activity level helps us calculate your daily energy requirements more accurately.
       </p>

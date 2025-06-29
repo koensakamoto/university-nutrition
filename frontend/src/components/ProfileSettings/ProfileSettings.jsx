@@ -30,10 +30,10 @@ export default function ProfileSettings(props) {
             <p className="text-gray-600">Manage your personal information and nutrition targets</p>
           </div>
           
-          <ProfileSection />
-          <WeightGoalSection />
+          <ProfileSection refreshEnergyTarget={fetchEnergyTarget} />
+          <WeightGoalSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
           <WeightGoalRateSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
-          <ActivityLevelSection />
+          <ActivityLevelSection refreshEnergyTarget={fetchEnergyTarget} />
           <MacroTargetsSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
           {/* <EnergyExpenditureSection /> */}
           <DietaryPreferencesSection />

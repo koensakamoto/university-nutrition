@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
+import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
-export const ProfileSection = () => {
+export const ProfileSection = ({ refreshEnergyTarget }) => {
   // State for profile fields
   const [sex, setSex] = useState('male');
   const [birthday, setBirthday] = useState({ day: '', month: '', year: '' });
@@ -13,6 +14,7 @@ export const ProfileSection = () => {
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   // Fetch profile on mount
   useEffect(() => {
@@ -53,15 +55,40 @@ export const ProfileSection = () => {
       });
   }, []);
 
-  // Helper to check if values changed
+  // const formatToOrignal = ...
+  // 1. reformat height to normalize data type. either both to string or both to number
+  //2. reformat birthdays to not have off by one day issue
+  //3. reformat weight to be of same data type. either both number or both string
+  // 4. reformat body fat percanges so tha tyou dont have discrepancy between string and number
+  //5. use reformated values for compariosn 
+
+  const formatToOriginal = (newBirthday, newHeight, newWeight, newBodyFat) => {
+    const formattedBirthday = new Date(newBirthday);
+    formattedBirthday.setDate(formattedBirthday.getDate() + 1);
+  
+    return {
+      birthday: formattedBirthday.toISOString().slice(0, 10),
+      height: Number(newHeight),
+      weight: Number(newWeight),
+      bodyFat: Number(newBodyFat),
+    };
+  };
+
   const checkShowSave = (newSex, newBirthday, newHeight, newWeight, newBodyFat) => {
-    setShowSaveButton(
+    const formatted = formatToOriginal(newBirthday, newHeight, newWeight, newBodyFat);
+  
+    console.log(formatted.height);
+    console.log(original.height);
+  
+    const hasChanges = (
       newSex !== original.sex ||
-      newBirthday !== original.birthday ||
-      newHeight !== original.height ||
-      newWeight !== original.weight ||
-      newBodyFat !== original.body_fat_percent
+      formatted.birthday !== original.birthday ||
+      formatted.height !== original.height || 
+      formatted.weight !== original.weight ||
+      formatted.bodyFat !== original.body_fat_percent
     );
+  
+    setShowSaveButton(hasChanges);
     setSaveSuccess(false);
   };
 
@@ -129,6 +156,7 @@ export const ProfileSection = () => {
       });
       setShowSaveButton(false);
       setSaveSuccess(true);
+      if (refreshEnergyTarget) refreshEnergyTarget();
     } catch (err) {
       setSaveSuccess(false);
     }
@@ -149,9 +177,21 @@ export const ProfileSection = () => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Profile</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show profile info"
+          >
+            <Info size={18} />
+          </button>
         </div>
       </div>
+      <ProfileInfoTooltip
+        isOpen={showTooltip}
+        onClose={() => setShowTooltip(false)}
+        section="profile"
+      />
       {fetchError && <div className="text-red-600 mb-4">{fetchError}</div>}
       <div className="space-y-6">
         <div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Info, Utensils, CheckCircle } from 'lucide-react';
+import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const mealPreferenceOptions = [
   "Low Sodium", "Low Sugar", "High Protein", "High Fiber", "Gluten-Free", "Dairy-Free"
@@ -32,6 +33,7 @@ export const DietaryPreferencesSection = () => {
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     fetch('/api/profile', { credentials: 'include' })
@@ -130,7 +132,14 @@ export const DietaryPreferencesSection = () => {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Dietary Preferences</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show dietary preferences info"
+          >
+            <Info size={18} />
+          </button>
         </div>
       </div>
       <p className="text-gray-600 mb-6">
@@ -205,6 +214,11 @@ export const DietaryPreferencesSection = () => {
           </div>
         )}
       </div>
+      <ProfileInfoTooltip
+        isOpen={showTooltip}
+        onClose={() => setShowTooltip(false)}
+        section="dietary"
+      />
     </div>
   );
 };

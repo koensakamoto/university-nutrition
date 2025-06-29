@@ -295,7 +295,14 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Macro & Energy Targets</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show macro info"
+          >
+            <Info size={18} />
+          </button>
         </div>
       </div>
       

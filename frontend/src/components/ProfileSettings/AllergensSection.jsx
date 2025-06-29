@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from 'react';
 import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const commonAllergens = [
   { id: 'milk', label: 'Milk' },
@@ -30,6 +31,7 @@ export const AllergensSection = () => {
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [fetchError, setFetchError] = useState(null);
+  const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
     fetch('/api/profile', { credentials: 'include' })
@@ -60,6 +62,15 @@ export const AllergensSection = () => {
       });
   }, []);
 
+  // Helper to compare arrays with normalization
+  const normalizeArray = arr => arr.map(String).map(s => s.trim()).sort();
+  const arraysEqual = (a, b) => {
+    const aNorm = normalizeArray(a);
+    const bNorm = normalizeArray(b);
+    if (aNorm.length !== bNorm.length) return false;
+    return aNorm.every((val, idx) => val === bNorm[idx]);
+  };
+
   const handleAllergenChange = (e) => {
     const allergen = e.target.value;
     let updated;
@@ -70,8 +81,8 @@ export const AllergensSection = () => {
     }
     setSelectedAllergens(updated);
     setShowSaveButton(
-      JSON.stringify(updated) !== JSON.stringify(originalAllergens) ||
-      JSON.stringify(selectedSensitivities) !== JSON.stringify(originalSensitivities) ||
+      !arraysEqual(updated, originalAllergens) ||
+      !arraysEqual(selectedSensitivities, originalSensitivities) ||
       allergyNotes !== originalNotes
     );
     setSaveSuccess(false);
@@ -87,8 +98,8 @@ export const AllergensSection = () => {
     }
     setSelectedSensitivities(updated);
     setShowSaveButton(
-      JSON.stringify(selectedAllergens) !== JSON.stringify(originalAllergens) ||
-      JSON.stringify(updated) !== JSON.stringify(originalSensitivities) ||
+      !arraysEqual(selectedAllergens, originalAllergens) ||
+      !arraysEqual(updated, originalSensitivities) ||
       allergyNotes !== originalNotes
     );
     setSaveSuccess(false);
@@ -98,8 +109,8 @@ export const AllergensSection = () => {
     const notes = e.target.value;
     setAllergyNotes(notes);
     setShowSaveButton(
-      JSON.stringify(selectedAllergens) !== JSON.stringify(originalAllergens) ||
-      JSON.stringify(selectedSensitivities) !== JSON.stringify(originalSensitivities) ||
+      !arraysEqual(selectedAllergens, originalAllergens) ||
+      !arraysEqual(selectedSensitivities, originalSensitivities) ||
       notes !== originalNotes
     );
     setSaveSuccess(false);
@@ -133,10 +144,22 @@ export const AllergensSection = () => {
     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Food Allergies & Intolerances</h2>
-          <Info size={16} className="ml-2 text-gray-400" />
+          <h2 className="text-xl font-semibold text-gray-800">Allergens</h2>
+          <button
+            type="button"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            onClick={() => setShowTooltip(true)}
+            aria-label="Show allergens info"
+          >
+            <Info size={18} />
+          </button>
         </div>
       </div>
+      <ProfileInfoTooltip
+        isOpen={showTooltip}
+        onClose={() => setShowTooltip(false)}
+        section="allergens"
+      />
       <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6">
         <div className="flex">
           <div className="flex-shrink-0">

@@ -167,8 +167,8 @@ def get_activity_multiplier(activity_level):
         'sedentary': 1.2,
         'light': 1.375,
         'moderate': 1.55,
-        'active': 1.725,
-        'very_active': 1.9
+        'very': 1.725,
+        'extra': 1.9
     }.get(activity_level, 1.2)
 
 @app.get("/api/profile/energy-target")
@@ -201,6 +201,9 @@ def get_energy_target(request: Request):
     bmr = calculate_bmr(sex, weight_kg, height_cm, age)
     tdee = bmr * get_activity_multiplier(activity_level)
 
+    # Map string rates to float values
+    rate_map = {"slow": 0.5, "moderate": 1.0, "fast": 1.5}
+
     # Adjust for weight goal
     if weight_goal_type == "lose":
         if str(weight_goal_rate) == "custom":
@@ -210,10 +213,14 @@ def get_energy_target(request: Request):
                 custom_rate = 0
             tdee -= 500 * custom_rate
         else:
-            try:
-                tdee -= 500 * float(weight_goal_rate)
-            except Exception:
-                pass
+            rate_value = rate_map.get(str(weight_goal_rate), None)
+            if rate_value is not None:
+                tdee -= 500 * rate_value
+            else:
+                try:
+                    tdee -= 500 * float(weight_goal_rate)
+                except Exception:
+                    pass
     elif weight_goal_type == "gain":
         if str(weight_goal_rate) == "custom":
             try:
@@ -222,10 +229,14 @@ def get_energy_target(request: Request):
                 custom_rate = 0
             tdee += 500 * custom_rate
         else:
-            try:
-                tdee += 500 * float(weight_goal_rate)
-            except Exception:
-                pass
+            rate_value = rate_map.get(str(weight_goal_rate), None)
+            if rate_value is not None:
+                tdee += 500 * rate_value
+            else:
+                try:
+                    tdee += 500 * float(weight_goal_rate)
+                except Exception:
+                    pass
     elif weight_goal_type == "custom":
         try:
             tdee += 500 * float(weight_goal_custom_rate)

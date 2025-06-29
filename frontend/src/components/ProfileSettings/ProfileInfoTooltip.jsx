@@ -34,7 +34,22 @@ export const ProfileInfoTooltip =  ({ isOpen, onClose, section }) => {
             <li><span className="font-medium">Maintain Weight:</span> Balances your energy intake and expenditure</li>
             <li><span className="font-medium">Gain Weight:</span> Creates a calorie surplus</li>
           </ul>
-          <p>We recommend healthy, sustainable weight changes of 0.5-1.0 lbs per week.</p>
+          <p>Choose a goal that matches your current needs. You can update this at any time.</p>
+        </div>
+      )
+    },
+    weight_goal_rate: {
+      title: "Weight Goal Rate Information",
+      content: (
+        <div className="space-y-3">
+          <p>The rate determines how quickly you want to lose or gain weight.</p>
+          <h3 className="font-medium">Recommended rates:</h3>
+          <ul className="list-disc pl-5 space-y-1">
+            <li><span className="font-medium">0.5 lbs/week:</span> Gentle, sustainable pace</li>
+            <li><span className="font-medium">1.0 lbs/week:</span> Moderate, common for most users</li>
+            <li><span className="font-medium">Custom:</span> Set your own rate (not recommended to exceed 2 lbs/week)</li>
+          </ul>
+          <p>Faster rates may increase muscle loss or risk of regaining weight. Choose a pace you can maintain long-term.</p>
         </div>
       )
     },
