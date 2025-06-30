@@ -13,6 +13,7 @@ import {
 } from 'recharts'
 import { XIcon, DownloadIcon, TrashIcon, ClipboardPlus } from 'lucide-react'
 const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
+    const plateEmpty = trackedItems.length === 0;
     // Calculate nutrition totals
     const totals = trackedItems.reduce(
         (acc, item) => {
@@ -80,13 +81,13 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">My Plate</h2>
                 <div className="flex space-x-2">
-                    <button
+                    {/* <button
                         onClick={exportData}
                         className="p-1 rounded-full text-gray-500 hover:bg-gray-100"
                         title="Export data"
                     >
                         <DownloadIcon size={18} />
-                    </button>
+                    </button> */}
                     <button
                         onClick={clearItems}
                         className="p-1 rounded-full text-gray-500 hover:bg-gray-100"
@@ -97,7 +98,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems }) => {
                 </div>
             </div>
             <div className="flex-grow overflow-y-auto">
-            {trackedItems.length === 0 ? (
+            {plateEmpty ? (
                 <div className="text-center h-full px-4 text-gray-500 flex flex-col items-center justify-center">
                     <ClipboardPlus size={48} className="text-gray-300 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700">Your plate is empty</h3>

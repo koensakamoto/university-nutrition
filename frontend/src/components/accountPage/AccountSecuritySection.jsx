@@ -12,26 +12,41 @@ export const AccountSecuritySection = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [showTooltip, setShowTooltip] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
-  const handlePasswordUpdate = () => {
-    // Mock validation
+  const handlePasswordUpdate = async () => {
+    setPasswordError('');
+    setPasswordSuccess('');
     if (tempPassword.length < 8) {
       setPasswordError('Password must be at least 8 characters');
       return;
     }
-    
     if (tempPassword !== confirmPassword) {
       setPasswordError('Passwords do not match');
       return;
     }
-    
-    // Success case
-    setPassword('••••••••••••');
-    setIsEditing(false);
-    setPasswordError('');
-    setTempPassword('');
-    setConfirmPassword('');
-    setCurrentPassword('');
+    // Call backend API
+    const res = await fetch('/api/account/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: tempPassword
+      })
+    });
+    if (res.ok) {
+      setIsEditing(false);
+      setPasswordError('');
+      setPasswordSuccess('Password updated successfully!');
+      setTempPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
+    } else {
+      const data = await res.json();
+      setPasswordError(data.detail || 'Failed to update password');
+      setPasswordSuccess('');
+    }
   };
 
   return (
@@ -106,6 +121,10 @@ export const AccountSecuritySection = () => {
                 <div className="text-red-500 text-sm">{passwordError}</div>
               )}
               
+              {passwordSuccess && (
+                <div className="text-green-600 text-sm mb-2">{passwordSuccess}</div>
+              )}
+              
               <div className="flex space-x-2">
                 <button 
                   onClick={handlePasswordUpdate} 
@@ -117,6 +136,7 @@ export const AccountSecuritySection = () => {
                   onClick={() => {
                     setIsEditing(false);
                     setPasswordError('');
+                    setPasswordSuccess('');
                     setTempPassword('');
                     setConfirmPassword('');
                     setCurrentPassword('');
@@ -185,14 +205,7 @@ export const AccountSecuritySection = () => {
           )}
         </div>
         
-        <div>
-          <button className="text-[#c41e3a] hover:underline text-sm font-medium flex items-center">
-            <span className="mr-1">View Recent Account Activity</span>
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
+      
       </div>
     </div>
   );

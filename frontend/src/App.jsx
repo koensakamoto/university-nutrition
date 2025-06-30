@@ -28,7 +28,7 @@ export default function App() {
   }
 
   const removeFromTracker = (itemId) => {
-    setTrackedItems(prev => prev.filter(item => item.id !== itemId));
+    setTrackedItems(prev => prev.filter(item => item.uniqueId !== itemId));
   };
 
   const clearTracker = () => {
@@ -55,6 +55,7 @@ export default function App() {
                 />
                 <div className="hidden md:block md:w-1/4">
                   <NutrientTracker
+                    key={trackedItems.length} 
                     trackedItems={trackedItems}
                     removeItem={removeFromTracker}
                     clearItems={clearTracker}

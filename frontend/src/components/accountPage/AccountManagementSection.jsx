@@ -9,6 +9,29 @@ export const AccountManagementSection = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const { logout } = useAuth();
   const [showTooltip, setShowTooltip] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteError('');
+    try {
+      const res = await fetch('/api/account', {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (res.ok) {
+        await logout();
+        window.location.href = '/login';
+      } else {
+        const data = await res.json();
+        setDeleteError(data.detail || 'Failed to delete account');
+      }
+    } catch (err) {
+      setDeleteError('Failed to delete account');
+    }
+    setDeleteLoading(false);
+  };
 
   return (
     <>
@@ -70,7 +93,7 @@ export const AccountManagementSection = () => {
           <div className="pt-4 border-t border-gray-100">
             <h3 className="font-medium text-gray-800 mb-3">Help & Support</h3>
             <a 
-              href="https://forms.google.com/campus-nutrition-support" 
+              href="https://docs.google.com/forms/d/e/1FAIpQLSfwEZ3ODAkAfoF7HQ0Xg1YMACf85FvpUSZehwipqvWZ4mOhlg/viewform?usp=header" 
               target="_blank" 
               rel="noopener noreferrer"
               className="flex items-center text-[#c41e3a] hover:underline"
@@ -101,12 +124,6 @@ export const AccountManagementSection = () => {
               This action cannot be undone. All your nutrition data, meal history, and profile information will be permanently removed.
             </p>
             
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
-              <p className="text-sm text-red-700">
-                Please note: This will not affect any university meal plan subscriptions or payments. Contact campus dining services directly for those matters.
-              </p>
-            </div>
-            
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Type "DELETE" to confirm
@@ -120,6 +137,10 @@ export const AccountManagementSection = () => {
               />
             </div>
             
+            {deleteError && (
+              <div className="text-red-600 text-sm mb-2">{deleteError}</div>
+            )}
+            
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteModal(false)}
@@ -128,14 +149,15 @@ export const AccountManagementSection = () => {
                 Cancel
               </button>
               <button
-                disabled={deleteConfirmation !== 'DELETE'}
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirmation !== 'DELETE' || deleteLoading}
                 className={`px-4 py-2 rounded-md text-white ${
-                  deleteConfirmation === 'DELETE'
+                  deleteConfirmation === 'DELETE' && !deleteLoading
                     ? 'bg-red-600 hover:bg-red-700'
                     : 'bg-red-300 cursor-not-allowed'
                 }`}
               >
-                Delete Account
+                {deleteLoading ? 'Deleting...' : 'Delete Account'}
               </button>
             </div>
           </div>

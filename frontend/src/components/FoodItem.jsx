@@ -13,6 +13,7 @@ import {
 
 const FoodItem = ({ item, addToTracker }) => {
   const [showDetails, setShowDetails] = useState(false)
+  const [servings, setServings] = useState(1);
 
 
 
@@ -77,25 +78,42 @@ const FoodItem = ({ item, addToTracker }) => {
 
 
           <div className="flex items-center space-x-2">
-            <div className="flex items-center bg-gray-100 rounded-lg">
+            <div className="flex items-center bg-gray-100 rounded-lg px-2 py-1">
               <button
-                onClick={() => console.log("...")}
-                className="p-1 hover:bg-gray-200 rounded-l-lg"
+                onClick={() => setServings(Math.max(0.1, Math.round((servings - 0.1) * 10) / 10))}
+                className="p-1 hover:bg-gray-200 rounded-l-lg focus:outline-none"
                 aria-label="Decrease servings"
+                tabIndex={-1}
               >
                 <MinusIcon className="h-4 w-4" />
               </button>
-              <div className="px-2 min-w-[3rem] text-center">{1}x</div>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                value={servings}
+                onChange={e => setServings(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                className="w-12 text-center bg-transparent border-none focus:ring-2 focus:ring-blue-400 focus:bg-white rounded outline-none appearance-none mx-1"
+                aria-label="Servings"
+                style={{
+                  MozAppearance: 'textfield',
+                  appearance: 'textfield'
+                }}
+              />
               <button
-                onClick={() => console.log("...")}
-                className="p-1 hover:bg-gray-200 rounded-r-lg"
+                onClick={() => setServings(Math.round((servings + 0.1) * 10) / 10)}
+                className="p-1 hover:bg-gray-200 rounded-r-lg focus:outline-none"
                 aria-label="Increase servings"
+                tabIndex={-1}
               >
                 <PlusIcon className="h-4 w-4" />
               </button>
             </div>
             <button
-              onClick={()=> addToTracker(item)}
+              onClick={() => {
+                addToTracker(item, servings);
+                setServings(1);
+              }}
               className="bg-blue-100 hover:bg-blue-200 text-blue-800 p-1 rounded-full"
               aria-label="Add item to plate"
             >

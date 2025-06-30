@@ -40,3 +40,7 @@ class User(BaseModel):
     email: EmailStr
     name: str
     profile: UserProfile
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from models.food import Food
 from models.agent import AgentQuery
 
-from models.user import UserCreate, UserProfile
+from models.user import UserCreate, UserProfile, ChangePasswordRequest
 
 from auth_util import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
@@ -262,6 +262,25 @@ def get_energy_target(request: Request):
             pass
 
     return {"energy_target": round(tdee)}
+
+@app.post("/api/account/change-password")
+def change_password(request: Request, data: ChangePasswordRequest):
+    user = get_current_user(request, users_collection)
+    if not verify_password(data.current_password, user["hashed_password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    new_hashed = hash_password(data.new_password)
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$set": {"hashed_password": new_hashed}}
+    )
+    return {"message": "Password updated"}
+
+@app.delete("/api/account")
+def delete_account(request: Request):
+    user = get_current_user(request, users_collection)
+    users_collection.delete_one({"email": user["email"]})
+    # Optionally, delete related data (nutrition logs, etc.)
+    return {"message": "Account deleted"}
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")
