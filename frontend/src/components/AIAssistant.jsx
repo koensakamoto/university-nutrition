@@ -1,6 +1,11 @@
 import React, { useState } from "react"
 import { SendIcon, BotIcon } from "lucide-react"
 
+// Utility to get local date string in YYYY-MM-DD format
+function getLocalDateString(date) {
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
 const AIAssistant = ({ 
     isMobile = false, 
     addToTracker,
@@ -40,7 +45,7 @@ const AIAssistant = ({
                     query: query,
                     dining_hall: diningHall,
                     meal_type: mealType,
-                    date: date.toISOString().split('T')[0]
+                    date: getLocalDateString(date)
                 })
             });
 

@@ -14,9 +14,17 @@ import NutritionHistory from './components/nutritionHistory/NutritionHistory.jsx
 import UserAccount from './components/accountPage/UserAccount'
 import { useAuth } from './AuthProvider'
 
+// Utility to get local date string in YYYY-MM-DD format
+function getLocalDateString(date) {
+  return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+}
+
 export default function App() {
   const { user, logout } = useAuth();
   const [trackedItems, setTrackedItems] = React.useState([])
+  const [date, setDate] = React.useState(new Date())
+  
+  
 
   const addToTracker = (item, quantity = 1) => {
     const newItem = {
@@ -24,6 +32,7 @@ export default function App() {
       quantity: quantity,
       uniqueId: crypto.randomUUID()
     };
+    console.log('newItem', newItem);
     setTrackedItems((prev) => [...prev, newItem]);
   }
 
@@ -33,6 +42,43 @@ export default function App() {
 
   const clearTracker = () => {
     setTrackedItems([])
+  }
+
+  const handleSavePlate = async () => {
+    console.log('handleSavePlate called');
+    const plateItems = trackedItems.map(item => {
+      const foodId = item.id || item._id;
+      const isCustom = String(foodId).startsWith('custom-');
+      const base = {
+        food_id: foodId,
+        quantity: item.quantity || 1
+      };
+      if (isCustom) {
+        base.custom_macros = {
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          totalFat: item.totalFat,
+          name: item.name
+        };
+      }
+      return base;
+    });
+    console.log('plateItems', plateItems);
+    const res = await fetch('/api/plate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        date: getLocalDateString(date),
+        items: plateItems
+      })
+    });
+    if (res.ok) {
+      console.log('Plate saved successfully');
+    } else {
+      console.error('Failed to save plate');
+    }
   }
 
   return (
@@ -50,15 +96,20 @@ export default function App() {
                 <Dashboard
                   addToTracker={addToTracker}
                   trackedItems={trackedItems}
+                  setTrackedItems={setTrackedItems}
                   removeItem={removeFromTracker}
                   clearItems={clearTracker}
+                  date={date}
+                  setDate={setDate}
+                  onSavePlate={handleSavePlate}
                 />
                 <div className="hidden md:block md:w-1/4">
                   <NutrientTracker
-                    key={trackedItems.length} 
                     trackedItems={trackedItems}
                     removeItem={removeFromTracker}
                     clearItems={clearTracker}
+                    selectedDate={getLocalDateString(date)}
+                    onSavePlate={handleSavePlate}
                   />
                 </div>
               </div>

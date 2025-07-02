@@ -5,6 +5,7 @@ import AIAssistant from './AIAssistant'
 import CustomMealForm from './CustomMealForm'
 import { MessageCircleIcon, PlusCircleIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
+import { useFetchWithAuth } from '../AuthProvider'
 // Mock data for food stations
 const mockFoodStations = [
   {
@@ -101,7 +102,7 @@ const mockFoodStations = [
     ],
   },
 ]
-const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, removeItem, clearItems }) => {
+const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, removeItem, clearItems, date, setDate, onSavePlate }) => {
   const transformFoodData = (data) => {
     if (!Array.isArray(data)) {
       console.warn("transformFoodData received invalid input:", data);
@@ -157,19 +158,23 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, removeItem, clearIt
     return Object.values(stationMap);
   };
 
-
+  // Utility to get local date string in YYYY-MM-DD format
+  function getLocalDateString(date) {
+    return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+  }
 
   const [diningHall, setDiningHall] = useState("Urban Bytes @ Kahlert Village")
-  const [date, setDate] = useState(new Date(new Date().getFullYear(), 5, 19))
   const [mealType, setMealType] = useState("Breakfast")
   const [foodStations, setFoodStations] = useState([])
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
+  const fetchWithAuth = useFetchWithAuth();
+
   useEffect(() => {
     const params = new URLSearchParams({
       dining_hall: diningHall,
       meal_name: mealType,
-      date: date.toISOString().split('T')[0],
+      date: getLocalDateString(date),
     });
 
     fetch(`http://localhost:8000/foods?${params}`)
@@ -197,6 +202,47 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, removeItem, clearIt
   const toggleAIAssistant = () => {
     setShowAIAssistant(!showAIAssistant)
   }
+
+  // Load plate on date or foodStations change
+  useEffect(() => {
+    const loadPlateForDate = async () => {
+      const dateStr = getLocalDateString(date);
+      const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
+      if (data && data.items && data.items.length > 0) {
+        // Flatten all food items from all stations
+        const allFoods = foodStations.flatMap(station => station.items);
+        // Reconstruct trackedItems
+        const loadedItems = data.items.map(item => {
+          if (item.custom_macros) {
+            // Handle custom food
+            return {
+              id: item.food_id || `custom-${crypto.randomUUID()}`,
+              name: item.name || 'Custom Food',
+              ...item.custom_macros,
+              quantity: item.quantity,
+              uniqueId: crypto.randomUUID(),
+              isCustom: true
+            };
+          } else {
+            // Standard food
+            const food = allFoods.find(f => f.id === item.food_id || f._id === item.food_id);
+            if (!food) return null;
+            return {
+              ...food,
+              quantity: item.quantity,
+              uniqueId: crypto.randomUUID()
+            };
+          }
+        }).filter(Boolean);
+        setTrackedItems(loadedItems);
+      } else {
+        setTrackedItems([]);
+      }
+    };
+    loadPlateForDate();
+    // eslint-disable-next-line
+  }, [date, foodStations]);
+
   return (
     <div className="flex flex-col flex-grow w-full md:w-3/4 p-4 bg-white rounded-lg">
       <Filter
@@ -212,6 +258,8 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, removeItem, clearIt
             trackedItems={trackedItems}
             removeItem={removeItem}
             clearItems={clearItems}
+            selectedDate={getLocalDateString(date)}
+            onSavePlate={onSavePlate}
           />
       </div>
       <div className="mt-6 flex justify-between items-center">

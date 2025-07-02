@@ -1,50 +1,8 @@
 import React from 'react';
 
-// Mock data for the summary cards
-const summaryData = [
-  {
-    title: 'Average Daily Calories',
-    value: '2,134',
-    target: '2,400',
-    unit: 'kcal',
-    color: '#c41e3a',
-    percentComplete: 89,
-    trend: 'up',
-    trendValue: '5%'
-  },
-  {
-    title: 'Protein Intake',
-    value: '102',
-    target: '120',
-    unit: 'g',
-    color: '#4CAF50',
-    percentComplete: 85,
-    trend: 'up',
-    trendValue: '3%'
-  },
-  {
-    title: 'Average Meal Count',
-    value: '4.2',
-    target: '5',
-    unit: 'meals/day',
-    color: '#2196F3',
-    percentComplete: 84,
-    trend: 'neutral',
-    trendValue: '0%'
-  },
-  {
-    title: 'Days Tracked',
-    value: '27',
-    target: '30',
-    unit: 'days',
-    color: '#FF9800',
-    percentComplete: 90,
-    trend: 'up',
-    trendValue: '10%'
-  }
-];
 
-export const NutritionSummary = () => {
+
+export const NutritionSummary = ({summaryData}) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {summaryData.map((card, index) => (

@@ -1,5 +1,6 @@
 // src/AuthProvider.jsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Create the context
 const AuthContext = createContext(null);
@@ -49,6 +50,7 @@ export function AuthProvider({ children }) {
       if (profileRes.ok) {
         const userData = await profileRes.json();
         setUser(userData);
+        console.log(user)
         return true;
       }
       return false;
@@ -119,4 +121,37 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+}
+
+// Global fetch wrapper to handle 401 Unauthorized
+export function useFetchWithAuth() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  return async function fetchWithAuth(url, options = {}) {
+    try {
+      const res = await fetch(url, { ...options, credentials: 'include' });
+
+      if (res.status === 401) {
+        await logout();
+        navigate('/login?expired=1', { replace: true });
+        return { data: null, error: 'Session expired' };
+      }
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        return { data: null, error: errorText || 'Request failed' };
+      }
+
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        data = await res.text();
+      }
+      return { data, error: null };
+    } catch (err) {
+      return { data: null, error: err.message || 'Network error' };
+    }
+  };
 }

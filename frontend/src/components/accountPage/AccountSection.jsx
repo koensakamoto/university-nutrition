@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, Info, Mail, User, Camera } from 'lucide-react';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
+import { useAuth } from '../../AuthProvider';
 
 export const AccountSection = () => {
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  
   const [image, setImage] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
@@ -25,15 +28,15 @@ export const AccountSection = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
+
+
       try {
         const res = await fetch('/api/profile', { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to fetch profile');
-        const profile = await res.json();
-        setName(profile.name || '');
-        setEmail(profile.email || '');
-        setImage(profile.image || '');
-        setTempName(profile.name || '');
-        setTempEmail(profile.email || '');
+        const data = await res.json();
+        setName(data.profile.name || '');
+        setImage(data.profile.image || '');
+        setTempName(data.profile.name || '');
         setPreviewImage('');
         setTempImage(null);
       } catch (err) {
@@ -42,8 +45,20 @@ export const AccountSection = () => {
         setLoading(false);
       }
     };
+
+
     fetchProfile();
   }, []);
+
+  useEffect(() => {
+    if (user?.email) {
+      setTempEmail(user.email);
+      setEmail(user.email);
+    }
+  }, [user]);
+
+
+
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -119,7 +134,7 @@ export const AccountSection = () => {
     setSaveError('');
     setSaveSuccess('');
     try {
-      const res = await fetch('/api/profile', {
+      const res = await fetch('/api/profile/email', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -129,6 +144,9 @@ export const AccountSection = () => {
       setEmail(tempEmail);
       setEditingEmail(false);
       setSaveSuccess('Email updated!');
+      navigate('/login', { replace: true });
+      await logout();
+      // console.log('Navigated to login');
     } catch (err) {
       setSaveError('Could not update email.');
     }

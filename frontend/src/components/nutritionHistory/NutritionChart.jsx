@@ -83,7 +83,7 @@ const NutritionChart = () => {
         <h2 className="text-xl font-semibold text-gray-800 mb-2 md:mb-0">Nutrition Insights</h2>
 
         <div className="flex space-x-2">
-          <button
+          {/* <button
             className={`px-4 py-2 text-sm font-medium rounded-md ${chartType === 'macro'
               ? 'bg-[#c41e3a] text-white'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -100,7 +100,7 @@ const NutritionChart = () => {
             onClick={() => setChartType('timing')}
           >
             Meal Timing
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -171,7 +171,7 @@ const NutritionChart = () => {
           </div>
         )}
 
-        {chartType === 'timing' && (
+        {/* {chartType === 'timing' && (
           <div className="h-full">
             <h3 className="text-lg font-medium text-gray-800 mb-4">Meal Timing Distribution</h3>
             <p className="text-gray-600 mb-4">When you consume your calories throughout the day</p>
@@ -202,7 +202,7 @@ const NutritionChart = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
