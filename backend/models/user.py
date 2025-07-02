@@ -30,9 +30,6 @@ class UserProfile(BaseModel):
     protein_ratio: int
     carb_ratio: int
     fat_ratio: int
-    fixed_protein: int
-    fixed_carb: int
-    fixed_fat: int
     image: Optional[str] = None
 
 class User(BaseModel):

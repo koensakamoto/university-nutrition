@@ -364,16 +364,22 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             # Custom food support
             if "custom_macros" in item:
                 n = item["custom_macros"]
+                if n is None:
+                    print(f"Warning: custom_macros is None for item: {item}")
+                    continue
                 total_calories += int(n.get("calories", 0)) * quantity
                 total_protein += float(n.get("protein", 0)) * quantity
                 total_carbs += float(n.get("carbs", n.get("total_carbohydrates", 0))) * quantity
                 continue
-            print("item", item)
-            food_id = item["food_id"]
+            food_id = item.get("food_id")
             food = foods_map.get(str(food_id))
             if not food:
+                print(f"Warning: food_id {food_id} not found in foods collection for item: {item}")
                 continue
             n = food.get("nutrients", {})
+            if n is None:
+                print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
+                continue
             total_calories += (int(n.get("calories", 0)) * quantity)
             total_protein += (float(n.get("protein", 0)) * quantity)
             total_carbs += (float(n.get("total_carbohydrates", 0)) * quantity)
@@ -408,6 +414,9 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
             quantity = item.get("quantity", 1)
             if "custom_macros" in item:
                 n = item["custom_macros"]
+                if n is None:
+                    print(f"Warning: custom_macros is None for item: {item}")
+                    continue
                 result.append({
                     "date": date,
                     "calories": int(n.get("calories", 0)) * quantity,
@@ -423,8 +432,12 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
             except Exception:
                 food = db["foods"].find_one({"_id": food_id})
             if not food:
+                print(f"Warning: food_id {food_id} not found in foods collection for item: {item}")
                 continue
             n = food.get("nutrients", {})
+            if n is None:
+                print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
+                continue
             result.append({
                 "date": date,
                 "calories": int(n.get("calories", 0)) * quantity,
