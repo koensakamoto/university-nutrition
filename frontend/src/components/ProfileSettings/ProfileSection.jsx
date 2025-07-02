@@ -23,30 +23,34 @@ export const ProfileSection = ({ refreshEnergyTarget }) => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        setSex(profile.sex || 'male');
-        const bday = profile.birthday ? new Date(profile.birthday) : new Date();
-        setBirthday({
-          day: bday.getDate().toString(),
-          month: (bday.getMonth() + 1).toString(),
-          year: bday.getFullYear().toString(),
-        });
-        if (profile.height) {
-          const totalInches = profile.height;
+      .then(data => {
+        setSex(data.profile.sex || 'male');
+        let bday = { day: '', month: '', year: '' };
+        if (data.profile.birthday) {
+          const [year, month, day] = data.profile.birthday.split('-');
+          bday = {
+            day: String(Number(day)),
+            month: String(Number(month)),
+            year: year
+          };
+        }
+        setBirthday(bday);
+        if (data.profile.height) {
+          const totalInches = data.profile.height;
           setHeightFt(Math.floor(totalInches / 12).toString());
           setHeightIn(Math.round(totalInches % 12).toString());
         } else {
           setHeightFt('');
           setHeightIn('');
         }
-        setWeight(profile.weight ? (profile.weight).toFixed(1) : '');
-        setBodyFat(profile.body_fat_percent?.toString() || '');
+        setWeight(data.profile.weight ? (data.profile.weight).toFixed(1) : '');
+        setBodyFat(data.profile.body_fat_percent?.toString() || '');
         setOriginal({
-          sex: profile.sex || 'male',
-          birthday: profile.birthday ? new Date(profile.birthday).toISOString().slice(0, 10) : '',
-          height: profile.height || '',
-          weight: profile.weight || '',
-          body_fat_percent: profile.body_fat_percent || '',
+          sex: data.profile.sex || 'male',
+          birthday: data.profile.birthday || '',
+          height: data.profile.height || '',
+          weight: data.profile.weight || '',
+          body_fat_percent: data.profile.body_fat_percent || '',
         });
         setFetchError(null);
       })
@@ -55,39 +59,14 @@ export const ProfileSection = ({ refreshEnergyTarget }) => {
       });
   }, []);
 
-  // const formatToOrignal = ...
-  // 1. reformat height to normalize data type. either both to string or both to number
-  //2. reformat birthdays to not have off by one day issue
-  //3. reformat weight to be of same data type. either both number or both string
-  // 4. reformat body fat percanges so tha tyou dont have discrepancy between string and number
-  //5. use reformated values for compariosn 
-
-  const formatToOriginal = (newBirthday, newHeight, newWeight, newBodyFat) => {
-    const formattedBirthday = new Date(newBirthday);
-    formattedBirthday.setDate(formattedBirthday.getDate() + 1);
-  
-    return {
-      birthday: formattedBirthday.toISOString().slice(0, 10),
-      height: Number(newHeight),
-      weight: Number(newWeight),
-      bodyFat: Number(newBodyFat),
-    };
-  };
-
   const checkShowSave = (newSex, newBirthday, newHeight, newWeight, newBodyFat) => {
-    const formatted = formatToOriginal(newBirthday, newHeight, newWeight, newBodyFat);
-  
-    console.log(formatted.height);
-    console.log(original.height);
-  
     const hasChanges = (
       newSex !== original.sex ||
-      formatted.birthday !== original.birthday ||
-      formatted.height !== original.height || 
-      formatted.weight !== original.weight ||
-      formatted.bodyFat !== original.body_fat_percent
+      newBirthday !== original.birthday ||
+      Number(newHeight) !== Number(original.height) || 
+      Number(newWeight) !== Number(original.weight) ||
+      Number(newBodyFat) !== Number(original.body_fat_percent)
     );
-  
     setShowSaveButton(hasChanges);
     setSaveSuccess(false);
   };

@@ -39,10 +39,10 @@ export const AllergensSection = () => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        const allergens = profile.allergens || [];
-        const sensitivities = profile.food_sensitivities || [];
-        const notes = profile.allergy_notes || "";
+      .then(data => {
+        const allergens = data.profile.allergens || [];
+        const sensitivities = data.profile.food_sensitivities || [];
+        const notes = data.profile.allergy_notes || "";
         setSelectedAllergens(allergens);
         setOriginalAllergens(allergens);
         setSelectedSensitivities(sensitivities);

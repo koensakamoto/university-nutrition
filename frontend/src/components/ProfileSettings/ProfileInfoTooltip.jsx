@@ -78,8 +78,6 @@ export const ProfileInfoTooltip =  ({ isOpen, onClose, section }) => {
           <h3 className="font-medium">Calculation methods:</h3>
           <ul className="list-disc pl-5 space-y-2">
             <li><span className="font-medium">Ratios:</span> Sets percentages of total calories for each macro</li>
-            <li><span className="font-medium">Fixed Targets:</span> Sets specific gram amounts for each macro</li>
-            <li><span className="font-medium">Keto Calculator:</span> Optimized for ketogenic diets (high fat, low carb)</li>
           </ul>
           <h3 className="font-medium mt-3">Energy values:</h3>
           <ul className="list-disc pl-5 space-y-1">

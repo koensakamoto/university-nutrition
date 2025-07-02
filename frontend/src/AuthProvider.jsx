@@ -50,7 +50,6 @@ export function AuthProvider({ children }) {
       if (profileRes.ok) {
         const userData = await profileRes.json();
         setUser(userData);
-        console.log(user)
         return true;
       }
       return false;
@@ -102,8 +101,15 @@ const logout = async () => {
   }
   
 };
+
+const guestLogin = async () => {
+  setUser({ guest: true, name: 'Guest User' });
+  setError(null);
+  return true;
+};
+
 return (
-  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user }}>
+  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin }}>
     {children}
   </AuthContext.Provider>
 );

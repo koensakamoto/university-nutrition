@@ -41,14 +41,14 @@ export const DietaryPreferencesSection = () => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        setDietType(profile.diet_type || "regular");
-        setMealPreferences(profile.meal_preference || []);
-        setCulturalPreference(profile.cultural_preference || "none");
+      .then(data => {
+        setDietType(data.profile.diet_type || "regular");
+        setMealPreferences(data.profile.meal_preference || []);
+        setCulturalPreference(data.profile.cultural_preference || "none");
         setOriginal({
-          dietType: profile.diet_type || "regular",
-          mealPreferences: profile.meal_preference || [],
-          culturalPreference: profile.cultural_preference || "none"
+          dietType: data.profile.diet_type || "regular",
+          mealPreferences: data.profile.meal_preference || [],
+          culturalPreference: data.profile.cultural_preference || "none"
         });
         setFetchError(null);
       })

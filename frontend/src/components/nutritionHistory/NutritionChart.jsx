@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useEffect } from 'react';
+import { format } from 'date-fns';
 
 // Mock data for macro distribution
 const macroDistributionData = [
@@ -32,10 +33,70 @@ function useIsMobile(breakpoint = 768) {
 }
 
 
-const NutritionChart = () => {
+const NutritionChart = ({ macroData = [], start, end }) => {
   const isMobile = useIsMobile()
   const [chartType, setChartType] = useState('macro');
 
+  // Map date range to human-friendly label
+  const dateRangeLabels = {
+    'last-week': 'over the last 7 days',
+    'last-two-weeks': 'over the last 14 days',
+    'last-month': 'over the last 30 days',
+    'last-three-months': 'over the last 3 months',
+    'last-six-months': 'over the last 6 months',
+  };
+
+  // Helper to guess the label from start/end
+  function getDateRangeLabel(start, end) {
+    // Try to match known ranges
+    const today = new Date();
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (diffDays === 6) return 'over the last 7 days';
+    if (diffDays === 13) return 'over the last 14 days';
+    if (diffDays === 29) return 'over the last 30 days';
+    if (diffDays >= 85 && diffDays <= 95) return 'over the last 3 months';
+    if (diffDays >= 175 && diffDays <= 185) return 'over the last 6 months';
+    // Fallback to date range
+    return `from ${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
+  }
+
+  // Helper to format date as 'MMM D, YYYY'
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return format(new Date(Number(year), Number(month) - 1, Number(day)), 'MMM d, yyyy');
+  }
+
+  // Compute average macro distribution as percent of total macro calories
+  let totalProtein = 0, totalCarbs = 0, totalFat = 0;
+  let days = 0;
+  macroData.forEach(day => {
+    totalProtein += day.protein || 0;
+    totalCarbs += day.carbs || 0;
+    totalFat += day.fat || 0;
+    days++;
+  });
+  // Avoid division by zero
+  const avgProtein = days ? totalProtein / days : 0;
+  const avgCarbs = days ? totalCarbs / days : 0;
+  const avgFat = days ? totalFat / days : 0;
+  // Convert to kcal
+  const proteinKcal = avgProtein * 4;
+  const carbsKcal = avgCarbs * 4;
+  const fatKcal = avgFat * 9;
+  const totalKcal = proteinKcal + carbsKcal + fatKcal;
+  // Calculate percentages
+  const macroDistributionData = totalKcal > 0 ? [
+    { name: 'Protein', value: Math.round((proteinKcal / totalKcal) * 100), color: '#4CAF50' },
+    { name: 'Carbs', value: Math.round((carbsKcal / totalKcal) * 100), color: '#2196F3' },
+    { name: 'Fat', value: Math.round((fatKcal / totalKcal) * 100), color: '#FFC107' },
+  ] : [
+    { name: 'Protein', value: 0, color: '#4CAF50' },
+    { name: 'Carbs', value: 0, color: '#2196F3' },
+    { name: 'Fat', value: 0, color: '#FFC107' },
+  ];
 
   const renderPercentLabel = ({
     cx, cy, midAngle, innerRadius, outerRadius, percent, fill
@@ -109,7 +170,9 @@ const NutritionChart = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
             <div className="flex flex-col justify-center">
               <h3 className="text-lg font-medium text-gray-800 mb-4">Average Macro Distribution</h3>
-              <p className="text-gray-600 mb-2">Your macronutrient balance over the past 30 days</p>
+              <p className="text-gray-600 mb-2">
+                Your macronutrient balance {getDateRangeLabel(start, end)}
+              </p>
               <div className="space-y-3 mt-4">
                 {macroDistributionData.map(item => (
                   <div key={item.name}>
@@ -131,9 +194,6 @@ const NutritionChart = () => {
                     </div>
                   </div>
                 ))}
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm text-gray-600">Your current ratio aligns with your selected diet type. <a href="#" className="text-[#c41e3a]">Learn more</a></p>
               </div>
             </div>
 

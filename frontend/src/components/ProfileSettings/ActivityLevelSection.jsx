@@ -24,8 +24,8 @@ export const ActivityLevelSection = ({ refreshEnergyTarget }) => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        const level = profile.activity_level || 'moderate';
+      .then(data => {
+        const level = data.profile.activity_level || 'moderate';
         setSelectedLevel(level);
         setOriginalLevel(level);
         setFetchError(null);

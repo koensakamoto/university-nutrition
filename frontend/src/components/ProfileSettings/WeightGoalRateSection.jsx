@@ -19,14 +19,14 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        setGoalType(profile.weight_goal_type || 'lose');
-        setRateOption(profile.weight_goal_rate || 'moderate');
-        setCustomRate(profile.weight_goal_custom_rate ? String(profile.weight_goal_custom_rate) : '');
+      .then(data => {
+        setGoalType(data.profile.weight_goal_type || 'lose');
+        setRateOption(data.profile.weight_goal_rate || 'moderate');
+        setCustomRate(data.profile.weight_goal_custom_rate ? String(data.profile.weight_goal_custom_rate) : '');
         setOriginal({
-          goalType: profile.weight_goal_type || 'lose',
-          rateOption: profile.weight_goal_rate || 'moderate',
-          customRate: profile.weight_goal_custom_rate ? String(profile.weight_goal_custom_rate) : '',
+          goalType: data.profile.weight_goal_type || 'lose',
+          rateOption: data.profile.weight_goal_rate || 'moderate',
+          customRate: data.profile.weight_goal_custom_rate ? String(data.profile.weight_goal_custom_rate) : '',
         });
         setFetchError(null);
       })
@@ -293,10 +293,9 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
           </div>
         )}
         
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="pt-4 border-t border-gray-100">
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="font-medium text-gray-800 mb-3">Your Weight Goal Summary</h3>
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white p-3 rounded border border-gray-200">
                 <div className="text-sm text-gray-500 mb-1">Rate</div>
@@ -304,7 +303,6 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
                   {`${Math.abs(values.lbsPerWeek)} lbs per week`}
                 </div>
               </div>
-              
               <div className="bg-white p-3 rounded border border-gray-200">
                 <div className="text-sm text-gray-500 mb-1">Calorie Adjustment</div>
                 <div className="font-medium text-lg">
@@ -315,7 +313,6 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
                   )}
                 </div>
               </div>
-              
               <div className="bg-white p-3 rounded border border-gray-200">
                 <div className="text-sm text-gray-500 mb-1">Estimated Time</div>
                 <div className="font-medium text-lg">
@@ -323,39 +320,47 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
                 </div>
               </div>
             </div>
-            
             <div className="mt-3 text-sm text-gray-600">
               <p>These are general estimates. Individual results may vary based on many factors including metabolism, activity level, and adherence to your plan.</p>
             </div>
           </div>
         </div>
-        <div className="flex justify-end mt-2" style={{ minHeight: '40px' }}>
-          {showSaveButton ? (
-            <button
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
-              onClick={handleSave}
-            >
-              Save
-            </button>
-          ) : (
-            <span style={{ visibility: 'hidden' }}>Save</span>
-          )}
-        </div>
-        {showSaveButton && (
-          <div className="text-sm text-gray-500 mt-2">Save to update your energy target.</div>
-        )}
-        {saveSuccess && (
-          <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-            <span>Weight goal saved successfully!</span>
-          </div>
-        )}
         {energyTarget && (
-          <div className="mt-4 mb-2">
-            <span className="font-medium">Your current daily energy target: </span>
-            <span className="text-xl font-bold">{energyTarget} kcal</span>
+          <div className="flex flex-col items-center mt-6 mb-0">
+            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow p-8 text-center border border-gray-200">
+              <span className="block text-lg font-medium mb-2 text-gray-700">Your current daily energy target</span>
+              <span className="text-4xl font-extrabold text-[#c41e3a] tracking-tight">{energyTarget} kcal</span>
+            </div>
+            {showSaveButton && (
+              <button
+                className="mt-6 bg-[#c41e3a] text-white px-8 py-3 rounded-lg font-semibold shadow hover:bg-[#a41930] transition"
+                onClick={handleSave}
+              >
+                Save
+              </button>
+            )}
+            {showSaveButton && (
+              <div className="text-sm text-gray-500 mt-3 text-center">Save to update your energy target.</div>
+            )}
+            {saveSuccess && (
+              <div className="flex flex-col items-center mt-4 animate-fade-in">
+                <svg className="w-7 h-7 text-green-500 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                <span className="text-green-600 font-medium text-base">Weight goal saved successfully!</span>
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 };
+
+<style jsx>{`
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`}</style>

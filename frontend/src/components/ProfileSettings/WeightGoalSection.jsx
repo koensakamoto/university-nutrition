@@ -18,12 +18,12 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
-      .then(profile => {
-        setCurrentWeight(profile.weight ? profile.weight.toString() : '');
-        setWeightGoal(profile.weight_goal ? profile.weight_goal.toString() : '');
+      .then(data => {
+        setCurrentWeight(data.profile.weight ? data.profile.weight.toString() : '');
+        setWeightGoal(data.profile.weight_goal ? data.profile.weight_goal.toString() : '');
         setOriginal({
-          currentWeight: profile.weight ? profile.weight.toString() : '',
-          weightGoal: profile.weight_goal ? profile.weight_goal.toString() : '',
+          currentWeight: data.profile.weight ? data.profile.weight.toString() : '',
+          weightGoal: data.profile.weight_goal ? data.profile.weight_goal.toString() : '',
         });
         setFetchError(null);
       })

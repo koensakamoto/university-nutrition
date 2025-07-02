@@ -6,6 +6,7 @@ import { NutritionSummary } from './NutritionSummary';
 import { DateRangeSelector } from './DateRangeSelector';
 import { FilterControl } from './FilterControl';
 import { useFetchWithAuth } from '../../AuthProvider';
+import { format } from 'date-fns';
 
 export default function NutritionHistory(props) {
   const [dateRange, setDateRange] = useState('last-week');
@@ -137,6 +138,86 @@ export default function NutritionHistory(props) {
     return result;
   }
 
+  // Helper to fill missing weeks with zero values for weekly view
+  function fillMissingWeeks(aggregated, start, end) {
+    // Get the first Monday on or after start
+    let current = new Date(start);
+    current.setDate(current.getDate() - current.getDay() + 1); // Monday
+    const endDate = new Date(end);
+    // Get the last Sunday on or before end
+    endDate.setDate(endDate.getDate() - endDate.getDay() + 7); // Next Monday
+    const weekSet = new Set(aggregated.map(item => item.name));
+    const result = [];
+    while (current < endDate) {
+      const year = current.getFullYear();
+      const firstJan = new Date(year, 0, 1);
+      const week = Math.ceil((((current - firstJan) / 86400000) + firstJan.getDay() + 1) / 7);
+      const weekKey = `${year}-W${week}`;
+      const found = aggregated.find(item => item.name === weekKey);
+      if (found) {
+        result.push(found);
+      } else {
+        result.push({
+          name: weekKey,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        });
+      }
+      current.setDate(current.getDate() + 7);
+    }
+    return result;
+  }
+
+  // Helper to fill missing months with zero values for monthly view
+  function fillMissingMonths(aggregated, start, end) {
+    let current = new Date(start);
+    current.setDate(1); // first of the month
+    const endDate = new Date(end);
+    endDate.setDate(1);
+    endDate.setMonth(endDate.getMonth() + 1); // go to first of next month
+    const monthSet = new Set(aggregated.map(item => item.name));
+    const result = [];
+    while (current < endDate) {
+      const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
+      const found = aggregated.find(item => item.name === key);
+      if (found) {
+        result.push(found);
+      } else {
+        result.push({
+          name: key,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        });
+      }
+      current.setMonth(current.getMonth() + 1);
+    }
+    return result;
+  }
+
+  // Helper to format date as 'MMM D, YYYY'
+  function formatDisplayDate(dateStr) {
+    if (!dateStr) return '';
+    const [year, month, day] = dateStr.split('-');
+    return format(new Date(Number(year), Number(month) - 1, Number(day)), 'MMM d, yyyy');
+  }
+
+  // Helper to get a human-friendly date range label
+  function getDateRangeLabel(start, end) {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const diffDays = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24));
+    if (diffDays === 6) return 'over the last 7 days';
+    if (diffDays === 13) return 'over the last 14 days';
+    if (diffDays === 29) return 'over the last 30 days';
+    if (diffDays >= 85 && diffDays <= 95) return 'over the last 3 months';
+    if (diffDays >= 175 && diffDays <= 185) return 'over the last 6 months';
+    return `${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
+  }
+
   // Fetch nutrition summary (only when dateRange changes)
   useEffect(() => {
     const fetchSummary = async () => {
@@ -232,6 +313,10 @@ export default function NutritionHistory(props) {
         const aggregated = aggregateMacros(foodMacros, viewMode);
         if (viewMode === 'daily') {
           setMacroData(fillMissingDates(aggregated, start, end));
+        } else if (viewMode === 'weekly') {
+          setMacroData(fillMissingWeeks(aggregated, start, end));
+        } else if (viewMode === 'monthly') {
+          setMacroData(fillMissingMonths(aggregated, start, end));
         } else {
           setMacroData(aggregated);
         }
@@ -276,7 +361,7 @@ export default function NutritionHistory(props) {
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Energy Consumed</h2>
-                <p className="text-sm text-gray-500">Jun 15 - Jun 21, 2025</p>
+                <p className="text-sm text-gray-500">{(() => { const { start, end } = getDateRangeBounds(dateRange); return getDateRangeLabel(start, end); })()}</p>
               </div>
               
               <div className="flex space-x-2 mt-3 md:mt-0">
@@ -290,8 +375,31 @@ export default function NutritionHistory(props) {
             <MacroChart unit="kcal" viewMode={viewMode} data={macroData} loading={macroLoading} />
           </div>
           
-          {/* Weight Tracking Chart */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+        
+            
+      
+          
+          {/* Additional Nutrition Charts */}
+          {(() => { const { start, end } = getDateRangeBounds(dateRange); return <NutritionChart macroData={macroData} start={start} end={end} /> })()}
+
+          <div className="flex justify-end mt-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex items-center">
+                  <span className="w-3 h-3 inline-block rounded-full bg-[#c41e3a] mr-1"></span>
+                  <span className="text-sm text-gray-600">Weight</span>
+                </div>
+                <div className="flex items-center">
+                  <span className="w-3 h-3 inline-block rounded-full bg-[#b7e4c7] mr-1"></span>
+                  <span className="text-sm text-gray-600">Goal Weight</span>
+                </div>
+                
+              </div>
+            </div>
+          </div>
+
+
+           {/* Weight Tracking Chart */}
+           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Weight Progress</h2>
@@ -314,24 +422,6 @@ export default function NutritionHistory(props) {
             </div>
             
             <WeightChart />
-            
-            <div className="flex justify-end mt-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center">
-                  <span className="w-3 h-3 inline-block rounded-full bg-[#c41e3a] mr-1"></span>
-                  <span className="text-sm text-gray-600">Weight</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="w-3 h-3 inline-block rounded-full bg-[#b7e4c7] mr-1"></span>
-                  <span className="text-sm text-gray-600">Goal Weight</span>
-                </div>
-                
-              </div>
-            </div>
-          </div>
-          
-          {/* Additional Nutrition Charts */}
-          <NutritionChart />
         </div>
       </div>
     </div>

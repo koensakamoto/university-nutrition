@@ -243,6 +243,38 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
     // eslint-disable-next-line
   }, [date, foodStations]);
 
+  const handleSavePlate = async () => {
+    const plateItems = trackedItems.map(item => {
+      const foodId = item.id || item._id;
+      const isCustom = String(foodId).startsWith('custom-');
+      const base = {
+        food_id: foodId,
+        quantity: item.quantity || 1
+      };
+      if (isCustom) {
+        if (!item.custom_macros || typeof item.custom_macros !== 'object') {
+          console.warn('Custom food missing valid custom_macros:', item);
+          // Optionally, show a UI error here
+          return null; // Mark as invalid
+        }
+        base.custom_macros = {
+          calories: item.custom_macros.calories,
+          protein: item.custom_macros.protein,
+          carbs: item.custom_macros.carbs,
+          fat: item.custom_macros.fat
+        };
+        base.name = item.name || 'Custom Food';
+      }
+      return base;
+    }).filter(Boolean); // Remove any nulls
+    // Only save if all items are valid
+    if (plateItems.some(i => i === null)) {
+      alert('One or more custom foods are missing valid macros. Please fix before saving.');
+      return;
+    }
+    // ... existing code ...
+  }
+
   return (
     <div className="flex flex-col flex-grow w-full md:w-3/4 p-4 bg-white rounded-lg">
       <Filter
