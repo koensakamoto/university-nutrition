@@ -6,7 +6,7 @@ from bson import ObjectId
 import os
 from dotenv import load_dotenv
 import certifi
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 import uuid
 from fastapi.staticfiles import StaticFiles
@@ -15,6 +15,7 @@ from models.food import Food
 from models.agent import AgentQuery
 
 from models.user import UserCreate, UserProfile, ChangePasswordRequest
+from models.plate import Plate, PlateItem
 
 from auth_util import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
@@ -148,7 +149,16 @@ def logout(response: Response):
 @app.get("/api/profile")
 def get_profile(request: Request):
     user = get_current_user(request, users_collection)
-    return user.get("profile", {})
+    return {
+        "email": user.get("email"),
+        "profile": user.get("profile", {})
+    }
+
+@app.get("/api/email")
+def get_email(request: Request):
+    user = get_current_user(request, users_collection)
+    return user.get("email", {})
+
 
 @app.put("/api/profile")
 def update_profile(request: Request, data: dict = Body(...)):
@@ -281,6 +291,163 @@ def delete_account(request: Request):
     users_collection.delete_one({"email": user["email"]})
     # Optionally, delete related data (nutrition logs, etc.)
     return {"message": "Account deleted"}
+
+@app.get("/api/plate")
+def get_plate(request: Request, date: str):
+    user = get_current_user(request, users_collection)
+    plate = db["plates"].find_one({"user_id": str(user["_id"]), "date": date})
+    if not plate:
+        return {"items": []}
+    # Convert ObjectId to string for user_id
+    plate["user_id"] = str(plate["user_id"])
+    plate["_id"] = str(plate["_id"])
+    return plate
+
+@app.post("/api/plate")
+def save_plate(request: Request, plate: Plate = Body(...)):
+    user = get_current_user(request, users_collection)
+    items = []
+    for item in plate.items:
+        d = item.dict()
+        # If custom food, ensure custom_macros is present and valid
+        if str(d.get("food_id", "")).startswith("custom-") and "custom_macros" not in d:
+            raise HTTPException(status_code=400, detail="Custom food must include custom_macros")
+        items.append(d)
+    db["plates"].update_one(
+        {"user_id": str(user["_id"]), "date": plate.date},
+        {"$set": {"items": items, "user_id": str(user["_id"]), "date": plate.date}},
+        upsert=True
+    )
+    return {"message": "Plate saved"}
+
+@app.get("/api/plate/summary")
+def get_plate_summary(request: Request, start_date: str, end_date: str):
+    user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    # Query all plates for user in date range
+    plates = list(db["plates"].find({
+        "user_id": user_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }))
+    # Collect all unique food_ids (excluding custom foods)
+    food_ids = set()
+    for plate in plates:
+        for item in plate.get("items", []):
+            food_id = item.get("food_id")
+            if food_id and not str(food_id).startswith("custom-"):
+                food_ids.add(food_id)
+    # Bulk fetch all foods
+    foods_map = {}
+    if food_ids:
+        object_ids = []
+        str_ids = []
+        for fid in food_ids:
+            try:
+                object_ids.append(ObjectId(fid))
+            except Exception:
+                str_ids.append(fid)
+        if object_ids:
+            for food in db["foods"].find({"_id": {"$in": object_ids}}):
+                foods_map[str(food["_id"])] = food
+        if str_ids:
+            for food in db["foods"].find({"_id": {"$in": str_ids}}):
+                foods_map[food["_id"]] = food
+    # For each plate, sum up calories, protein, carbs
+    total_calories = 0
+    total_protein = 0
+    total_carbs = 0
+    days_tracked = set()
+    for plate in plates:
+        days_tracked.add(plate["date"])
+        for item in plate["items"]:
+            quantity = item.get("quantity", 1)
+            # Custom food support
+            if "custom_macros" in item:
+                n = item["custom_macros"]
+                total_calories += int(n.get("calories", 0)) * quantity
+                total_protein += float(n.get("protein", 0)) * quantity
+                total_carbs += float(n.get("carbs", n.get("total_carbohydrates", 0))) * quantity
+                continue
+            print("item", item)
+            food_id = item["food_id"]
+            food = foods_map.get(str(food_id))
+            if not food:
+                continue
+            n = food.get("nutrients", {})
+            total_calories += (int(n.get("calories", 0)) * quantity)
+            total_protein += (float(n.get("protein", 0)) * quantity)
+            total_carbs += (float(n.get("total_carbohydrates", 0)) * quantity)
+    # Calculate averages
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    num_days = (end - start).days + 1
+    avg_calories = total_calories / len(days_tracked) if days_tracked else 0
+    avg_protein = total_protein / len(days_tracked) if days_tracked else 0
+    avg_carbs = total_carbs / len(days_tracked) if days_tracked else 0
+    return {
+        "average_calories": round(avg_calories, 1),
+        "average_protein": round(avg_protein, 1),
+        "average_carbs": round(avg_carbs, 1),
+        "days_tracked": len(days_tracked),
+        "total_days": num_days
+    }
+
+@app.get("/api/plate/food-macros")
+def get_food_macros(request: Request, start_date: str, end_date: str):
+    user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    # Find all plates for user in date range
+    plates = list(db["plates"].find({
+        "user_id": user_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }))
+    result = []
+    for plate in plates:
+        date = plate["date"]
+        for item in plate.get("items", []):
+            quantity = item.get("quantity", 1)
+            if "custom_macros" in item:
+                n = item["custom_macros"]
+                result.append({
+                    "date": date,
+                    "calories": int(n.get("calories", 0)) * quantity,
+                    "protein": float(n.get("protein", 0)) * quantity,
+                    "carbs": float(n.get("carbs", n.get("total_carbohydrates", 0))) * quantity,
+                    "fat": float(n.get("totalFat", n.get("total_fat", 0))) * quantity
+                })
+                continue
+            food_id = item.get("food_id")
+            food = None
+            try:
+                food = db["foods"].find_one({"_id": ObjectId(food_id)})
+            except Exception:
+                food = db["foods"].find_one({"_id": food_id})
+            if not food:
+                continue
+            n = food.get("nutrients", {})
+            result.append({
+                "date": date,
+                "calories": int(n.get("calories", 0)) * quantity,
+                "protein": float(n.get("protein", 0)) * quantity,
+                "carbs": float(n.get("total_carbohydrates", 0)) * quantity,
+                "fat": float(n.get("total_fat", 0)) * quantity
+            })
+    return result
+
+@app.put("/api/profile/email")
+def update_email(request: Request, data: dict = Body(...)):
+    user = get_current_user(request, users_collection)
+    new_email = data.get("email")
+    if not new_email:
+        raise HTTPException(status_code=400, detail="Email is required")
+    # Check if new_email is already taken
+    if users_collection.find_one({"email": new_email}):
+        raise HTTPException(status_code=400, detail="Email already in use")
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$set": {"email": new_email}}
+    )
+    return {"message": "Email updated"}
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")
