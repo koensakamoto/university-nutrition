@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 import shutil
 import uuid
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import StreamingResponse, JSONResponse
+import io
+import csv
+import json
 
 from models.food import Food
 from models.agent import AgentQuery
@@ -195,8 +199,8 @@ def get_activity_multiplier(activity_level):
         'sedentary': 1.2,
         'light': 1.375,
         'moderate': 1.55,
-        'very': 1.725,
-        'extra': 1.9
+        'high': 1.725,
+        'extreme': 1.9
     }.get(activity_level, 1.2)
 
 @app.get("/api/profile/energy-target")
@@ -301,6 +305,7 @@ def get_plate(request: Request, date: str):
     # Convert ObjectId to string for user_id
     plate["user_id"] = str(plate["user_id"])
     plate["_id"] = str(plate["_id"])
+    print("plate", plate)
     return plate
 
 @app.post("/api/plate")
@@ -518,6 +523,314 @@ def get_weight_logs(request: Request, start_date: str = Query(...), end_date: st
     # Sort logs by date ascending
     logs.sort(key=lambda x: x["date"])
     return logs
+
+@app.post("/api/export-data")
+def export_data(request: Request, body: dict = Body(...)):
+    user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    selections = body.get("selections", {})
+    format = body.get("format", "csv")
+    export_data = {}
+
+    # Profile Info
+    if selections.get("profile"):
+        export_data["profile"] = user.get("profile", {})
+
+    # Weight History
+    if selections.get("weight"):
+        weight_logs = list(db["weight_log"].find({"user_id": user_id}, {"_id": 0, "user_id": 0}))
+        weight_logs.sort(key=lambda x: x["date"])
+        export_data["weight_history"] = weight_logs
+
+    # Meal Logs
+    if selections.get("meals"):
+        plates = list(db["plates"].find({"user_id": user_id}))
+        for plate in plates:
+            plate["_id"] = str(plate["_id"])
+        export_data["meal_logs"] = plates
+
+    # JSON Export (improved: no IDs, include food name and macros for all items)
+    if format == "json":
+        # If meal logs are selected, process them to remove IDs and add names/macros
+        if selections.get("meals"):
+            # Collect all unique standard food_ids
+            food_ids = set()
+            for plate in export_data.get("meal_logs", []):
+                for item in plate.get("items", []):
+                    if "custom_macros" not in item:
+                        food_id = item.get("food_id", "")
+                        if food_id:
+                            food_ids.add(food_id)
+            # Batch fetch all foods
+            foods_map = {}
+            if food_ids:
+                from bson import ObjectId
+                object_ids = []
+                str_ids = []
+                for fid in food_ids:
+                    try:
+                        object_ids.append(ObjectId(fid))
+                    except Exception:
+                        str_ids.append(fid)
+                if object_ids:
+                    for food in db["foods"].find({"_id": {"$in": object_ids}}):
+                        foods_map[str(food["_id"])] = food
+                if str_ids:
+                    for food in db["foods"].find({"_id": {"$in": str_ids}}):
+                        foods_map[food["_id"]] = food
+            # Build new meal_logs structure
+            new_meal_logs = []
+            for plate in export_data.get("meal_logs", []):
+                date = plate.get("date", "")
+                new_items = []
+                for item in plate.get("items", []):
+                    if "custom_macros" in item:
+                        n = item["custom_macros"]
+                        new_items.append({
+                            "name": n.get("name", "Custom Food"),
+                            "quantity": item.get("quantity", 1),
+                            "calories": n.get("calories", ""),
+                            "protein": n.get("protein", ""),
+                            "carbs": n.get("carbs", ""),
+                            "fat": n.get("totalFat", n.get("total_fat", "")),
+                            "type": "Custom"
+                        })
+                    else:
+                        food_id = item.get("food_id", "")
+                        food = foods_map.get(str(food_id))
+                        if food:
+                            n = food.get("nutrients", {})
+                            new_items.append({
+                                "name": food.get("name", ""),
+                                "quantity": item.get("quantity", 1),
+                                "calories": n.get("calories", ""),
+                                "protein": n.get("protein", ""),
+                                "carbs": n.get("total_carbohydrates", ""),
+                                "fat": n.get("total_fat", ""),
+                                "type": "Standard"
+                            })
+                        else:
+                            new_items.append({
+                                "name": "",
+                                "quantity": item.get("quantity", 1),
+                                "calories": "",
+                                "protein": "",
+                                "carbs": "",
+                                "fat": "",
+                                "type": "Standard"
+                            })
+                new_meal_logs.append({
+                    "date": date,
+                    "items": new_items
+                })
+            export_data["meal_logs"] = new_meal_logs
+        return JSONResponse(content=export_data)
+
+    # CSV Export (improved, sectioned and flattened)
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Profile Info
+        if selections.get("profile"):
+            writer.writerow(["Profile Info"])
+            writer.writerow(["Field", "Value"])
+            for k, v in export_data.get("profile", {}).items():
+                writer.writerow([k, f"'{v}" if v is not None else ""])
+            writer.writerow([])
+        # Weight History
+        if selections.get("weight"):
+            writer.writerow(["Weight History"])
+            writer.writerow(["Date", "Weight"])
+            for log in export_data.get("weight_history", []):
+                weight = log.get("weight", "")
+                writer.writerow([log.get("date", ""), f"'{weight}" if weight != "" else ""])
+            writer.writerow([])
+        # Meal Logs
+        if selections.get("meals"):
+            writer.writerow(["Meal Logs"])
+            writer.writerow(["Date", "Food Name", "Quantity", "Calories", "Protein", "Carbs", "Fat", "Type"])
+            # Collect all unique standard food_ids
+            food_ids = set()
+            for plate in export_data.get("meal_logs", []):
+                for item in plate.get("items", []):
+                    if "custom_macros" not in item:
+                        food_id = item.get("food_id", "")
+                        if food_id:
+                            food_ids.add(food_id)
+            # Batch fetch all foods
+            foods_map = {}
+            if food_ids:
+                from bson import ObjectId
+                object_ids = []
+                str_ids = []
+                for fid in food_ids:
+                    try:
+                        object_ids.append(ObjectId(fid))
+                    except Exception:
+                        str_ids.append(fid)
+                if object_ids:
+                    for food in db["foods"].find({"_id": {"$in": object_ids}}):
+                        foods_map[str(food["_id"])] = food
+                if str_ids:
+                    for food in db["foods"].find({"_id": {"$in": str_ids}}):
+                        foods_map[food["_id"]] = food
+            # Write meal log rows
+            for plate in export_data.get("meal_logs", []):
+                date = plate.get("date", "")
+                for item in plate.get("items", []):
+                    if "custom_macros" in item:
+                        n = item["custom_macros"]
+                        writer.writerow([
+                            date,
+                            n.get("name", "Custom Food"),
+                            item.get("quantity", 1),
+                            n.get("calories", ""),
+                            n.get("protein", ""),
+                            n.get("carbs", ""),
+                            n.get("totalFat", n.get("total_fat", "")),
+                            "Custom"
+                        ])
+                    else:
+                        food_id = item.get("food_id", "")
+                        food = foods_map.get(str(food_id))
+                        if food:
+                            n = food.get("nutrients", {})
+                            writer.writerow([
+                                date,
+                                food.get("name", ""),
+                                item.get("quantity", 1),
+                                n.get("calories", ""),
+                                n.get("protein", ""),
+                                n.get("total_carbohydrates", ""),
+                                n.get("total_fat", ""),
+                                "Standard"
+                            ])
+                        else:
+                            writer.writerow([
+                                date,
+                                "",
+                                item.get("quantity", 1),
+                                "", "", "", "",
+                                "Standard"
+                            ])
+            writer.writerow([])
+        output.seek(0)
+        return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers={"Content-Disposition": "attachment; filename=export.csv"})
+
+    # PDF Export
+    if format == "pdf":
+        try:
+            from fpdf import FPDF
+        except ImportError:
+            return JSONResponse({"error": "PDF export requires fpdf2. Please install with 'pip install fpdf2'."}, status_code=500)
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+
+        # Profile Info
+        if selections.get("profile"):
+            pdf.set_font("Arial", style="B", size=14)
+            pdf.cell(0, 10, "Profile Info", ln=1)
+            pdf.set_font("Arial", size=12)
+            profile = export_data.get("profile", {})
+            for k, v in profile.items():
+                pdf.cell(50, 8, str(k), border=1)
+                pdf.cell(0, 8, str(v), border=1, ln=1)
+            pdf.ln(5)
+
+        # Weight History
+        if selections.get("weight"):
+            pdf.set_font("Arial", style="B", size=14)
+            pdf.cell(0, 10, "Weight History", ln=1)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(40, 8, "Date", border=1)
+            pdf.cell(40, 8, "Weight", border=1, ln=1)
+            pdf.set_font("Arial", size=12)
+            for log in export_data.get("weight_history", []):
+                pdf.cell(40, 8, str(log.get("date", "")), border=1)
+                pdf.cell(40, 8, str(log.get("weight", "")), border=1, ln=1)
+            pdf.ln(5)
+
+        # Meal Logs
+        if selections.get("meals"):
+            pdf.set_font("Arial", style="B", size=14)
+            pdf.cell(0, 10, "Meal Logs", ln=1)
+            pdf.set_font("Arial", style="B", size=12)
+            pdf.cell(30, 8, "Date", border=1)
+            pdf.cell(40, 8, "Food Name", border=1)
+            pdf.cell(20, 8, "Qty", border=1)
+            pdf.cell(20, 8, "Cal", border=1)
+            pdf.cell(20, 8, "Protein", border=1)
+            pdf.cell(20, 8, "Carbs", border=1)
+            pdf.cell(20, 8, "Fat", border=1)
+            pdf.cell(20, 8, "Type", border=1, ln=1)
+            pdf.set_font("Arial", size=12)
+            # Collect all unique standard food_ids
+            food_ids = set()
+            for plate in export_data.get("meal_logs", []):
+                for item in plate.get("items", []):
+                    if "custom_macros" not in item:
+                        food_id = item.get("food_id", "")
+                        if food_id:
+                            food_ids.add(food_id)
+            # Batch fetch all foods
+            foods_map = {}
+            if food_ids:
+                from bson import ObjectId
+                object_ids = []
+                str_ids = []
+                for fid in food_ids:
+                    try:
+                        object_ids.append(ObjectId(fid))
+                    except Exception:
+                        str_ids.append(fid)
+                if object_ids:
+                    for food in db["foods"].find({"_id": {"$in": object_ids}}):
+                        foods_map[str(food["_id"])] = food
+                if str_ids:
+                    for food in db["foods"].find({"_id": {"$in": str_ids}}):
+                        foods_map[food["_id"]] = food
+            for plate in export_data.get("meal_logs", []):
+                date = plate.get("date", "")
+                for item in plate.get("items", []):
+                    if "custom_macros" in item:
+                        n = item["custom_macros"]
+                        pdf.cell(30, 8, str(date), border=1)
+                        pdf.cell(40, 8, str(n.get("name", "Custom Food")), border=1)
+                        pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
+                        pdf.cell(20, 8, str(n.get("calories", "")), border=1)
+                        pdf.cell(20, 8, str(n.get("protein", "")), border=1)
+                        pdf.cell(20, 8, str(n.get("carbs", "")), border=1)
+                        pdf.cell(20, 8, str(n.get("totalFat", n.get("total_fat", ""))), border=1)
+                        pdf.cell(20, 8, "Custom", border=1, ln=1)
+                    else:
+                        food_id = item.get("food_id", "")
+                        food = foods_map.get(str(food_id))
+                        if food:
+                            n = food.get("nutrients", {})
+                            pdf.cell(30, 8, str(date), border=1)
+                            pdf.cell(40, 8, str(food.get("name", "")), border=1)
+                            pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
+                            pdf.cell(20, 8, str(n.get("calories", "")), border=1)
+                            pdf.cell(20, 8, str(n.get("protein", "")), border=1)
+                            pdf.cell(20, 8, str(n.get("total_carbohydrates", "")), border=1)
+                            pdf.cell(20, 8, str(n.get("total_fat", "")), border=1)
+                            pdf.cell(20, 8, "Standard", border=1, ln=1)
+                        else:
+                            pdf.cell(30, 8, str(date), border=1)
+                            pdf.cell(40, 8, "", border=1)
+                            pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "Standard", border=1, ln=1)
+            pdf.ln(5)
+        pdf_bytes = pdf.output(dest='S')
+        return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=export.pdf"})
+
+    return JSONResponse({"error": "Invalid format."}, status_code=400)
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")

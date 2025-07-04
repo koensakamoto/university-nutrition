@@ -6,8 +6,8 @@ const activityLevels = [
   { id: "sedentary", label: "Sedentary", description: "Little to no exercise, desk job", multiplier: 1.2 },
   { id: "light", label: "Lightly Active", description: "Light exercise 1-3 days/week", multiplier: 1.375 },
   { id: "moderate", label: "Moderately Active", description: "Moderate exercise 3-5 days/week", multiplier: 1.55 },
-  { id: "very", label: "Very Active", description: "Hard exercise 6-7 days/week", multiplier: 1.725 },
-  { id: "extra", label: "Extremely Active", description: "Very hard exercise, physical job or training twice a day", multiplier: 1.9 },
+  { id: "high", label: "Very Active", description: "Hard exercise 6-7 days/week", multiplier: 1.725 },
+  { id: "extreme", label: "Extremely Active", description: "Very hard exercise, physical job or training twice a day", multiplier: 1.9 },
 ];
 
 export const ActivityLevelSection = ({ refreshEnergyTarget }) => {

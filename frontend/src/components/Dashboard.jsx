@@ -6,102 +6,8 @@ import CustomMealForm from './CustomMealForm'
 import { MessageCircleIcon, PlusCircleIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
 import { useFetchWithAuth, useAuth } from '../AuthProvider'
-// Mock data for food stations
-const mockFoodStations = [
-  {
-    id: 1,
-    name: '500 Degrees',
-    description: 'Pizza and Italian specialties',
-    items: [
-      {
-        id: 101,
-        name: 'Margherita Pizza',
-        description: 'Classic pizza with tomato sauce, mozzarella, and basil',
-        portionSize: '1 slice',
-        calories: 250,
-        protein: 12,
-        carbs: 30,
-        fat: 10,
-        tags: ['vegetarian'],
-        allergens: ['dairy', 'gluten'],
-      },
-      {
-        id: 102,
-        name: 'Pepperoni Pizza',
-        description: 'Pizza with tomato sauce, mozzarella, and pepperoni',
-        portionSize: '1 slice',
-        calories: 300,
-        protein: 14,
-        carbs: 30,
-        fat: 15,
-        tags: [],
-        allergens: ['dairy', 'gluten'],
-      },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Carrots',
-    description: 'Vegetarian and vegan options',
-    items: [
-      {
-        id: 201,
-        name: 'Garden Salad',
-        description: 'Fresh mixed greens with assorted vegetables',
-        portionSize: '1 bowl',
-        calories: 120,
-        protein: 3,
-        carbs: 15,
-        fat: 6,
-        tags: ['vegan', 'climate-friendly'],
-        allergens: [],
-      },
-      {
-        id: 202,
-        name: 'Quinoa Bowl',
-        description: 'Quinoa with roasted vegetables and tahini dressing',
-        portionSize: '1 bowl',
-        calories: 350,
-        protein: 10,
-        carbs: 45,
-        fat: 14,
-        tags: ['vegan', 'climate-friendly'],
-        allergens: ['sesame'],
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Grill Station',
-    description: 'Burgers and grilled items',
-    items: [
-      {
-        id: 301,
-        name: 'Cheeseburger',
-        description: 'Beef patty with cheese on a brioche bun',
-        portionSize: '1 burger',
-        calories: 550,
-        protein: 28,
-        carbs: 35,
-        fat: 32,
-        tags: ['protein'],
-        allergens: ['dairy', 'gluten'],
-      },
-      {
-        id: 302,
-        name: 'Grilled Chicken Sandwich',
-        description: 'Grilled chicken breast with lettuce and tomato',
-        portionSize: '1 sandwich',
-        calories: 420,
-        protein: 35,
-        carbs: 40,
-        fat: 12,
-        tags: ['protein'],
-        allergens: ['gluten'],
-      },
-    ],
-  },
-]
+
+
 const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, removeItem, clearItems, date, setDate, onSavePlate }) => {
   const transformFoodData = (data) => {
     if (!Array.isArray(data)) {
@@ -126,7 +32,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
 
       const n = item.nutrients || {};
       stationMap[station_id].items.push({
-        id: item._id,
+        id: item.id || item._id,
         name: item.name,
         description: item.description,
         portionSize: item.portion_size || '1 serving',
@@ -170,6 +76,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
   const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
   const fetchWithAuth = useFetchWithAuth();
   const { user } = useAuth();
+  const[allStations, setAllStations] = useState([])
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -180,12 +87,12 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
 
     fetch(`http://localhost:8000/foods?${params}`)
       .then((res) => {
-        console.log("Fetch response:", res);
+        // console.log("Fetch response:", res);
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
       })
       .then((data) => {
-        console.log("Raw fetched data:", data);
+        // console.log("Raw fetched data:", data);
         const stations = transformFoodData(data);
         setFoodStations(stations);
       })
@@ -197,8 +104,34 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
   }, [diningHall, date, mealType]);
 
   useEffect(() => {
+    const params = new URLSearchParams({
+      dining_hall: diningHall,
+      date: getLocalDateString(date),
+    });
+    fetch(`http://localhost:8000/foods?${params}`)
+    .then((res) => {
+      // console.log("Fetch response:", res);
+      if (!res.ok) throw new Error('Network response was not ok');
+      return res.json();
+    })
+    .then((data) => {
+      const stations = transformFoodData(data);
+      setAllStations(stations);
+    })
+    .catch((err) => {
+      console.error('Failed to fetch foods:', err);
+      const stations = transformFoodData(mockFoodStations.flatMap(station => station.items.map(item => ({...item, station: station.name}))));
+      setAllStations(stations);
+    });
+  }, [date]);
+
+  useEffect(() => {
     console.log('Updated food stations:', foodStations);
   }, [foodStations]);
+
+  useEffect(() => {
+    console.log('allStations', allStations);
+  }, [allStations]);
 
   const toggleAIAssistant = () => {
     setShowAIAssistant(!showAIAssistant)
@@ -206,16 +139,23 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
 
   // Load plate on date or foodStations change
   useEffect(() => {
+
     if (user && user.guest) {
       setTrackedItems([]);
       return;
     }
+    if (!allStations.length) return; // Wait until foodStations is loaded
     const loadPlateForDate = async () => {
       const dateStr = getLocalDateString(date);
       const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
       if (data && data.items && data.items.length > 0) {
         // Flatten all food items from all stations
-        const allFoods = foodStations.flatMap(station => station.items);
+        const allFoods = allStations.flatMap(station => station.items);
+        console.log('allFoods', allFoods);
+        // Debug log for ID matching
+        // data.items.forEach(item => {
+        //   console.log('Plate item food_id:', item.food_id, 'All foods:', allFoods.map(f => f.id || f._id));
+        // });
         // Reconstruct trackedItems
         const loadedItems = data.items.map(item => {
           if (item.custom_macros) {
@@ -246,7 +186,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
     };
     loadPlateForDate();
     // eslint-disable-next-line
-  }, [date, foodStations, user]);
+  }, [date, user, allStations]);
 
   const handleSavePlate = async () => {
     const plateItems = trackedItems.map(item => {
@@ -258,7 +198,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
       };
       if (isCustom) {
         if (!item.custom_macros || typeof item.custom_macros !== 'object') {
-          console.warn('Custom food missing valid custom_macros:', item);
+          // console.warn('Custom food missing valid custom_macros:', item);
           // Optionally, show a UI error here
           return null; // Mark as invalid
         }

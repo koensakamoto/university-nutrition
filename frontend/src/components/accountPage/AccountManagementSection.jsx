@@ -12,6 +12,10 @@ export const AccountManagementSection = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const fetchWithAuth = useFetchWithAuth();
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFormat, setExportFormat] = useState('csv');
+  const [exportSelections, setExportSelections] = useState({ weight: false, meals: false, profile: false });
+  const [exportError, setExportError] = useState("");
 
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
@@ -30,6 +34,67 @@ export const AccountManagementSection = () => {
       setDeleteError('Failed to delete account');
     }
     setDeleteLoading(false);
+  };
+
+  const canExport = Object.values(exportSelections).some(Boolean);
+  const handleExportCheckbox = (key) => {
+    setExportSelections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleExport = async () => {
+    setExportError("");
+    try {
+      const { format, selections } = { format: exportFormat, selections: exportSelections };
+      const res = await fetch('/api/export-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ format, selections })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setExportError(err.error || 'Failed to export data.');
+        return;
+      }
+      if (format === 'json') {
+        const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'export.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } else if (format === 'csv') {
+        const text = await res.text();
+        const blob = new Blob([text], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'export.csv';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } else if (format === 'pdf') {
+        const blob = await res.blob();
+        if (blob.type !== 'application/pdf') {
+          setExportError('Failed to generate PDF.');
+          return;
+        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'export.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      }
+    } catch (err) {
+      setExportError('Failed to export data.');
+    }
   };
 
   return (
@@ -72,7 +137,9 @@ export const AccountManagementSection = () => {
           <div>
             <h3 className="font-medium text-gray-800 mb-3">Data & Privacy</h3>
             <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
-              <button className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md transition">
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md transition">
                 <Download size={18} className="mr-2" />
                 <span>Export Your Data</span>
               </button>
@@ -110,6 +177,71 @@ export const AccountManagementSection = () => {
         </div>
       </div>
       
+      {/* Export Data Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4 text-gray-800">Export Your Data</h2>
+            <div className="mb-4">
+              <label className="block text-gray-700 font-medium mb-2">Format</label>
+              <div className="flex space-x-4">
+                {['csv', 'pdf', 'json'].map((fmt) => (
+                  <label key={fmt} className={`px-4 py-2 rounded-lg cursor-pointer border ${exportFormat === fmt ? 'bg-red-100 border-red-400 text-red-700' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                    <input
+                      type="radio"
+                      name="format"
+                      value={fmt}
+                      checked={exportFormat === fmt}
+                      onChange={() => setExportFormat(fmt)}
+                      className="hidden"
+                    />
+                    {fmt.toUpperCase()}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-gray-700 font-medium mb-2">What do you want to export?</label>
+              <div className="space-y-2">
+                <label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={exportSelections.weight} onChange={() => handleExportCheckbox('weight')} />
+                  <span>Weight History</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={exportSelections.meals} onChange={() => handleExportCheckbox('meals')} />
+                  <span>Meal Logs</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input type="checkbox" checked={exportSelections.profile} onChange={() => handleExportCheckbox('profile')} />
+                  <span>Profile Info</span>
+                </label>
+              </div>
+            </div>
+            {exportError && (
+              <div className="text-red-600 text-sm mb-2">{exportError}</div>
+            )}
+            <div className="flex justify-end space-x-2 mt-6">
+              <button
+                className="px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
+                onClick={() => setShowExportModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={`px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition ${!canExport ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!canExport}
+                onClick={async () => {
+                  await handleExport();
+                  setShowExportModal(false);
+                }}
+              >
+                Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Account Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
