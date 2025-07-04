@@ -308,10 +308,15 @@ def save_plate(request: Request, plate: Plate = Body(...)):
     user = get_current_user(request, users_collection)
     items = []
     for item in plate.items:
+        print(item)
         d = item.dict()
         # If custom food, ensure custom_macros is present and valid
-        if str(d.get("food_id", "")).startswith("custom-") and "custom_macros" not in d:
-            raise HTTPException(status_code=400, detail="Custom food must include custom_macros")
+        if str(d.get("food_id", "")).startswith("custom-"):
+            if "custom_macros" not in d or d["custom_macros"] is None:
+                raise HTTPException(status_code=400, detail="Custom food must include custom_macros")
+        # Remove custom_macros if it is None or not present
+        if "custom_macros" in d and d["custom_macros"] is None:
+            del d["custom_macros"]
         items.append(d)
     db["plates"].update_one(
         {"user_id": str(user["_id"]), "date": plate.date},
@@ -356,6 +361,7 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
     total_calories = 0
     total_protein = 0
     total_carbs = 0
+    total_fat = 0
     days_tracked = set()
     for plate in plates:
         days_tracked.add(plate["date"])
@@ -367,9 +373,16 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
                 if n is None:
                     print(f"Warning: custom_macros is None for item: {item}")
                     continue
-                total_calories += int(n.get("calories", 0)) * quantity
-                total_protein += float(n.get("protein", 0)) * quantity
-                total_carbs += float(n.get("carbs", n.get("total_carbohydrates", 0))) * quantity
+                protein = float(n.get("protein", 0)) * quantity
+                fat = float(n.get("totalFat", n.get("total_fat", 0))) * quantity
+                fiber = float(n.get("dietary_fiber", 0))
+                total_carbs_val = float(n.get("carbs", n.get("total_carbohydrates", 0)))
+                net_carbs = (total_carbs_val - fiber) * quantity
+                total_protein += protein
+                total_fat += fat
+                total_carbs += net_carbs
+                # Calculate calories from macros
+                total_calories += (protein * 4) + (net_carbs * 4) + (fat * 9)
                 continue
             food_id = item.get("food_id")
             food = foods_map.get(str(food_id))
@@ -380,14 +393,25 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             if n is None:
                 print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
                 continue
-            total_calories += (int(n.get("calories", 0)) * quantity)
-            total_protein += (float(n.get("protein", 0)) * quantity)
-            total_carbs += (float(n.get("total_carbohydrates", 0)) * quantity)
+            protein = float(n.get("protein", 0)) * quantity
+            fat = float(n.get("total_fat", 0)) * quantity
+            fiber = float(n.get("dietary_fiber", 0))
+            total_carbs_val = float(n.get("total_carbohydrates", 0))
+            net_carbs = (total_carbs_val - fiber) * quantity
+            total_protein += protein
+            total_fat += fat
+            total_carbs += net_carbs
+            # Calculate calories from macros
+            total_calories += (protein * 4) + (net_carbs * 4) + (fat * 9)
+            print("item", item, "total_carbs", total_carbs)
     # Calculate averages
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
     num_days = (end - start).days + 1
+    print("days_tracked", len(days_tracked))
+    print("total_calories", total_calories)
     avg_calories = total_calories / len(days_tracked) if days_tracked else 0
+    print("avg_calories", avg_calories)
     avg_protein = total_protein / len(days_tracked) if days_tracked else 0
     avg_carbs = total_carbs / len(days_tracked) if days_tracked else 0
     return {
@@ -417,12 +441,16 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
                 if n is None:
                     print(f"Warning: custom_macros is None for item: {item}")
                     continue
+                fiber = float(n.get("dietary_fiber", 0))
+                total_carbs = float(n.get("carbs", n.get("total_carbohydrates", 0)))
+                net_carbs = total_carbs - fiber
                 result.append({
                     "date": date,
                     "calories": int(n.get("calories", 0)) * quantity,
                     "protein": float(n.get("protein", 0)) * quantity,
-                    "carbs": float(n.get("carbs", n.get("total_carbohydrates", 0))) * quantity,
-                    "fat": float(n.get("totalFat", n.get("total_fat", 0))) * quantity
+                    "carbs": net_carbs * quantity,
+                    "fat": float(n.get("totalFat", n.get("total_fat", 0))) * quantity,
+                    "fiber": fiber * quantity
                 })
                 continue
             food_id = item.get("food_id")
@@ -438,12 +466,16 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
             if n is None:
                 print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
                 continue
+            fiber = float(n.get("dietary_fiber", 0))
+            total_carbs = float(n.get("total_carbohydrates", 0))
+            net_carbs = total_carbs - fiber
             result.append({
                 "date": date,
                 "calories": int(n.get("calories", 0)) * quantity,
                 "protein": float(n.get("protein", 0)) * quantity,
-                "carbs": float(n.get("total_carbohydrates", 0)) * quantity,
-                "fat": float(n.get("total_fat", 0)) * quantity
+                "carbs": net_carbs * quantity,
+                "fat": float(n.get("total_fat", 0)) * quantity,
+                "fiber": fiber * quantity
             })
     return result
 
@@ -461,6 +493,31 @@ def update_email(request: Request, data: dict = Body(...)):
         {"$set": {"email": new_email}}
     )
     return {"message": "Email updated"}
+
+@app.post("/api/weight-log")
+def upsert_weight_log(request: Request, weight: float = Body(...), date: str = Body(None)):
+    user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    if not date:
+        date = datetime.now().strftime("%Y-%m-%d")
+    db["weight_log"].update_one(
+        {"user_id": user_id, "date": date},
+        {"$set": {"weight": weight, "user_id": user_id, "date": date}},
+        upsert=True
+    )
+    return {"message": "Weight log updated"}
+
+@app.get("/api/weight-log")
+def get_weight_logs(request: Request, start_date: str = Query(...), end_date: str = Query(...)):
+    user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    logs = list(db["weight_log"].find({
+        "user_id": user_id,
+        "date": {"$gte": start_date, "$lte": end_date}
+    }, {"_id": 0, "user_id": 0}))
+    # Sort logs by date ascending
+    logs.sort(key=lambda x: x["date"])
+    return logs
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")
