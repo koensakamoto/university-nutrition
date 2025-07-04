@@ -42,49 +42,49 @@ const Header = () => {
           <nav className="hidden md:flex items-center space-x-6">
             {user ? (
               <>
-                <Link to="dashboard" className="hover:text-red-200 flex items-center">
-                  <LayoutDashboard className="mr-2" size={20} />
-                  Dashboard
-                </Link>
-
-                <Link to="history" className="hover:text-red-200 flex items-center">
-                  <ChartBarBig className="mr-2" size={20} />
-                  Nutrition History
-                </Link>
-
-                <Link to="profile" className="hover:text-red-200 flex items-center">
-                  <UserIcon className="mr-2" size={20} />
-                  Profile
-                </Link>
-
-
-                <Link to="account" className="hover:text-red-200 flex items-center">
-                  <Settings className="mr-2" size={20} />
-                  Account
-                </Link>
-
-                <Link to="login"  className="hover:text-red-200 flex items-center">
-                  <button
-                    className="flex items-center space-x-2 py-2 hover:text-red-200"
-                    onClick={logout}
+                {/* Only show Dashboard if not guest */}
+                {!user.guest && (
+                  <Link to="dashboard" className="hover:text-red-200 flex items-center">
+                    <LayoutDashboard className="mr-2" size={20} />
+                    Dashboard
+                  </Link>
+                )}
+                {/* Only show these links if not guest */}
+                {!user.guest && (
+                  <>
+                    <Link to="history" className="hover:text-red-200 flex items-center">
+                      <ChartBarBig className="mr-2" size={20} />
+                      Nutrition History
+                    </Link>
+                    <Link to="profile" className="hover:text-red-200 flex items-center">
+                      <UserIcon className="mr-2" size={20} />
+                      Profile
+                    </Link>
+                    <Link to="account" className="hover:text-red-200 flex items-center">
+                      <Settings className="mr-2" size={20} />
+                      Account
+                    </Link>
+                  </>
+                )}
+                {/* Show Sign In for guest, Sign Out for authenticated */}
+                {user.guest ? (
+                  <Link
+                    to="login"
+                    className="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100"
                   >
-                    <LogOutIcon size={18} />
-                    <span>Sign Out</span>
-                  </button>         
-                </Link>
-
-
-
-                {/* <div className="relative">
-                  <button
-                    onClick={toggleProfileMenu}
-                    className="flex items-center space-x-1 hover:text-red-200"
-                  >
-                    <UserIcon size={20} />
-                    <span>Profile</span>
-                  </button>
-                  {profileMenuOpen && <ProfileMenu onLogout={onLogout} />}
-                </div> */}
+                    Sign In
+                  </Link>
+                ) : (
+                  <Link to="login" className="hover:text-red-200 flex items-center">
+                    <button
+                      className="flex items-center space-x-2 py-2 hover:text-red-200"
+                      onClick={logout}
+                    >
+                      <LogOutIcon size={18} />
+                      <span>Sign Out</span>
+                    </button>
+                  </Link>
+                )}
               </>
             ) : (
               <Link
@@ -105,45 +105,60 @@ const Header = () => {
           <nav className="md:hidden mt-3 pb-3 space-y-3">
             {user ? (
               <>
-                <Link
-                  to="dashboard"
-                  className="flex py-2 hover:text-red-200"
-                >
-                  <LayoutDashboard className="mr-2" size={20} />
-                  Dashboard
-                </Link>
-                <Link
-                  to="history"
-                  className="flex py-2 hover:text-red-200"
-                >
-                  <ChartBarBig className="mr-2" size={20} />
-                  Nutrition History
-                </Link>
-
-                <Link
-                to="profile"
-                className="flex py-2 hover:text-red-200"
-                >
-                <UserIcon className="mr-2" size={20} />
-                Profile
-                </Link>
-
-
-                <Link
-                  to="account"
-                  className="flex py-2 hover:text-red-200"
-                >
-                 <Settings className="mr-2" size={20} />
-                  Account
-                </Link>
-                <div className="border-t border-red-500 pt-2 mt-2">
-                  <button
-                    className="flex items-center space-x-2 py-2 hover:text-red-200"
-                    onClick={logout}
+                {/* Only show Dashboard if not guest */}
+                {!user.guest && (
+                  <Link
+                    to="dashboard"
+                    className="flex py-2 hover:text-red-200"
                   >
-                    <LogOutIcon size={18} />
-                    <span>Sign Out</span>
-                  </button>
+                    <LayoutDashboard className="mr-2" size={20} />
+                    Dashboard
+                  </Link>
+                )}
+                {/* Only show these links if not guest */}
+                {!user.guest && (
+                  <>
+                    <Link
+                      to="history"
+                      className="flex py-2 hover:text-red-200"
+                    >
+                      <ChartBarBig className="mr-2" size={20} />
+                      Nutrition History
+                    </Link>
+                    <Link
+                      to="profile"
+                      className="flex py-2 hover:text-red-200"
+                    >
+                      <UserIcon className="mr-2" size={20} />
+                      Profile
+                    </Link>
+                    <Link
+                      to="account"
+                      className="flex py-2 hover:text-red-200"
+                    >
+                      <Settings className="mr-2" size={20} />
+                      Account
+                    </Link>
+                  </>
+                )}
+                <div className="border-t border-red-500 pt-2 mt-2">
+                  {/* Show Sign In for guest, Sign Out for authenticated */}
+                  {user.guest ? (
+                    <Link
+                      to="login"
+                      className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100"
+                    >
+                      Sign In
+                    </Link>
+                  ) : (
+                    <button
+                      className="flex items-center space-x-2 py-2 hover:text-red-200"
+                      onClick={logout}
+                    >
+                      <LogOutIcon size={18} />
+                      <span>Sign Out</span>
+                    </button>
+                  )}
                 </div>
               </>
             ) : (

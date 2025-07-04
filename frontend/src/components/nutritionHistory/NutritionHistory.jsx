@@ -16,6 +16,7 @@ export default function NutritionHistory(props) {
   const [error, setError] = useState(null);
   const [macroData, setMacroData] = useState([]);
   const [macroLoading, setMacroLoading] = useState(false);
+  const [weightData, setWeightData] = useState([]);
   const fetchWithAuth = useFetchWithAuth();
 
   // Utility to get local date string in YYYY-MM-DD format
@@ -23,7 +24,6 @@ export default function NutritionHistory(props) {
 
   // Helper to get start and end date strings for API
   function getDateRangeBounds(range) {
-    console.log('getDateRangeBounds', range);
     const today = new Date();
     let start, end; 
     end = new Date(today);
@@ -70,10 +70,10 @@ export default function NutritionHistory(props) {
       return Object.entries(grouped).map(([date, items]) => ({
         name: date,
         date,
-        calories: items.reduce((sum, i) => sum + i.calories, 0),
-        protein: items.reduce((sum, i) => sum + i.protein, 0),
-        carbs: items.reduce((sum, i) => sum + i.carbs, 0),
-        fat: items.reduce((sum, i) => sum + i.fat, 0),
+        calories: items.reduce((sum, i) => sum + ((i.calories || 0) * (i.quantity || 1)), 0),
+        protein: items.reduce((sum, i) => sum + ((i.protein || 0) * (i.quantity || 1)), 0),
+        carbs: items.reduce((sum, i) => sum + ((i.carbs || 0) * (i.quantity || 1)), 0),
+        fat: items.reduce((sum, i) => sum + ((i.fat || 0) * (i.quantity || 1)), 0),
       })).sort((a, b) => a.date.localeCompare(b.date));
     } else if (viewMode === 'weekly') {
       // Group by ISO week
@@ -88,10 +88,10 @@ export default function NutritionHistory(props) {
       });
       return Object.entries(grouped).map(([week, items]) => ({
         name: week,
-        calories: items.reduce((sum, i) => sum + i.calories, 0),
-        protein: items.reduce((sum, i) => sum + i.protein, 0),
-        carbs: items.reduce((sum, i) => sum + i.carbs, 0),
-        fat: items.reduce((sum, i) => sum + i.fat, 0),
+        calories: items.reduce((sum, i) => sum + ((i.calories || 0) * (i.quantity || 1)), 0),
+        protein: items.reduce((sum, i) => sum + ((i.protein || 0) * (i.quantity || 1)), 0),
+        carbs: items.reduce((sum, i) => sum + ((i.carbs || 0) * (i.quantity || 1)), 0),
+        fat: items.reduce((sum, i) => sum + ((i.fat || 0) * (i.quantity || 1)), 0),
       })).sort((a, b) => a.name.localeCompare(b.name));
     } else if (viewMode === 'monthly') {
       // Group by month
@@ -103,10 +103,10 @@ export default function NutritionHistory(props) {
       });
       return Object.entries(grouped).map(([month, items]) => ({
         name: month,
-        calories: items.reduce((sum, i) => sum + i.calories, 0),
-        protein: items.reduce((sum, i) => sum + i.protein, 0),
-        carbs: items.reduce((sum, i) => sum + i.carbs, 0),
-        fat: items.reduce((sum, i) => sum + i.fat, 0),
+        calories: items.reduce((sum, i) => sum + ((i.calories || 0) * (i.quantity || 1)), 0),
+        protein: items.reduce((sum, i) => sum + ((i.protein || 0) * (i.quantity || 1)), 0),
+        carbs: items.reduce((sum, i) => sum + ((i.carbs || 0) * (i.quantity || 1)), 0),
+        fat: items.reduce((sum, i) => sum + ((i.fat || 0) * (i.quantity || 1)), 0),
       })).sort((a, b) => a.name.localeCompare(b.name));
     }
     return [];
@@ -233,18 +233,30 @@ export default function NutritionHistory(props) {
         if (profileRes.error) throw new Error('Failed to fetch profile');
         if (energyRes.error) throw new Error('Failed to fetch energy target');
         if (summaryRes.error) throw new Error('Failed to fetch summary');
-        const profile = profileRes.data;
+        const macronutrients = profileRes.data;
         const { energy_target } = energyRes.data;
         const data = summaryRes.data;
 
-        console.log('data', data);
 
         // Calculate macro targets
         const energyTarget = energy_target || 2400;
-        const proteinRatio = profile.protein_ratio ?? 30;
-        const carbRatio = profile.carb_ratio ?? 50;
+        const proteinRatio = macronutrients.profile.protein_ratio ?? 30;
+        const carbRatio = macronutrients.profile.carb_ratio ?? 50;
         const proteinTarget = Math.round((energyTarget * (proteinRatio / 100)) / 4);
         const carbTarget = Math.round((energyTarget * (carbRatio / 100)) / 4);
+
+        // Helper to calculate trend and percent
+        function getTrend(value, target) {
+          if (value > target) return 'up';
+          if (value < target) return 'down';
+          return 'neutral';
+        }
+        function getTrendValue(value, target) {
+          if (!target) return '0%';
+          const percent = ((value - target) / target) * 100;
+          if (percent === 0) return '0%';
+          return (percent > 0 ? '+' : '') + percent.toFixed(1) + '%';
+        }
 
         setSummaryData([
           {
@@ -254,8 +266,8 @@ export default function NutritionHistory(props) {
             unit: 'kcal',
             color: '#c41e3a',
             percentComplete: Math.round((data.average_calories / energyTarget) * 100),
-            trend: 'neutral',
-            trendValue: '0%'
+            trend: getTrend(data.average_calories, energyTarget),
+            trendValue: getTrendValue(data.average_calories, energyTarget)
           },
           {
             title: 'Protein Intake',
@@ -264,8 +276,8 @@ export default function NutritionHistory(props) {
             unit: 'g',
             color: '#4CAF50',
             percentComplete: Math.round((data.average_protein / proteinTarget) * 100),
-            trend: 'neutral',
-            trendValue: '0%'
+            trend: getTrend(data.average_protein, proteinTarget),
+            trendValue: getTrendValue(data.average_protein, proteinTarget)
           },
           {
             title: 'Carb Intake',
@@ -274,8 +286,8 @@ export default function NutritionHistory(props) {
             unit: 'g',
             color: '#2196F3',
             percentComplete: Math.round((data.average_carbs / carbTarget) * 100),
-            trend: 'neutral',
-            trendValue: '0%'
+            trend: getTrend(data.average_carbs, carbTarget),
+            trendValue: getTrendValue(data.average_carbs, carbTarget)
           },
           {
             title: 'Days Tracked',
@@ -305,11 +317,9 @@ export default function NutritionHistory(props) {
       setMacroLoading(true);
       try {
         const { data, error } = await fetchWithAuth(`/api/plate/food-macros?start_date=${start}&end_date=${end}`);
+        // console.log("data", data )
         if (error) throw new Error('Failed to fetch macro data');
         const foodMacros = data;
-        console.log('res', foodMacros);
-        console.log('viewmode', viewMode);
-        console.log('foodMacros', foodMacros); // Debug: log the raw macro data
         const aggregated = aggregateMacros(foodMacros, viewMode);
         if (viewMode === 'daily') {
           setMacroData(fillMissingDates(aggregated, start, end));
@@ -328,6 +338,21 @@ export default function NutritionHistory(props) {
     };
     fetchMacroData();
   }, [dateRange, viewMode]);
+
+  // Fetch weight data for chart (when dateRange changes)
+  useEffect(() => {
+    const fetchWeightData = async () => {
+      const { start, end } = getDateRangeBounds(dateRange);
+      try {
+        const { data, error } = await fetchWithAuth(`/api/weight-log?start_date=${start}&end_date=${end}`);
+        if (error) throw new Error('Failed to fetch weight data');
+        setWeightData(data || []);
+      } catch (err) {
+        setWeightData([]);
+      }
+    };
+    fetchWeightData();
+  }, [dateRange]);
 
   return (
     <div className="max-w-4xl w-full mx-auto px-4 py-8">
@@ -403,16 +428,13 @@ export default function NutritionHistory(props) {
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Weight Progress</h2>
-                <p className="text-sm text-gray-500">Dec 24, 2024 to Jun 21, 2025</p>
+                {(() => { const { start, end } = getDateRangeBounds(dateRange); return (
+                  <p className="text-sm text-gray-500">{formatDisplayDate(start)} to {formatDisplayDate(end)}</p>
+                ); })()}
               </div>
               
               <div className="flex space-x-2 mt-3 md:mt-0">
-                <button className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm font-medium text-gray-700">
-                  Last 6 months ▾
-                </button>
-                <button className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm font-medium text-gray-700">
-                  All Days ▾
-                </button>
+
                 <button className="text-gray-500 hover:text-gray-700">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -421,7 +443,7 @@ export default function NutritionHistory(props) {
               </div>
             </div>
             
-            <WeightChart />
+            <WeightChart weightData={weightData} />
         </div>
       </div>
     </div>

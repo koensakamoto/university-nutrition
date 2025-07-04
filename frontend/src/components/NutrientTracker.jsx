@@ -12,18 +12,39 @@ import {
     Tooltip,
 } from 'recharts'
 import { XIcon, DownloadIcon, TrashIcon, ClipboardPlus, CheckIcon } from 'lucide-react'
+import { useAuth } from '../AuthProvider'
+
+function getAdjustedPortion(portionSize, quantity) {
+    if (!portionSize || typeof portionSize !== 'string') return '';
+    if (!quantity) quantity = 1;
+    const match = portionSize.match(/^([\d\.\/]+)\s*(.*)$/);
+    if (!match) return portionSize; // fallback
+    let [_, amount, unit] = match;
+    // Handle fractions like "1/2"
+    let numericAmount = 1;
+    if (amount.includes('/')) {
+        const [num, denom] = amount.split('/').map(Number);
+        numericAmount = num / denom;
+    } else {
+        numericAmount = parseFloat(amount);
+    }
+    const adjusted = (numericAmount * quantity).toFixed(2).replace(/\.00$/, '');
+    return `${adjusted} ${unit}`.trim();
+}
 
 const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, onSavePlate }) => {
+    const { user } = useAuth();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const plateEmpty = trackedItems.length === 0;
     // Calculate nutrition totals
     const totals = trackedItems.reduce(
         (acc, item) => {
+            const qty = item.quantity || 1;
             return {
-                calories: acc.calories + item.calories,
-                protein: acc.protein + item.protein,
-                carbs: acc.carbs + item.carbs,
-                fat: acc.fat + item.totalFat,
+                calories: acc.calories + (Number(item.calories) || 0) * qty,
+                protein: acc.protein + (Number(item.protein) || 0) * qty,
+                carbs: acc.carbs + (Number(item.carbs) || 0) * qty,
+                fat: acc.fat + (Number(item.totalFat) || 0) * qty,
             }
         },
         {
@@ -121,20 +142,22 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                         </div>
                     </div>
                     <div className="my-4 border-t border-gray-200"></div>
-                    <button
-                        onClick={handleSave}
-                        className="w-full flex items-center justify-center gap-2 bg-[#c41e3a] text-white font-semibold py-2 rounded-lg shadow hover:bg-[#a81b2b] transition mb-2"
-                        disabled={saveSuccess}
-                    >
-                        {saveSuccess ? (
-                            <CheckIcon className="h-5 w-5" />
-                        ) : (
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2M7 10V6a2 2 0 012-2h6a2 2 0 012 2v4m-5 4h.01"></path>
-                            </svg>
-                        )}
-                        {saveSuccess ? 'Saved!' : 'Save Plate'}
-                    </button>
+                    {user && !user.guest && (
+                        <button
+                            onClick={handleSave}
+                            className="w-full flex items-center justify-center gap-2 bg-[#c41e3a] text-white font-semibold py-2 rounded-lg shadow hover:bg-[#a81b2b] transition mb-2"
+                            disabled={saveSuccess}
+                        >
+                            {saveSuccess ? (
+                                <CheckIcon className="h-5 w-5" />
+                            ) : (
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16v2a2 2 0 01-2 2H9a2 2 0 01-2-2v-2M7 10V6a2 2 0 012-2h6a2 2 0 012 2v4m-5 4h.01"></path>
+                                </svg>
+                            )}
+                            {saveSuccess ? 'Saved!' : 'Save Plate'}
+                        </button>
+                    )}
                     <div className="mb-4">
                         <h3 className="text-sm font-medium text-gray-700 mb-2">Calorie Breakdown</h3>
                         <ResponsiveContainer width="100%" height={120}>
@@ -202,7 +225,9 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                 >
                                     <div>
                                         <p className="text-sm font-medium text-gray-800">{item.name}</p>
-                                        <p className="text-xs text-gray-500">{item.calories} cal · {item.portionSize}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {(item.calories || 0) * (item.quantity || 1)} cal · {getAdjustedPortion(item.portionSize, item.quantity)}
+                                        </p>
                                     </div>
                                     <button
                                         onClick={() => removeItem(item.uniqueId)}

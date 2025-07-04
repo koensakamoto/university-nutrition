@@ -65,6 +65,12 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error('Failed to update weight info');
+      await fetch('/api/weight-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ weight: parseFloat(currentWeight) })
+      });
       setOriginal({
         currentWeight: body.weight.toString(),
         weightGoal: body.weight_goal.toString(),

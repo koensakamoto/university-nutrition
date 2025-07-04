@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Info, Key, Lock, ShieldCheck } from 'lucide-react';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
+import { useFetchWithAuth } from '../../AuthProvider';
 
 export const AccountSecuritySection = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -13,6 +14,7 @@ export const AccountSecuritySection = () => {
   const [passwordError, setPasswordError] = useState('');
   const [showTooltip, setShowTooltip] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState('');
+  const fetchWithAuth = useFetchWithAuth();
 
   const handlePasswordUpdate = async () => {
     setPasswordError('');
@@ -26,16 +28,15 @@ export const AccountSecuritySection = () => {
       return;
     }
     // Call backend API
-    const res = await fetch('/api/account/change-password', {
+    const { data, error } = await fetchWithAuth('/api/account/change-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({
         current_password: currentPassword,
         new_password: tempPassword
       })
     });
-    if (res.ok) {
+    if (!error) {
       setIsEditing(false);
       setPasswordError('');
       setPasswordSuccess('Password updated successfully!');
@@ -43,8 +44,7 @@ export const AccountSecuritySection = () => {
       setConfirmPassword('');
       setCurrentPassword('');
     } else {
-      const data = await res.json();
-      setPasswordError(data.detail || 'Failed to update password');
+      setPasswordError(data?.detail || 'Failed to update password');
       setPasswordSuccess('');
     }
   };

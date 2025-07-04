@@ -17,12 +17,27 @@ const data = [
   { date: 'Jun 15', weight: 169.7, goal: 170 },
 ];
 
-export const WeightChart = () => {
+export const WeightChart = ({ weightData = [] }) => {
+  // Format data for recharts: convert date to 'MMM d' for X axis
+  const chartData = (weightData || []).map(entry => ({
+    ...entry,
+    date: (() => {
+      try {
+        const d = new Date(entry.date);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      } catch {
+        return entry.date;
+      }
+    })(),
+  }));
+  if (!chartData.length) {
+    return <div className="w-full h-72 flex items-center justify-center text-gray-500">No weight data for this period.</div>;
+  }
   return (
     <div className="w-full h-72">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={data}
+          data={chartData}
           margin={{
             top: 10,
             right: 30,
@@ -50,13 +65,15 @@ export const WeightChart = () => {
             dot={{ r: 4, strokeWidth: 2 }}
             activeDot={{ r: 6, stroke: '#c41e3a', strokeWidth: 2, fill: 'white' }}
           />
-          <Line 
-            type="monotone" 
-            dataKey="goal" 
-            stroke="#b7e4c7" 
-            strokeWidth={2}
-            strokeDasharray="5 5"
-          />
+          {chartData.some(d => d.goal !== undefined) && (
+            <Line 
+              type="monotone" 
+              dataKey="goal" 
+              stroke="#b7e4c7" 
+              strokeWidth={2}
+              strokeDasharray="5 5"
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

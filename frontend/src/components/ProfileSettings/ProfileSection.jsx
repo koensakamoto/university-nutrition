@@ -126,6 +126,12 @@ export const ProfileSection = ({ refreshEnergyTarget }) => {
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error('Failed to update profile');
+      await fetch('/api/weight-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ weight: parseFloat(weight) })
+      });
       setOriginal({
         sex: body.sex,
         birthday: body.birthday,

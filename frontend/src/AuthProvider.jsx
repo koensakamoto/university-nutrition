@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [wasAuthenticated, setWasAuthenticated] = useState(false);
 
 
   useEffect(() => {
@@ -23,6 +24,7 @@ export function AuthProvider({ children }) {
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
+        setWasAuthenticated(true);
       } else {
         setUser(null);
         setError("Not authenticated");
@@ -50,6 +52,7 @@ export function AuthProvider({ children }) {
       if (profileRes.ok) {
         const userData = await profileRes.json();
         setUser(userData);
+        setWasAuthenticated(true);
         return true;
       }
       return false;
@@ -75,6 +78,7 @@ const login = async (email, password) => {
     if (profileRes.ok) {
       const userData = await profileRes.json();
       setUser(userData);
+      setWasAuthenticated(true);
       return true;
     }
 
@@ -105,11 +109,12 @@ const logout = async () => {
 const guestLogin = async () => {
   setUser({ guest: true, name: 'Guest User' });
   setError(null);
+  setWasAuthenticated(false);
   return true;
 };
 
 return (
-  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin }}>
+  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin, wasAuthenticated }}>
     {children}
   </AuthContext.Provider>
 );
@@ -132,7 +137,7 @@ export function useAuth() {
 // Global fetch wrapper to handle 401 Unauthorized
 export function useFetchWithAuth() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, wasAuthenticated } = useAuth();
 
   return async function fetchWithAuth(url, options = {}) {
     try {
@@ -140,7 +145,11 @@ export function useFetchWithAuth() {
 
       if (res.status === 401) {
         await logout();
-        navigate('/login?expired=1', { replace: true });
+        if (wasAuthenticated) {
+          navigate('/login?expired=1', { replace: true });
+        } else {
+          navigate('/login', { replace: true });
+        }
         return { data: null, error: 'Session expired' };
       }
 

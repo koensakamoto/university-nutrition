@@ -19,6 +19,15 @@ function getLocalDateString(date) {
   return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
 }
 
+// Add a PrivateRoute component for authenticated, non-guest users
+function PrivateRoute({ children }) {
+  const { user } = useAuth();
+  if (!user || user.guest) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
+}
+
 export default function App() {
   const { user, logout } = useAuth();
   const [trackedItems, setTrackedItems] = React.useState([])
@@ -32,7 +41,6 @@ export default function App() {
       quantity: quantity,
       uniqueId: crypto.randomUUID()
     };
-    console.log('newItem', newItem);
     setTrackedItems((prev) => [...prev, newItem]);
   }
 
@@ -45,8 +53,10 @@ export default function App() {
   }
 
   const handleSavePlate = async () => {
+
     console.log('handleSavePlate called');
     const plateItems = trackedItems.map(item => {
+      console.log('item', item);
       const foodId = item.id || item._id;
       const isCustom = String(foodId).startsWith('custom-');
       const base = {
@@ -117,10 +127,9 @@ export default function App() {
           />
 
           <Route path="login" element={<Login />} />
-          <Route path="profile" element={<ProfileSettings />} />
-          <Route path="history" element={<NutritionHistory/> }/>
-          <Route path="account" element={<UserAccount/>}/>
-          
+          <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
+          <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
+          <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
           <Route 
             path="*"
             element={<Navigate to="/" />}

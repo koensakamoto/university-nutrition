@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Download, CircleHelp, Info, LogOut, Trash2 } from 'lucide-react';
-import { useAuth } from '../../AuthProvider';
+import { useAuth, useFetchWithAuth } from '../../AuthProvider';
 import { Link } from 'react-router-dom'
 import { AccountInfoToolTip } from './AccountInfoToolTip';
 
@@ -11,21 +11,20 @@ export const AccountManagementSection = () => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const fetchWithAuth = useFetchWithAuth();
 
   const handleDeleteAccount = async () => {
     setDeleteLoading(true);
     setDeleteError('');
     try {
-      const res = await fetch('/api/account', {
+      const { data, error } = await fetchWithAuth('/api/account', {
         method: 'DELETE',
-        credentials: 'include'
       });
-      if (res.ok) {
+      if (!error) {
         await logout();
         window.location.href = '/login';
       } else {
-        const data = await res.json();
-        setDeleteError(data.detail || 'Failed to delete account');
+        setDeleteError(data?.detail || 'Failed to delete account');
       }
     } catch (err) {
       setDeleteError('Failed to delete account');

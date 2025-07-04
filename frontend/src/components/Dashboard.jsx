@@ -5,7 +5,7 @@ import AIAssistant from './AIAssistant'
 import CustomMealForm from './CustomMealForm'
 import { MessageCircleIcon, PlusCircleIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
-import { useFetchWithAuth } from '../AuthProvider'
+import { useFetchWithAuth, useAuth } from '../AuthProvider'
 // Mock data for food stations
 const mockFoodStations = [
   {
@@ -169,6 +169,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
   const fetchWithAuth = useFetchWithAuth();
+  const { user } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams({
@@ -205,6 +206,10 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
 
   // Load plate on date or foodStations change
   useEffect(() => {
+    if (user && user.guest) {
+      setTrackedItems([]);
+      return;
+    }
     const loadPlateForDate = async () => {
       const dateStr = getLocalDateString(date);
       const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
@@ -241,7 +246,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
     };
     loadPlateForDate();
     // eslint-disable-next-line
-  }, [date, foodStations]);
+  }, [date, foodStations, user]);
 
   const handleSavePlate = async () => {
     const plateItems = trackedItems.map(item => {

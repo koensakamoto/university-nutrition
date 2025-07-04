@@ -66,14 +66,23 @@ export const MacroChart = ({ unit, viewMode, data }) => {
     return <div className="w-full h-80 flex items-center justify-center text-gray-500">No data available for this period.</div>;
   }
 
-  // Optionally, convert macros to kcal if needed (if not already in kcal)
-  const convertedData = chartData.map(day => ({
-    ...day,
-    protein: Math.round(day.protein * 4) < 1 ? 0 : Math.round(day.protein * 4),
-    carbs: Math.round(day.carbs * 4) < 1 ? 0 : Math.round(day.carbs * 4),
-    fat: Math.round(day.fat * 9) < 1 ? 0 : Math.round(day.fat * 9),
-    total: day.total
-  }));
+  // Use direct values from chartData for macros
+  const convertedData = chartData.map(day => {
+    const protein = typeof day.protein === 'number' ? day.protein : 0;
+    const carbs = typeof day.carbs === 'number' ? day.carbs : 0;
+    const fat = typeof day.fat === 'number' ? day.fat : 0;
+    // Calculate calories from macros for display if needed
+    const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+    console.log("cal", calories)
+    console.log("rounded",Math.round(calories))
+    return {
+      ...day,
+      protein: Math.round(protein * 4) < 1 ? 0 : Math.round(protein * 4),
+      carbs: Math.round(carbs * 4) < 1 ? 0 : Math.round(carbs * 4),
+      fat: Math.round(fat * 9) < 1 ? 0 : Math.round(fat * 9),
+      total: Math.round(calories)
+    };
+  });
 
   // Determine XAxis interval based on data length
   let xAxisInterval = 0;

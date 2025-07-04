@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, Info, Mail, User, Camera } from 'lucide-react';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
-import { useAuth } from '../../AuthProvider';
+import { useAuth, useFetchWithAuth } from '../../AuthProvider';
 
 export const AccountSection = () => {
   const { user } = useAuth();
+  const fetchWithAuth = useFetchWithAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   
@@ -28,12 +29,9 @@ export const AccountSection = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
-
-
       try {
-        const res = await fetch('/api/profile', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to fetch profile');
-        const data = await res.json();
+        const { data, error } = await fetchWithAuth('/api/profile');
+        if (error || !data) throw new Error('Failed to fetch profile');
         setName(data.profile.name || '');
         setImage(data.profile.image || '');
         setTempName(data.profile.name || '');
@@ -45,8 +43,6 @@ export const AccountSection = () => {
         setLoading(false);
       }
     };
-
-
     fetchProfile();
   }, []);
 
@@ -84,22 +80,19 @@ export const AccountSection = () => {
     try {
       const formData = new FormData();
       formData.append('image', tempImage);
-      const res = await fetch('/api/profile/image', {
+      const { data, error } = await fetchWithAuth('/api/profile/image', {
         method: 'POST',
-        credentials: 'include',
         body: formData,
       });
-      if (!res.ok) throw new Error('Failed to upload image');
-      const data = await res.json();
+      if (error || !data) throw new Error('Failed to upload image');
       const imageUrl = data.url;
       // Update profile with new image URL
-      const updateRes = await fetch('/api/profile', {
+      const { data: updateData, error: updateError } = await fetchWithAuth('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ image: imageUrl })
       });
-      if (!updateRes.ok) throw new Error('Failed to update profile image');
+      if (updateError || !updateData) throw new Error('Failed to update profile image');
       setImage(imageUrl);
       setTempImage(null);
       setPreviewImage('');
@@ -115,13 +108,12 @@ export const AccountSection = () => {
     setSaveError('');
     setSaveSuccess('');
     try {
-      const res = await fetch('/api/profile', {
+      const { data, error } = await fetchWithAuth('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ name: tempName })
       });
-      if (!res.ok) throw new Error('Failed to update name');
+      if (error || !data) throw new Error('Failed to update name');
       setName(tempName);
       setEditingName(false);
       setSaveSuccess('Name updated!');
@@ -134,13 +126,12 @@ export const AccountSection = () => {
     setSaveError('');
     setSaveSuccess('');
     try {
-      const res = await fetch('/api/profile/email', {
+      const { data, error } = await fetchWithAuth('/api/profile/email', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email: tempEmail })
       });
-      if (!res.ok) throw new Error('Failed to update email');
+      if (error || !data) throw new Error('Failed to update email');
       setEmail(tempEmail);
       setEditingEmail(false);
       setSaveSuccess('Email updated!');
@@ -157,15 +148,12 @@ export const AccountSection = () => {
     if (tempImage) {
       const formData = new FormData();
       formData.append("image", tempImage);
-      const res = await fetch("/api/profile/image", {
+      const { data, error } = await fetchWithAuth("/api/profile/image", {
         method: "POST",
         body: formData,
-        credentials: "include"
       });
-      if (res.ok) {
-        const data = await res.json();
-        imageUrl = data.url;
-      }
+      if (error || !data) throw new Error('Failed to upload image');
+      imageUrl = data.url;
     }
     // Save the profile with the new imageUrl and other fields
     await saveProfile({ ...otherFields, image: imageUrl });

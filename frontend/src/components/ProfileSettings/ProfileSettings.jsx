@@ -7,15 +7,18 @@ import { ActivityLevelSection } from './ActivityLevelSection';
 import { DietaryPreferencesSection } from './DietaryPreferencesSection';
 import { AllergensSection } from './AllergensSection';
 import { WeightGoalRateSection } from './WeightGoalRateSection';
+import { useFetchWithAuth } from '../../AuthProvider';
 
 export default function ProfileSettings(props) {
   const [energyTarget, setEnergyTarget] = useState(null);
+  const fetchWithAuth = useFetchWithAuth();
 
   const fetchEnergyTarget = useCallback(() => {
-    fetch('/api/profile/energy-target', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => setEnergyTarget(data.energy_target));
-  }, []);
+    fetchWithAuth('/api/profile/energy-target')
+      .then(({ data, error }) => {
+        if (!error && data) setEnergyTarget(data.energy_target);
+      });
+  }, [fetchWithAuth]);
 
   useEffect(() => {
     fetchEnergyTarget();
