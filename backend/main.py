@@ -10,10 +10,11 @@ from datetime import datetime, timedelta
 import shutil
 import uuid
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
 import io
 import csv
 import json
+from authlib.integrations.starlette_client import OAuth
 
 from models.food import Food
 from models.agent import AgentQuery
@@ -26,6 +27,8 @@ from auth_util import (
     get_user_by_email, get_current_user
 )
 from jwt_util import create_access_token
+
+from starlette.middleware.sessions import SessionMiddleware
 
 
 
@@ -40,6 +43,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "dev-secret-key"))
+
 # Load environment variables
 load_dotenv()
 
@@ -49,6 +54,16 @@ client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where())
 db = client["nutritionapp"]
 foods_collection = db["foods"]
 users_collection = db["users"]
+
+# Google OAuth2 setup
+oauth = OAuth()
+oauth.register(
+    name='google',
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+    client_kwargs={'scope': 'openid email profile'},
+)
 
 # Helper to convert ObjectId to string
 def fix_id(food):
@@ -139,7 +154,11 @@ def register(user: UserCreate, response: Response):
 @app.post("/auth/login")
 def login(user: UserCreate, response: Response):
     db_user = get_user_by_email(users_collection, user.email)
-    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
+    if not db_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if db_user.get("hashed_password") is None:
+        raise HTTPException(status_code=400, detail="Account uses Google login. Please use 'Continue with Google' or set a password in your account settings.")
+    if not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token({"sub": user.email})
     set_auth_cookie(response, token)
@@ -155,7 +174,8 @@ def get_profile(request: Request):
     user = get_current_user(request, users_collection)
     return {
         "email": user.get("email"),
-        "profile": user.get("profile", {})
+        "profile": user.get("profile", {}),
+        "hasPassword": bool(user.get("hashed_password"))
     }
 
 @app.get("/api/email")
@@ -825,12 +845,56 @@ def export_data(request: Request, body: dict = Body(...)):
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "Standard", border=1, ln=1)
             pdf.ln(5)
         pdf_bytes = pdf.output(dest='S')
         return StreamingResponse(io.BytesIO(pdf_bytes), media_type="application/pdf", headers={"Content-Disposition": "attachment; filename=export.pdf"})
 
     return JSONResponse({"error": "Invalid format."}, status_code=400)
+
+@app.get('/auth/google/login')
+async def google_login(request: Request):
+    redirect_uri = request.url_for('google_auth')
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+@app.get('/auth/google/auth')
+async def google_auth(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    user_info = token.get("userinfo")
+    if not user_info:
+        user_info = await oauth.google.parse_id_token(request, token)
+    email = user_info['email']
+    db_user = get_user_by_email(users_collection, email)
+    if not db_user:
+        users_collection.insert_one({
+            "email": email,
+            "hashed_password": None,
+            "profile": {"name": user_info.get("name", "")}
+        })
+        db_user = get_user_by_email(users_collection, email)
+    # Issue JWT/cookie
+    jwt_token = create_access_token({"sub": email})
+    # Redirect based on password presence
+    if not db_user.get("hashed_password"):
+        response = RedirectResponse(url="http://localhost:5173/set-password")
+    else:
+        response = RedirectResponse(url="http://localhost:5173/dashboard")
+    set_auth_cookie(response, jwt_token)
+    return response
+
+@app.post("/api/account/set-password")
+def set_password(request: Request, new_password: str = Body(...)):
+    user = get_current_user(request, users_collection)
+    if user.get("hashed_password"):
+        raise HTTPException(status_code=400, detail="Password already set.")
+    hashed_pw = hash_password(new_password)
+    users_collection.update_one(
+        {"email": user["email"]},
+        {"$set": {"hashed_password": hashed_pw}}
+    )
+    return {"message": "Password set successfully"}
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")

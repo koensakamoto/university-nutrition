@@ -165,7 +165,7 @@ export const AccountSecuritySection = () => {
         </div>
         
         <div>
-          <div className="flex items-center justify-between mb-2">
+          {/* <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
               <ShieldCheck size={18} className="text-gray-500 mr-2" />
               <label className="text-gray-700 font-medium">Two-Factor Authentication</label>
@@ -187,12 +187,12 @@ export const AccountSecuritySection = () => {
                 ></span>
               </label>
             </div>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
+          </div> */}
+          {/* <p className="text-sm text-gray-600 mb-4">
             Add an extra layer of security to your account by requiring a verification code in addition to your password.
-          </p>
+          </p> */}
           
-          {twoFactorEnabled && (
+          {/* {twoFactorEnabled && (
             <div className="bg-gray-50 p-4 rounded-lg">
               <div className="font-medium text-gray-800 mb-2">Two-Factor Authentication is enabled</div>
               <p className="text-sm text-gray-600">
@@ -202,7 +202,7 @@ export const AccountSecuritySection = () => {
                 Configure 2FA Settings
               </button>
             </div>
-          )}
+          )} */}
         </div>
         
       

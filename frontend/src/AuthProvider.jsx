@@ -12,6 +12,7 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [wasAuthenticated, setWasAuthenticated] = useState(false);
+  const navigate = useNavigate();
 
 
   useEffect(() => {
@@ -20,20 +21,20 @@ export function AuthProvider({ children }) {
       const res = await fetch("/api/profile", {
         credentials: "include",
       });
-      setLoading(false);
       if (res.ok) {
         const userData = await res.json();
         setUser(userData);
         setWasAuthenticated(true);
+        setLoading(false);
       } else {
         setUser(null);
         setError("Not authenticated");
+        setLoading(false);
       }
     };
 
     fetchProfile();
   }, []);
-
 
   const register = async (email, password) => {
     setError(null);
@@ -113,8 +114,23 @@ const guestLogin = async () => {
   return true;
 };
 
+// Add refetchProfile function
+const refetchProfile = async () => {
+  setLoading(true);
+  const res = await fetch("/api/profile", { credentials: "include" });
+  if (res.ok) {
+    const userData = await res.json();
+    setUser(userData);
+    setWasAuthenticated(true);
+  } else {
+    setUser(null);
+    setError("Not authenticated");
+  }
+  setLoading(false);
+};
+
 return (
-  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin, wasAuthenticated }}>
+  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin, wasAuthenticated, refetchProfile }}>
     {children}
   </AuthContext.Provider>
 );

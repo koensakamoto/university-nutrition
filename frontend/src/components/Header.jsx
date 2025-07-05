@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   MenuIcon,
   XIcon,
@@ -20,6 +20,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileMenuOpen, setProfileMenuOpen] = useState(false)
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen)
   }
@@ -68,31 +69,32 @@ const Header = () => {
                 )}
                 {/* Show Sign In for guest, Sign Out for authenticated */}
                 {user.guest ? (
-                  <Link
-                    to="login"
+                  <button
+                    onClick={async () => {
+                      await logout();
+                      navigate('/login');
+                    }}
                     className="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100"
                   >
                     Sign In
-                  </Link>
+                  </button>
                 ) : (
-                  <Link to="login" className="hover:text-red-200 flex items-center">
-                    <button
-                      className="flex items-center space-x-2 py-2 hover:text-red-200"
-                      onClick={logout}
-                    >
-                      <LogOutIcon size={18} />
-                      <span>Sign Out</span>
-                    </button>
-                  </Link>
+                  <button
+                    className="flex items-center space-x-2 py-2 hover:text-red-200"
+                    onClick={logout}
+                  >
+                    <LogOutIcon size={18} />
+                    <span>Sign Out</span>
+                  </button>
                 )}
               </>
             ) : (
-              <Link
-                to="login"
+              <button
+                onClick={() => navigate('/login')}
                 className="bg-white text-red-600 px-4 py-2 rounded-md font-medium hover:bg-red-100"
               >
                 Sign In
-              </Link>
+              </button>
             )}
           </nav>
           {/* Mobile Menu Button */}
@@ -144,12 +146,15 @@ const Header = () => {
                 <div className="border-t border-red-500 pt-2 mt-2">
                   {/* Show Sign In for guest, Sign Out for authenticated */}
                   {user.guest ? (
-                    <Link
-                      to="login"
-                      className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100"
+                    <button
+                      onClick={async () => {
+                        await logout();
+                        navigate('/login');
+                      }}
+                      className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100 w-full"
                     >
                       Sign In
-                    </Link>
+                    </button>
                   ) : (
                     <button
                       className="flex items-center space-x-2 py-2 hover:text-red-200"
@@ -162,12 +167,12 @@ const Header = () => {
                 </div>
               </>
             ) : (
-              <Link
-                to="login"
-                className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100"
+              <button
+                onClick={() => navigate('/login')}
+                className="block bg-white text-red-600 px-4 py-2 rounded-md font-medium text-center hover:bg-red-100 w-full"
               >
                 Sign In
-              </Link>
+              </button>
             )}
           </nav>
         )}

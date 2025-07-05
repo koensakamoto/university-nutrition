@@ -21,7 +21,13 @@ function getLocalDateString(date) {
 
 // Add a PrivateRoute component for authenticated, non-guest users
 function PrivateRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading, error } = useAuth(); 
+
+
+  if(loading){
+    return <div>Loading...</div>;
+  }
+
   if (!user || user.guest) {
     return <Navigate to="/login" replace />;
   }
@@ -57,6 +63,7 @@ export default function App() {
     console.log('handleSavePlate called');
     const plateItems = trackedItems.map(item => {
       console.log('item', item);
+
       const foodId = item.id || item._id;
       const isCustom = String(foodId).startsWith('custom-');
       const base = {
@@ -92,7 +99,6 @@ export default function App() {
   }
 
   return (
-    <Router>
       <Routes>
         <Route 
           path="/" 
@@ -126,7 +132,7 @@ export default function App() {
             }
           />
 
-          <Route path="login" element={<Login />} />
+          <Route path="login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
           <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
           <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
           <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
@@ -136,6 +142,5 @@ export default function App() {
           />
         </Route>
       </Routes>
-    </Router>
   )
 }

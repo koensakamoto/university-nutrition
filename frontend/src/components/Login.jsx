@@ -5,7 +5,7 @@ import ULogo from '../images/ULogo.png'
 import { useAuth } from "../AuthProvider"
 
 const GoogleIcon = () => (
-  <svg className="mr-2" width="18" height="18" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.23l6.85-6.85C36.68 2.69 30.77 0 24 0 14.82 0 6.73 5.1 2.69 12.55l7.99 6.21C12.13 13.13 17.62 9.5 24 9.5z"/><path fill="#34A853" d="M46.1 24.55c0-1.64-.15-3.22-.42-4.74H24v9.01h12.42c-.54 2.9-2.18 5.36-4.65 7.01l7.18 5.59C43.98 37.13 46.1 31.36 46.1 24.55z"/><path fill="#FBBC05" d="M10.68 28.76c-.48-1.44-.76-2.97-.76-4.55s.28-3.11.76-4.55l-7.99-6.21C1.01 16.36 0 20.05 0 24s1.01 7.64 2.69 10.55l7.99-6.21z"/><path fill="#EA4335" d="M24 48c6.48 0 11.92-2.14 15.89-5.82l-7.18-5.59c-2 1.34-4.56 2.13-7.71 2.13-6.38 0-11.87-3.63-14.32-8.76l-7.99 6.21C6.73 42.9 14.82 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></g></svg>
+  <svg className="mr-2" width="18" height="18" viewBox="0 0 48 48"><g><path fill="#4285F4" d="M24 9.5c3.54 0 6.7 1.22 9.19 3.23l6.85-6.85C36.68 2.69 30.77 0 24 0 14.82 0 6.73 5.1 2.69 12.55l7.99 6.21C12.13 13.13 17.62 9.5 24 9.5z" /><path fill="#34A853" d="M46.1 24.55c0-1.64-.15-3.22-.42-4.74H24v9.01h12.42c-.54 2.9-2.18 5.36-4.65 7.01l7.18 5.59C43.98 37.13 46.1 31.36 46.1 24.55z" /><path fill="#FBBC05" d="M10.68 28.76c-.48-1.44-.76-2.97-.76-4.55s.28-3.11.76-4.55l-7.99-6.21C1.01 16.36 0 20.05 0 24s1.01 7.64 2.69 10.55l7.99-6.21z" /><path fill="#EA4335" d="M24 48c6.48 0 11.92-2.14 15.89-5.82l-7.18-5.59c-2 1.34-4.56 2.13-7.71 2.13-6.38 0-11.87-3.63-14.32-8.76l-7.99 6.21C6.73 42.9 14.82 48 24 48z" /><path fill="none" d="M0 0h48v48H0z" /></g></svg>
 );
 
 const Login = () => {
@@ -21,7 +21,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const success = await login(email, password);
-    if(success){
+    if (success) {
       navigate('/dashboard');
     }
     // No setLoading or setError here; handled by context
@@ -36,10 +36,10 @@ const Login = () => {
 
   return (
     <div className="flex flex-col items-center justify-center w-full min-h-screen relative bg-gradient-to-br from-gray-50 to-white px-4 overflow-hidden">
-      <img src="/bg-nutrition.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-10 blur-lg pointer-events-none select-none" style={{zIndex:0}} />
-      <div className="absolute inset-0 bg-white/60" style={{zIndex:1}} aria-hidden="true"></div>
+      <img src="/bg-nutrition.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-10 blur-lg pointer-events-none select-none" style={{ zIndex: 0 }} />
+      <div className="absolute inset-0 bg-white/60" style={{ zIndex: 1 }} aria-hidden="true"></div>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 border border-gray-100 relative z-10">
-        <div className={`flex flex-col items-center mb-6 pt-2 pb-2 transition-all duration-700 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}` }>
+        <div className={`flex flex-col items-center mb-6 pt-2 pb-2 transition-all duration-700 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
           <img
             src={ULogo}
             alt="University Logo"
@@ -161,6 +161,9 @@ const Login = () => {
               className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-base font-semibold text-gray-700 hover:shadow-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
               style={{ fontWeight: 600 }}
               aria-label="Continue with Google"
+              onClick={() => {
+                window.location.href = "http://localhost:8000/auth/google/login";
+              }}
             >
               <GoogleIcon />
               Continue with Google
