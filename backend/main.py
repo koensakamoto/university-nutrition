@@ -15,9 +15,11 @@ import io
 import csv
 import json
 from authlib.integrations.starlette_client import OAuth
+from pydantic import BaseModel
+from agent.nutrition_agent import run_nutrition_agent
 
 from models.food import Food
-from models.agent import AgentQuery
+from models.agent import AgentQuery, AgentRequest
 
 from models.user import UserCreate, UserProfile, ChangePasswordRequest
 from models.plate import Plate, PlateItem
@@ -139,13 +141,14 @@ def read_root():
 
 @app.post("/auth/register")
 def register(user: UserCreate, response: Response):
+    print("register", user)
     if get_user_by_email(users_collection, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = hash_password(user.password)
     users_collection.insert_one({
         "email": user.email,
         "hashed_password": hashed_pw,
-        "profile": {}  # or default profile fields
+        "profile": {"name": user.first_name + " " + user.last_name}  # or default profile fields
     })
     token = create_access_token({"sub": user.email})
     set_auth_cookie(response, token)
@@ -847,6 +850,8 @@ def export_data(request: Request, body: dict = Body(...)):
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
+                            pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "Standard", border=1, ln=1)
             pdf.ln(5)
         pdf_bytes = pdf.output(dest='S')
@@ -898,3 +903,9 @@ def set_password(request: Request, new_password: str = Body(...)):
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.post("/api/agent")
+def agent_endpoint(request: AgentRequest):
+    db = None  # Placeholder for your database/session
+    response = run_nutrition_agent(request.message, request.user_id, db)
+    return {"response": response}

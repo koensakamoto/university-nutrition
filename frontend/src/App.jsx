@@ -12,6 +12,7 @@ import NutrientTracker from './components/NutrientTracker'
 import ProfileSettings from "./components/ProfileSettings/ProfileSettings"
 import NutritionHistory from './components/nutritionHistory/NutritionHistory.jsx'
 import UserAccount from './components/accountPage/UserAccount'
+import Register from './components/Register'
 import { useAuth } from './AuthProvider'
 
 // Utility to get local date string in YYYY-MM-DD format
@@ -133,6 +134,7 @@ export default function App() {
           />
 
           <Route path="login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="register" element={<Register />} />
           <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
           <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
           <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />

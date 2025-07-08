@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { MailIcon, LockIcon, LogInIcon, ChromeIcon, UserIcon, EyeIcon, EyeOffIcon } from 'lucide-react'
 import ULogo from '../images/ULogo.png'
 import { useAuth } from "../AuthProvider"
@@ -35,7 +35,7 @@ const Login = () => {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-full min-h-screen relative bg-gradient-to-br from-gray-50 to-white px-4 overflow-hidden">
+    <div className="flex items-center justify-center min-h-screen w-full relative bg-gradient-to-br from-gray-50 to-white px-4 overflow-hidden">
       <img src="/bg-nutrition.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover opacity-10 blur-lg pointer-events-none select-none" style={{ zIndex: 0 }} />
       <div className="absolute inset-0 bg-white/60" style={{ zIndex: 1 }} aria-hidden="true"></div>
       <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-6 border border-gray-100 relative z-10">
@@ -143,7 +143,7 @@ const Login = () => {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
           <div className="mt-2 text-center">
-            <a href="/register" className="text-blue-600 hover:underline text-sm font-medium" tabIndex={0} aria-label="Create an account">Create an account</a>
+            <Link to="/register" className="text-blue-600 hover:underline text-sm font-medium" tabIndex={0} aria-label="Create an account">Create an account</Link>
           </div>
         </form>
         <div className="mt-4">
