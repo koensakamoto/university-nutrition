@@ -14,6 +14,8 @@ import certifi
 import re
 from datetime import datetime
 from dateutil.parser import parse
+from scipy.spatial.distance import cosine
+from sentence_transformers import SentenceTransformer
 
 # === Load environment variables from .env ===
 load_dotenv()
@@ -29,6 +31,8 @@ if not db_name:
 client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
 db = client[db_name]
 openai_api_key = os.environ.get("OPENAI_API_KEY")
+
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 if not openai_api_key:
     raise ValueError("OPENAI_API_KEY environment variable is not set.")
@@ -52,119 +56,357 @@ def parse_human_date(date_string: str) -> str:
         return None
 
 # === Step 2: Define Tools ===
-def make_tools(db):
-    @tool
-    def get_user_profile(user_id: str) -> dict:
-        """Fetch the user's profile from the database. Use this to understand the user's goals, preferences, and dietary restrictions."""
-        try:
-            user = db['users'].find_one({"_id": ObjectId(user_id)})
-            if not user:
-                return {"error": "User not found"}
-            # Clean the data - remove sensitive and internal fields
-            user.pop("hashed_password", None)
-            user.pop("_id", None)
-            return user
-        except Exception as e:
-            return {"error": str(e)}
+@tool
+def get_basic_profile(user_id: str) -> dict:
+    """Use this tool to fetch the user's basic info (name, email, sex, birthday) when the user asks about their identity or account details."""
+    try:
+        user = db['users'].find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return {"error": "User not found"}
+        profile = user.get("profile", {})
+        return {
+            "name": profile.get("name"),
+            "email": user.get("email"),
+            "sex": profile.get("sex"),
+            "birthday": profile.get("birthday")
+        }
+    except Exception as e:
+        return {"error": str(e)}
 
-    @tool
-    def get_meal_log(user_id: str) -> list:
-        """Fetch the user's meal log. Analyze the nutritional content, variety, and patterns to provide insights and recommendations."""
-        try:
-            # Ensure user_id is a string to match how it's stored in the database
-            user_id_str = str(user_id)
-            meals = list(db['plates'].find({"user_id": user_id_str}))
-            
-            # Clean and format the data
-            cleaned_meals = []
-            for meal in meals:
-                cleaned_meal = {
-                    "date": meal.get("date"),
-                    "items": []
+@tool
+def fetch_dietary_preferences(user_id: str) -> dict:
+    """Use this tool to fetch the user's dietary preferences, restrictions, allergens, and meal preferences when the user asks about what they can/can't eat or their food sensitivities."""
+    try:
+        user = db['users'].find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return {"error": "User not found"}
+        profile = user.get("profile", {})
+        return {
+            "diet_type": profile.get("diet_type"),
+            "cultural_preference": profile.get("cultural_preference"),
+            "allergens": profile.get("allergens"),
+            "allergy_notes": profile.get("allergy_notes"),
+            "food_sensitivities": profile.get("food_sensitivities"),
+            "meal_preference": profile.get("meal_preference")
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@tool
+def retrieve_user_goals(user_id: str) -> dict:
+    """Use this tool to fetch the user's weight and body goals when the user asks about their targets, progress, or goal setting."""
+    try:
+        user = db['users'].find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return {"error": "User not found"}
+        profile = user.get("profile", {})
+        return {
+            "weight_goal": profile.get("weight_goal"),
+            "weight_goal_type": profile.get("weight_goal_type"),
+            "weight_goal_rate": profile.get("weight_goal_rate"),
+            "weight_goal_custom_rate": profile.get("weight_goal_custom_rate")
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@tool
+def get_body_metrics(user_id: str) -> dict:
+    """Use this tool to fetch the user's body metrics (height, weight, body fat percent, activity level) when the user asks about their physical stats or health metrics."""
+    try:
+        user = db['users'].find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return {"error": "User not found"}
+        profile = user.get("profile", {})
+        return {
+            "height": profile.get("height"),
+            "weight": profile.get("weight"),
+            "body_fat_percent": profile.get("body_fat_percent"),
+            "activity_level": profile.get("activity_level")
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+@tool
+def review_nutrition_history(user_id: str, start_date: str = None, end_date: str = None, summary: bool = False) -> dict:
+    """
+    Fetch the user's meal logs with optional date filtering. If summary=True, return a summary (total meals, average calories, most common foods, and average macros per meal) instead of raw logs.
+    """
+    try:
+        user_id_str = str(user_id)
+        query = {"user_id": user_id_str}
+        if start_date or end_date:
+            date_filter = {}
+            if start_date:
+                date_filter["$gte"] = start_date
+            if end_date:
+                date_filter["$lte"] = end_date
+            query["date"] = date_filter
+        meals = list(db['plates'].find(query))
+        cleaned_meals = []
+        for meal in meals:
+            cleaned_meal = {
+                "date": meal.get("date"),
+                "items": []
+            }
+            for item in meal.get("items", []):
+                # Custom food
+                if "custom_macros" in item:
+                    macros = item["custom_macros"]
+                    name = macros.get("name", "Unknown Food")
+                    calories = macros.get("calories", "Unknown")
+                    protein = macros.get("protein", "Unknown")
+                    carbs = macros.get("carbs", "Unknown")
+                    fat = macros.get("totalFat", "Unknown")
+                # Standard food, look up in foods collection
+                elif "food_id" in item:
+                    food = db["foods"].find_one({"_id": ObjectId(item["food_id"])})
+                    name = food.get("name", "Unknown Food") if food else "Unknown Food"
+                    nutrients = food.get("nutrients", {}) if food else {}
+                    calories = nutrients.get("calories", "Unknown")
+                    protein = nutrients.get("protein", "Unknown")
+                    carbs = nutrients.get("total_carbohydrates", "Unknown")
+                    fat = nutrients.get("total_fat", "Unknown")
+                # Fallback
+                else:
+                    name = "Unknown Food"
+                    calories = protein = carbs = fat = "Unknown"
+                cleaned_item = {
+                    "name": name,
+                    "quantity": item.get("quantity", 1),
+                    "calories": calories,
+                    "protein": protein,
+                    "carbs": carbs,
+                    "fat": fat
                 }
-                for item in meal.get("items", []):
-                    cleaned_item = {
-                        "name": item.get("custom_macros", {}).get("name", "Unknown Food"),
-                        "quantity": item.get("quantity", 1),
-                        "calories": item.get("custom_macros", {}).get("calories", "Unknown"),
-                        "protein": item.get("custom_macros", {}).get("protein", "Unknown"),
-                        "carbs": item.get("custom_macros", {}).get("carbs", "Unknown"),
-                        "fat": item.get("custom_macros", {}).get("totalFat", "Unknown")
-                    }
-                    cleaned_meal["items"].append(cleaned_item)
-                cleaned_meals.append(cleaned_meal)
-            
-            return cleaned_meals
-        except Exception as e:
-            return [{"error": str(e)}]
+                cleaned_meal["items"].append(cleaned_item)
+            cleaned_meals.append(cleaned_meal)
+        # if summary:
+        #     total_meals = len(cleaned_meals)
+        #     total_calories = 0
+        #     total_protein = 0
+        #     total_carbs = 0
+        #     total_fat = 0
+        #     food_counter = {}
+        #     for meal in cleaned_meals:
+        #         meal_protein = 0
+        #         meal_carbs = 0
+        #         meal_fat = 0
+        #         for item in meal["items"]:
+        #             # Only sum calories/macros if numeric
+        #             try:
+        #                 cal = float(item["calories"])
+        #                 total_calories += cal
+        #             except (ValueError, TypeError):
+        #                 pass
+        #             try:
+        #                 protein = float(item["protein"])
+        #                 meal_protein += protein
+        #             except (ValueError, TypeError):
+        #                 pass
+        #             try:
+        #                 carbs = float(item["carbs"])
+        #                 meal_carbs += carbs
+        #             except (ValueError, TypeError):
+        #                 pass
+        #             try:
+        #                 fat = float(item["fat"])
+        #                 meal_fat += fat
+        #             except (ValueError, TypeError):
+        #                 pass
+        #             food_name = item["name"]
+        #             if food_name:
+        #                 food_counter[food_name] = food_counter.get(food_name, 0) + 1
+        #         total_protein += meal_protein
+        #         total_carbs += meal_carbs
+        #         total_fat += meal_fat
+        #     avg_calories = round(total_calories / total_meals, 2) if total_meals else 0
+        #     avg_protein = round(total_protein / total_meals, 2) if total_meals else 0
+        #     avg_carbs = round(total_carbs / total_meals, 2) if total_meals else 0
+        #     avg_fat = round(total_fat / total_meals, 2) if total_meals else 0
+        #     most_common_foods = sorted(food_counter.items(), key=lambda x: x[1], reverse=True)[:3]
+        #     return {
+        #         "summary": {
+        #             "total_meals": total_meals,
+        #             "average_calories_per_meal": avg_calories,
+        #             "most_common_foods": most_common_foods,
+        #             "average_macros_per_meal": {
+        #                 "protein_g": avg_protein,
+        #                 "carbs_g": avg_carbs,
+        #                 "fat_g": avg_fat
+        #             }
+        #         }
+        #     }
+        return {"logs": cleaned_meals}
+    except Exception as e:
+        return {"error": str(e)}
 
-    @tool
-    def get_weight_log(user_id: str) -> list:
-        """Fetch the user's weight history. Analyze trends, patterns, and progress to provide insights and recommendations."""
-        try:
-            weights = list(db['weight_log'].find({"user_id": user_id}))
-            
-            # Clean and format the data
-            cleaned_weights = []
-            for weight_entry in weights:
-                cleaned_weights.append({
-                    "date": weight_entry.get("date"),
-                    "weight": weight_entry.get("weight")
-                })
-            
-            return cleaned_weights
-        except Exception as e:
-            return [{"error": str(e)}]
+@tool
+def analyze_weight_trends(user_id: str, start_date: str = None, end_date: str = None) -> dict:
+    """Use this tool if the user asks about their weight changes, progress, or how their weight has trended over time."""
+    try:
+        query = {"user_id": user_id}
+        if start_date or end_date:
+            date_filter = {}
+            if start_date:
+                date_filter["$gte"] = start_date
+            if end_date:
+                date_filter["$lte"] = end_date
+            query["date"] = date_filter
+        weights = list(db['weight_log'].find(query).sort("date", 1))
+        if not weights:
+            return {"error": "No weight logs found for user."}
+        weight_values = [w.get("weight") for w in weights if w.get("weight") is not None]
+        dates = [w.get("date") for w in weights]
+        if not weight_values:
+            return {"error": "No valid weight entries found."}
+        starting_weight = weight_values[0]
+        latest_weight = weight_values[-1]
+        min_weight = min(weight_values)
+        max_weight = max(weight_values)
+        average_weight = round(sum(weight_values) / len(weight_values), 2)
+        total_logs = len(weight_values)
+        weight_change = round(latest_weight - starting_weight, 2)
+        trend = f"You’ve {'lost' if weight_change < 0 else 'gained'} {abs(weight_change)} lbs over {total_logs-1 if total_logs>1 else 0} days. {'Great progress!' if weight_change < 0 else 'Keep tracking!'}"
+        summary = {
+            "start_date": dates[0],
+            "end_date": dates[-1],
+            "starting_weight": starting_weight,
+            "latest_weight": latest_weight,
+            "min_weight": min_weight,
+            "max_weight": max_weight,
+            "average_weight": average_weight,
+            "total_logs": total_logs,
+            "weight_change": weight_change,
+            "trend": trend
+        }
+        recent_logs = [
+            {"date": w.get("date"), "weight": w.get("weight")} for w in weights[-3:]
+        ][::-1]
+        return {"summary": summary, "recent_logs": recent_logs}
+    except Exception as e:
+        return {"error": str(e)}
 
-    @tool
-    def get_food_info(query: str) -> list:
-        """Search food items by name, description, or date. Analyze nutritional content to identify healthy options and provide meal suggestions. You can search for foods by name (e.g., 'chicken'), or by date (e.g., '2025-07-04' or 'July 4')."""
-        try:
-            # First, try to parse as a date
-            parsed_date = parse_human_date(query)
-            
-            if parsed_date:
-                # Search by exact date
-                foods = list(db['foods'].find({"date": parsed_date}))
-                print(f"DEBUG: Parsed date '{query}' as '{parsed_date}', found {len(foods)} foods")
-            else:
-                # Search by name or description
-                foods = list(db['foods'].find({"name": {"$regex": query, "$options": "i"}}))
-                print(f"DEBUG: Searched for food name '{query}', found {len(foods)} foods")
-            
-            if foods:
-                print(f"DEBUG: Sample food: {foods[0].get('name')} on {foods[0].get('date')}")
-            
-            # Clean and format the data
-            cleaned_foods = []
-            for food in foods:
-                cleaned_food = {
-                    "name": food.get("name"),
-                    "description": food.get("description"),
-                    "dining_hall": food.get("dining_hall"),
-                    "meal_name": food.get("meal_name"),
-                    "station": food.get("station"),
-                    "date": food.get("date"),
-                    "portion_size": food.get("portion_size"),
-                    "nutrients": food.get("nutrients", {})
-                }
-                cleaned_foods.append(cleaned_food)
-            
-            return cleaned_foods
-        except Exception as e:
-            print(f"DEBUG: Error in get_food_info: {str(e)}")
-            return [{"error": str(e)}]
+@tool
+def find_dining_hall_foods(query: str) -> list:
+    """Use this tool if the user asks about food on a specific date or wants help finding a certain type of food (e.g. 'high protein' or 'vegan') from the dining halls."""
+    try:
+        parsed_date = parse_human_date(query)
+        if parsed_date:
+            foods = list(db['foods'].find({"date": parsed_date}))
+        else:
+            foods = list(db['foods'].find({"name": {"$regex": query, "$options": "i"}}))
+        cleaned_foods = []
+        for food in foods:
+            cleaned_food = {
+                "name": food.get("name"),
+                "description": food.get("description"),
+                "dining_hall": food.get("dining_hall"),
+                "meal_name": food.get("meal_name"),
+                "station": food.get("station"),
+                "date": food.get("date"),
+                "portion_size": food.get("portion_size"),
+                "nutrients": food.get("nutrients", {})
+            }
+            cleaned_foods.append(cleaned_food)
+        return cleaned_foods
+    except Exception as e:
+        return [{"error": str(e)}]
 
-    return [get_user_profile, get_meal_log, get_weight_log, get_food_info]
+# Load the embedding model once (should match the one used for food embeddings)
 
-tools = make_tools(db)
+
+@tool
+def find_similar_foods(query: str, dining_hall: str, date: str, meal_name: str, top_k: int = 5) -> list:
+    """
+    Use this tool to find foods similar to the user's query, but only among those available at the selected dining hall, date, and meal.
+    Returns only essential fields (not embeddings) to avoid context overflow.
+    """
+    foods = list(db['foods'].find({
+        "dining_hall": dining_hall,
+        "date": date,
+        "meal_name": meal_name,
+        "embedding": {"$exists": True}
+    }))
+    if not foods:
+        return []
+    query_embedding = model.encode(query)
+    scored = []
+    for food in foods:
+        sim = 1 - cosine(query_embedding, food['embedding'])
+        scored.append((sim, food))
+    scored.sort(reverse=True, key=lambda x: x[0])
+    def food_summary(food):
+        return {
+            "_id": str(food.get("_id")),
+            "name": food.get("name"),
+            "description": food.get("description"),
+            "labels": food.get("labels"),
+            "ingredients": food.get("ingredients"),
+            "portion_size": food.get("portion_size"),
+            "nutrients": food.get("nutrients"),
+            "station": food.get("station"),
+        }
+    return [food_summary(food) for sim, food in scored[:top_k]]
+
+tools = [
+    get_basic_profile,
+    fetch_dietary_preferences,
+    retrieve_user_goals,
+    get_body_metrics,
+    review_nutrition_history,
+    analyze_weight_trends,
+    find_dining_hall_foods,
+    find_similar_foods,  # <-- add the new tool
+]
 
 # === Step 3: Set up LLM and Agent ===
 llm = ChatOpenAI(
     model="gpt-3.5-turbo",
     temperature=0,
-    openai_api_key=openai_api_key
+    openai_api_key=openai_api_key,
+    max_tokens=200
 )
+
+SYSTEM_MESSAGE = """
+You are NutriBot, a helpful and knowledgeable nutrition assistant for university dining halls. Your role is to help students make informed food choices, track their nutrition, and achieve their health goals.
+
+## Your Capabilities:
+- Access student profiles (basic info, dietary preferences, body metrics, weight goals)
+- Analyze meal logs and weight tracking data
+- Search dining hall food database by name or date
+- Provide personalized nutrition recommendations
+- Help with meal planning and goal tracking
+
+## Your Personality:
+- Friendly, encouraging, and supportive
+- Use a conversational tone appropriate for college students
+- Be motivating but not preachy
+- Acknowledge challenges students face (budget, time, dining hall limitations)
+
+## Response Guidelines:
+1. **Always provide analysis, not raw data** - interpret information and give actionable insights
+2. **Be specific and practical** - suggest actual foods available in dining halls
+3. **Consider the user's goals** - tailor advice to their weight goals, dietary restrictions, and preferences
+4. **Provide context** - explain why certain foods or choices are beneficial
+5. **Use encouraging language** - focus on progress and positive changes
+6. **Be concise: Limit your response to 4-6 sentences. Only include the most important recommendations.**
+7. **Be concise but thorough** - students want quick, useful information
+
+## When analyzing data:
+- Look for patterns and trends
+- Identify nutritional gaps or excesses
+- Suggest specific improvements
+- Celebrate progress and achievements
+- Provide meal timing and combination suggestions
+
+## Important Notes:
+- Never provide medical advice - suggest consulting healthcare providers for medical concerns
+- Focus on balanced nutrition rather than extreme restrictions
+- Consider dining hall availability and student lifestyle constraints
+- Be sensitive to different dietary needs and cultural preferences
+
+Remember: Your goal is to help students develop healthy, sustainable eating habits while navigating university dining options.
+"""
 
 agent_executor = initialize_agent(
     tools=tools,
@@ -172,26 +414,7 @@ agent_executor = initialize_agent(
     agent=AgentType.OPENAI_FUNCTIONS,
     verbose=True,
     agent_kwargs={
-        "system_message": (
-            "You are a helpful nutrition assistant. Answer questions and "
-            "provide guidance about nutrition, food, and health. You are able to "
-            "search the database for information about foods, meal logs, weight logs, "
-            "and user profiles. The user's ID will be provided at the beginning of "
-            "each input message in the format 'User ID: [user_id]'. Extract this "
-            "user_id and use it for any database lookups. Never ask the user for "
-            "their ID. When users ask about specific dates, dining halls, or meal "
-            "options, proactively search the food database using get_food_info to "
-            "find relevant foods for that date. For example, if they ask about "
-            "'July 4th' or 'fourth of July', search for 'July 4' to find foods "
-            "available on that date. "
-            "CRITICAL: You MUST NEVER return raw database data to the user. "
-            "ALWAYS analyze the data and provide insights, trends, and recommendations. "
-            "For weight logs: identify trends, patterns, progress, and suggest goals. "
-            "For meal logs: analyze nutritional content, variety, balance, and suggest improvements. "
-            "For foods: identify healthy options, protein content, and suggest meal combinations. "
-            "Always provide actionable advice and context. If you retrieve data, "
-            "you MUST interpret it and give meaningful analysis before responding."
-        )
+        "system_message": SYSTEM_MESSAGE
     }
 )
 
@@ -199,27 +422,34 @@ agent_executor = initialize_agent(
 def agent_node(state: AgentState) -> AgentState:
     user_id = state["user_id"]
     query = state["user_message"]
-    
-    # Include user_id in the input so the agent can access it
-    # Add explicit instruction to analyze data and provide insights
-    input_with_context = (
-        f"User ID: {user_id}\n\n"
-        f"User Question: {query}\n\n"
-        f"IMPORTANT INSTRUCTIONS: After retrieving any data from the database, "
-        f"you MUST analyze it and provide insights, trends, and recommendations. "
-        f"DO NOT just list the raw data. Instead, interpret the data and give "
-        f"meaningful analysis and actionable advice. If you retrieve meal logs, "
-        f"analyze nutritional patterns. If you retrieve weight logs, identify trends. "
-        f"If you retrieve foods, suggest healthy combinations and options."
-    )
-    
+
+    # Compose the input with context and instructions
+    input_with_context = f"""
+Context: You're helping a university student with their nutrition and dining hall food choices. They may ask about:
+- What to eat for their goals
+- Analysis of their current eating patterns
+- Specific food recommendations
+- Weight tracking progress
+- Meal planning advice
+- Food information from dining halls
+
+Instructions for this query:
+1. Use the available tools to gather relevant information about this user
+2. Analyze the data to provide meaningful insights and recommendations
+3. Focus on actionable advice specific to university dining halls
+4. Consider the student's profile, goals, and dietary preferences
+5. If suggesting foods, reference items that would be available in dining halls
+6. Provide encouragement and practical tips for sustainable healthy eating
+7. **Be concise. Limit your response to 4-6 sentences. Only include the most important recommendations.**
+
+User ID: {user_id}
+User Question: {query}
+"""
+
     response = agent_executor.invoke({"input": input_with_context})
-    
-    # Post-process the response to ensure it's not just raw data
+
     response_text = response["output"]
-    
-    # If the response looks like raw data (contains ObjectId, embedding, etc.), 
-    # force the LLM to provide analysis
+
     if any(indicator in response_text.lower() for indicator in ['objectid', 'embedding', '_id', 'bson']):
         analysis_prompt = (
             f"The user asked: {query}\n\n"
@@ -229,7 +459,7 @@ def agent_node(state: AgentState) -> AgentState:
         )
         analysis_response = llm.invoke(analysis_prompt)
         return {**state, "agent_response": analysis_response.content}
-    
+
     return {**state, "agent_response": response_text}
 
 # === Step 6: Build LangGraph ===

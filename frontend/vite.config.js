@@ -9,9 +9,10 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:8000',
-      '/auth': 'http://localhost:8000',
-      '/foods': 'http://localhost:8000',
+      '/api': 'http://127.0.0.1:8000',
+      '/auth': 'http://127.0.0.1:8000',
+      '/foods': 'http://127.0.0.1:8000',
+      '/agent': 'http://127.0.0.1:8000',
     }
   }
 })

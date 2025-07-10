@@ -16,12 +16,12 @@ import csv
 import json
 from authlib.integrations.starlette_client import OAuth
 from pydantic import BaseModel
-from agent.nutrition_agent import run_nutrition_agent
 
 from models.food import Food
 from models.agent import AgentQuery, AgentRequest
+from agent.nutrition_agent import app as nutrition_agent_app
 
-from models.user import UserCreate, UserProfile, ChangePasswordRequest
+from models.user import UserCreate, UserProfile, ChangePasswordRequest, UserLogin
 from models.plate import Plate, PlateItem
 
 from auth_util import (
@@ -155,7 +155,7 @@ def register(user: UserCreate, response: Response):
     return {"message": "Registered"}
 
 @app.post("/auth/login")
-def login(user: UserCreate, response: Response):
+def login(user: UserLogin, response: Response):
     db_user = get_user_by_email(users_collection, user.email)
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -904,8 +904,23 @@ def set_password(request: Request, new_password: str = Body(...)):
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.post("/api/agent")
-def agent_endpoint(request: AgentRequest):
-    db = None  # Placeholder for your database/session
-    response = run_nutrition_agent(request.message, request.user_id, db)
-    return {"response": response}
+@app.post("/agent/chat")
+def agent_chat(query: AgentQuery, request: Request):
+    user = get_current_user(request, users_collection)  # Extract user from session/cookie
+    user_id = str(user["_id"])
+    user_message = query.query
+    if query.dining_hall:
+        user_message += f"\nDining Hall: {query.dining_hall}"
+    if query.meal_type:
+        user_message += f"\nMeal Type: {query.meal_type}"
+    if query.date:
+        user_message += f"\nDate: {query.date}"
+    state = {
+        "user_message": user_message,
+        "user_id": user_id
+    }
+    result = nutrition_agent_app.invoke(state)
+    return {
+        "role": "assistant",
+        "content": result["agent_response"]
+    }

@@ -38,7 +38,7 @@ const AIAssistant = ({
         setQuery("")
 
         try {
-            const res = await fetch('http://localhost:8000/agent/chat', {
+            const res = await fetch('/agent/chat', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -46,7 +46,8 @@ const AIAssistant = ({
                     dining_hall: diningHall,
                     meal_type: mealType,
                     date: getLocalDateString(date)
-                })
+                }),
+                credentials: 'include'
             });
 
             if(!res.ok) {
