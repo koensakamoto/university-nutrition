@@ -906,21 +906,17 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/agent/chat")
 def agent_chat(query: AgentQuery, request: Request):
-    user = get_current_user(request, users_collection)  # Extract user from session/cookie
+    user = get_current_user(request, users_collection)
     user_id = str(user["_id"])
-    user_message = query.query
-    if query.dining_hall:
-        user_message += f"\nDining Hall: {query.dining_hall}"
-    if query.meal_type:
-        user_message += f"\nMeal Type: {query.meal_type}"
-    if query.date:
-        user_message += f"\nDate: {query.date}"
     state = {
-        "user_message": user_message,
+        "user_message": query.query,
+        "dining_hall": query.dining_hall,
+        "meal_type": query.meal_type,
+        "date": query.date,
         "user_id": user_id
     }
     result = nutrition_agent_app.invoke(state)
     return {
         "role": "assistant",
-        "content": result["agent_response"]
+        "content": result["response"]
     }
