@@ -125,19 +125,19 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                 <>
                     <div className="mb-4 grid grid-cols-2 gap-2">
                         <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-gray-800">{totals.calories}</div>
+                            <div className="text-xl font-bold text-gray-800">{totals.calories.toFixed(1)}</div>
                             <div className="text-xs text-gray-500">Calories</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-blue-600">{totals.protein}g</div>
+                            <div className="text-xl font-bold text-blue-600">{totals.protein.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Protein</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-green-600">{totals.carbs}g</div>
+                            <div className="text-xl font-bold text-green-600">{totals.carbs.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Carbs</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-orange-600">{totals.fat}g</div>
+                            <div className="text-xl font-bold text-orange-600">{totals.fat.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Fat</div>
                         </div>
                     </div>
@@ -226,7 +226,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                     <div>
                                         <p className="text-sm font-medium text-gray-800">{item.name}</p>
                                         <p className="text-xs text-gray-500">
-                                            {(item.calories || 0) * (item.quantity || 1)} cal · {getAdjustedPortion(item.portionSize, item.quantity)}
+                                            {((item.calories || 0) * (item.quantity || 1)).toFixed(1)} cal · {getAdjustedPortion(item.portionSize, item.quantity)}
                                         </p>
                                     </div>
                                     <button

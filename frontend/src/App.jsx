@@ -35,6 +35,7 @@ function PrivateRoute({ children }) {
   return children;
 }
 
+
 export default function App() {
   const { user, logout } = useAuth();
   const [trackedItems, setTrackedItems] = React.useState([])

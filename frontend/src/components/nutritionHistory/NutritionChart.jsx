@@ -42,8 +42,7 @@ const NutritionChart = ({ macroData = [], start, end }) => {
     'last-week': 'over the last 7 days',
     'last-two-weeks': 'over the last 14 days',
     'last-month': 'over the last 30 days',
-    'last-three-months': 'over the last 3 months',
-    'last-six-months': 'over the last 6 months',
+    'last-three-months': 'over the last 3 months'
   };
 
   // Helper to guess the label from start/end
@@ -57,7 +56,6 @@ const NutritionChart = ({ macroData = [], start, end }) => {
     if (diffDays === 13) return 'over the last 14 days';
     if (diffDays === 29) return 'over the last 30 days';
     if (diffDays >= 85 && diffDays <= 95) return 'over the last 3 months';
-    if (diffDays >= 175 && diffDays <= 185) return 'over the last 6 months';
     // Fallback to date range
     return `from ${formatDisplayDate(start)} - ${formatDisplayDate(end)}`;
   }

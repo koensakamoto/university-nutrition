@@ -12,7 +12,6 @@ export const DateRangeSelector = ({ value, onChange }) => {
         <option value="last-two-weeks">Last 14 days</option>
         <option value="last-month">Last 30 days</option>
         <option value="last-three-months">Last 3 months</option>
-        <option value="last-six-months">Last 6 months</option>
       </select>
 
 
