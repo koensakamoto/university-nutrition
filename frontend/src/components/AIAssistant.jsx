@@ -108,7 +108,8 @@ const AIAssistant = ({
               <button
                 type="submit"
                 className="bg-red-600 text-white px-4 h-10 rounded-r-md hover:bg-red-700 focus:outline-none flex items-center justify-center disabled:bg-red-400"
-                disabled={isLoading}
+                // disabled={isLoading}
+                disabled={true}
               >
                 <SendIcon size={18} />
               </button>

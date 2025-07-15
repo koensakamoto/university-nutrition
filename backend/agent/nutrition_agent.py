@@ -76,7 +76,7 @@ def get_weight_log(user_id: str) -> list:
 def get_meal_history(user_id: str) -> dict:
     """ 
     Retrieves a summary of the user's most recent 7 days of meal logs.
-
+    
     Returns:
         A dictionary containing:
             - A mapping from each date to the list of food names consumed on that day.
@@ -157,7 +157,7 @@ def get_user_profile_context(user_id):
     user = users_collection.find_one({"_id": ObjectId(user_id)})
     if not user:
         return "User Profile: N/A"
-    profile = user.get("profile", {})
+        profile = user.get("profile", {})
     def fmt(val):
         if isinstance(val, list):
             return ", ".join(str(v) for v in val) if val else "N/A"

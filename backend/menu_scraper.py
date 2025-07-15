@@ -62,116 +62,116 @@ def build_xpath_for_item_name(item_name):
             f"//button[contains(@class, 'btn-nutrition')]"
         )
 
+def escape_xpath_text(text):
+    if "'" not in text:
+        return f"'{text}'"
+    parts = text.split("'")
+    # Properly join with comma and correct quoting/escaping
+    return "concat(" + ", '\'', ".join([f"'{part}'" for part in parts]) + ")"
+
 def _extract_nutrition_details_for_item(driver, item_name):
     nutrition_details = {"nutrients": {}, "ingredients": "N/A"}
     for attempt in range(2):
         try:
-            # Use the robust XPath builder
-            xpath_query = build_xpath_for_item_name(item_name)
-            print(f"   Looking for button with XPath: {xpath_query}")
-            selenium_nutrition_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((By.XPATH, xpath_query))
-            )
-            selenium_nutrition_button.click()
+            # Use the robust XPath builder with quote escaping
+            item_name_xpath = escape_xpath_text(item_name)
+            xpath_query = f"//strong[normalize-space()={item_name_xpath}]/ancestor::td[@data-label='Item']//button[contains(@class, 'btn-nutrition')]"
+            print(f"   [DEBUG] Trying XPath for button: {xpath_query}")
+            buttons = driver.find_elements(By.XPATH, xpath_query)
+            if not buttons:
+                # Fallback: find the first button after the <strong> tag
+                fallback_xpath = f"//strong[normalize-space()={item_name_xpath}]/following::button[contains(@class, 'btn-nutrition')][1]"
+                print(f"   [DEBUG] Fallback XPath: {fallback_xpath}")
+                buttons = driver.find_elements(By.XPATH, fallback_xpath)
+            if not buttons:
+                raise Exception(f"No nutrition button found for item '{item_name}'")
+            button = buttons[0]
+            print(f"   [DEBUG] Found nutrition button for '{item_name}', attempting to click...")
+            driver.execute_script("arguments[0].scrollIntoView(true);", button)
+            button.click()
             print(f"   Clicked Nutritional Info button for: {item_name}")
-            break
-        except (NoSuchElementException, TimeoutException) as e:
-            print(f"Failed to find or click nutrition button for {item_name}: {e}")
-            if attempt == 0:
-                human_wait(3, 5)
-            else:
-                return {"nutrients": {"error": f"Button not found or clickable: {str(e)}"}, "ingredients": "N/A"}
+            # Wait for modal to appear (optional: add code to extract nutrition info here)
+            # ... existing code for extracting nutrition info ...
 
+            # --- Extract nutrition info from modal here (existing code) ---
+            # 1. Wait until nutrition info pops up
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.visibility_of_element_located((By.CLASS_NAME, "modal-content"))
+                )
+                print("   Nutrition modal popped up.")
+            except TimeoutException as e:
+                print(f"Nutrition modal did not pop up for {item_name} within timeout: {e}")
+                return {"nutrients": {"error": f"Modal did not appear: {str(e)}"}, "ingredients": "N/A"}
 
-    # 1. Wait until nutrition info pops up
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.visibility_of_element_located((By.CLASS_NAME, "modal-content"))
-        )
-        print("   Nutrition modal popped up.")
-    except TimeoutException as e:
-        print(f"Nutrition modal did not pop up for {item_name} within timeout: {e}")
-        return {"nutrients": {"error": f"Modal did not appear: {str(e)}"}, "ingredients": "N/A"}
+            # 2. Extract detailed nutritional data
+            nutrition_details_html = driver.page_source
+            nutrition_soup = BeautifulSoup(nutrition_details_html, 'html.parser')
+            modal_body = nutrition_soup.find('div', class_='modal-body')
+            if modal_body:
+                nutrients = {}
+                ul_tags = modal_body.find_all('ul')
+                for ul in ul_tags:
+                    for li in ul.find_all('li'):
+                        strong_tag = li.find('strong')
+                        if strong_tag:
+                            label = strong_tag.text.strip()
+                            # Standardize key: remove colons, parentheses, units, and convert to snake_case
+                            label_clean = re.sub(r'\([^)]*\)', '', label)  # Remove parentheses and contents
+                            label_clean = label_clean.replace(':', '')      # Remove colons
+                            label_clean = label_clean.strip()
+                            label_clean = label_clean.lower().replace(' ', '_') # snake_case
+                            # Remove trailing underscores (if any)
+                            label_clean = re.sub(r'_and$', '', label_clean)
+                            texts = []
+                            for sibling in strong_tag.next_siblings:
+                                if isinstance(sibling, NavigableString):
+                                    texts.append(str(sibling))
+                                else:
+                                    break # Stop if another tag is encountered
+                            # Mapping for problematic keys
+                            NUTRIENT_KEY_RENAMES = {
+                                "saturated_fat_+_trans_fat": "saturated_and_trans_fat",
+                                "vitamin_a_re": "vitamin_a",
+                                "calories_from_fat": "calories_from_fat",
+                            }
+                            label_clean = re.sub(r'_+', '_', label_clean)  # Collapse multiple underscores
+                            # Apply mapping if key is in renames
+                            label_final = NUTRIENT_KEY_RENAMES.get(label_clean, label_clean)
+                            value = ''.join(texts).strip()
+                            if label_final and value:
+                                nutrients[label_final] = value
+                nutrition_details["nutrients"] = nutrients
 
-
-    # 2. Extract detailed nutritional data
-    nutrition_details_html = driver.page_source
-    nutrition_soup = BeautifulSoup(nutrition_details_html, 'html.parser')
-   
-    modal_body = nutrition_soup.find('div', class_='modal-body')
-    if modal_body:
-        nutrients = {}
-        ul_tags = modal_body.find_all('ul')
-        for ul in ul_tags:
-            for li in ul.find_all('li'):
-                strong_tag = li.find('strong')
-                if strong_tag:
-                    label = strong_tag.text.strip()
-                    # Standardize key: remove colons, parentheses, units, and convert to snake_case
-                    label_clean = re.sub(r'\([^)]*\)', '', label)  # Remove parentheses and contents
-                    label_clean = label_clean.replace(':', '')      # Remove colons
-                    label_clean = label_clean.strip()
-                    label_clean = label_clean.lower().replace(' ', '_') # snake_case
-                    # Remove trailing underscores (if any)
-                    label_clean = re.sub(r'_and$', '', label_clean)
-                    texts = []
-                    for sibling in strong_tag.next_siblings:
+                # Extract "Made with:" ingredients if present
+                made_with_strong_tag = modal_body.find('strong', string=lambda text: text and "Made with:" in text.strip())
+                if made_with_strong_tag:
+                    made_with_texts = []
+                    for sibling in made_with_strong_tag.next_siblings:
                         if isinstance(sibling, NavigableString):
-                            texts.append(str(sibling))
+                            made_with_texts.append(str(sibling))
                         else:
                             break # Stop if another tag is encountered
-                    # Mapping for problematic keys
-                    NUTRIENT_KEY_RENAMES = {
-                        "saturated_fat_+_trans_fat": "saturated_and_trans_fat",
-                        "vitamin_a_re": "vitamin_a",
-                        "calories_from_fat": "calories_from_fat",
-                    }
-                    label_clean = re.sub(r'_+', '_', label_clean)  # Collapse multiple underscores
-                    # Apply mapping if key is in renames
-                    label_final = NUTRIENT_KEY_RENAMES.get(label_clean, label_clean)
-                    value = ''.join(texts).strip()
-                    if label_final and value:
-                        nutrients[label_final] = value
-        nutrition_details["nutrients"] = nutrients
+                    ingredients_text = ''.join(made_with_texts).strip()
+                    if ingredients_text:
+                        nutrition_details["ingredients"] = ingredients_text
 
+            print("   Extracted data from modal.")
 
-        # Extract "Made with:" ingredients if present
-        made_with_strong_tag = modal_body.find('strong', string=lambda text: text and "Made with:" in text.strip())
-        if made_with_strong_tag:
-            made_with_texts = []
-            for sibling in made_with_strong_tag.next_siblings:
-                if isinstance(sibling, NavigableString):
-                    made_with_texts.append(str(sibling))
-                else:
-                    break # Stop if another tag is encountered
-            ingredients_text = ''.join(made_with_texts).strip()
-            if ingredients_text:
-                nutrition_details["ingredients"] = ingredients_text
+            # 3. Click the button to close the nutrition info pop-up
+            try:
+                close_button = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label='Close']"))
+                )
+                close_button.click()
+                print(f"   [DEBUG] Clicked close button for '{item_name}'")
+            except Exception as e:
+                print(f"   [WARNING] Could not find/click close button for '{item_name}': {e}")
 
-    print("   Extracted data from modal.")
-
-
-    # 3. Click the button to close the nutrition info pop-up
-    try:
-        close_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, "button[aria-label='Close'][class='close']"))
-        )
-        close_button.click()
-        print("   Closed nutrition modal.")
-       
-        # Wait for the modal to disappear to ensure control returns to main page
-        WebDriverWait(driver, 10).until(
-            EC.invisibility_of_element_located((By.CLASS_NAME, "modal-content"))
-        )
-        print("   Nutrition modal disappeared.")
-    except (NoSuchElementException, TimeoutException) as e:
-        print(f" Failed to find or click close button for {item_name} or modal did not disappear: {e}")
-        return {"nutrients": {"error": f"Close button issue or modal persistent: {str(e)}"}, "ingredients": "N/A"}
-
-
-    except Exception as e:
-        print(f" An unexpected error occurred while extracting nutrition details for {item_name}: {e}")
-        return {"nutrients": {"error": str(e)}, "ingredients": "N/A"}
+            break
+        except Exception as e:
+            print(f"   [ERROR] Exception while finding/clicking nutrition button for '{item_name}': {e}")
+            nutrition_details["nutrients"] = {"error": f"Button not found or clickable: {e}"}
     return nutrition_details
 
 
@@ -186,6 +186,8 @@ def getMenu(driver, dining_hall_name, meal_type):
    # Find all menu tables, which are identified by the class 'menu-items'
    menu_tables = soup.find_all('table', class_='menu-items')
    print(f"Found {len(menu_tables)} menu tables for {dining_hall_name} {meal_type}")
+   if menu_tables:
+       print(f"First table HTML:\n{menu_tables[0].prettify()[:1000]}\n...")
 
    DIETARY_ICONS = {
        "/img/icon_vegan.png": "Vegan",
@@ -196,8 +198,7 @@ def getMenu(driver, dining_hall_name, meal_type):
 
    for idx, table in enumerate(menu_tables):
        print(f"--- Menu Table {idx} HTML ---")
-       print(table.prettify())
-
+       print(table.prettify()[:1000] + ("..." if len(table.prettify()) > 1000 else ""))
        caption_tag = table.find('caption')
        if caption_tag:
            station_name = caption_tag.text.strip()
@@ -207,62 +208,82 @@ def getMenu(driver, dining_hall_name, meal_type):
        items_in_station = []
 
        # Find all rows in the table body, skipping the header row if present
-       for row in table.find('tbody').find_all('tr'):
-           print("--- Row HTML ---")
-           print(row.prettify())
-           # Find td elements by their data-label attribute
-           item_td = row.find('td', {'data-label': 'Menu item'})
-           portion_td = row.find('td', {'data-label': 'Portion'})
+       rows = table.find('tbody').find_all('tr')
+       print(f"Table {idx} has {len(rows)} rows.")
+       if rows:
+           print(f"First row HTML:\n{rows[0].prettify()}")
+       for row_idx, row in enumerate(rows):
+           try:
+               print(f"--- Row {row_idx} HTML ---")
+               print(row.prettify())
+               # Find td elements by their data-label attribute
+            #    item_td = row.find('td', {'data-label': 'Item'})
+               item_td = row.find('td', {'data-label': 'Menu item'})
+               portion_td = row.find('td', {'data-label': 'Portion'})
 
-           portion_size = None
-           if portion_td:
-                portion_div = portion_td.find('div')
-                if portion_div:
-                    portion_size = portion_div.text.strip()
-                else:
-                    portion_size = portion_td.text.strip()
-           else:
-                portion_size = "1 serving"  # fallback default
+               portion_size = None
+               if portion_td:
+                    portion_div = portion_td.find('div')
+                    if portion_div:
+                        portion_size = portion_div.text.strip()
+                    else:
+                        portion_size = portion_td.text.strip()
+               else:
+                    portion_size = "1 serving"  # fallback default
 
-           if item_td: # Ensure item cell is found
-               item_name_wrapper = item_td.find('span', class_='category-items_itemNameWrapper_zaBfp')
-               if item_name_wrapper:
-                   strong_tag = item_name_wrapper.find('strong', class_='menu-item')
-                   if strong_tag:
-                       item_name = strong_tag.text.strip()
+               print(f"Row {row_idx}: portion_size = {portion_size}")
+
+               if item_td: # Ensure item cell is found
+                   item_name_wrapper = item_td.find('span', class_=lambda x: x and x.startswith('category-items_itemNameWrapper'))
+                   if item_name_wrapper:
+                       strong_tag = item_name_wrapper.find('strong')
+                       if strong_tag:
+                           item_name = strong_tag.text.strip()
+                       else:
+                           item_name = "N/A"
                    else:
                        item_name = "N/A"
+                   print(f"Row {row_idx}: item_name = {item_name}")
+
+                   labels = []
+                   for icon_path, preference_name in DIETARY_ICONS.items():
+                       if item_td.find('img', src=icon_path):
+                           labels.append(preference_name)
+
+                   print(f"   Attempting to get nutrition details for: {item_name}")
+                   nutrition_info = _extract_nutrition_details_for_item(driver, item_name)
+                   print(f"   Nutrition info for {item_name}: {nutrition_info}")
+
+                   # Wait for modal to disappear before proceeding to next item
+                   try:
+                       WebDriverWait(driver, 10).until(
+                           EC.invisibility_of_element_located((By.CLASS_NAME, "modal"))
+                       )
+                       print(f"   [DEBUG] Modal closed for '{item_name}' (waited in getMenu)")
+                   except Exception as wait_exc:
+                       print(f"   [WARNING] Modal did not close in time for '{item_name}' (waited in getMenu): {wait_exc}")
+
+                   raw_ingredients = nutrition_info.get("ingredients", "N/A")
+                   if raw_ingredients and raw_ingredients != "N/A":
+                       ingredients_list = [i.strip().replace('^', '') for i in raw_ingredients.split(',') if i.strip()]
+                   else:
+                       ingredients_list = []
+
+                   print(f"   Adding item to items_in_station: {item_name}, portion: {portion_size}, labels: {labels}, ingredients: {ingredients_list}")
+                   items_in_station.append({
+                       "name": item_name,
+                       "description": "",
+                       "labels": labels,
+                       "ingredients": ingredients_list,
+                       "portion_size": portion_size,
+                       "nutrients": nutrition_info.get("nutrients", {})
+                   })
                else:
-                   item_name = "N/A"
+                   print(f"Row {row_idx}: No item_td found, skipping row.")
 
-               # Dietary preferences are now 'labels'
-               labels = []
-               for icon_path, preference_name in DIETARY_ICONS.items():
-                   if item_td.find('img', src=icon_path):
-                       labels.append(preference_name)
-
-               # Get nutrition details (including ingredients and nutrients)
-               print(f"   Attempting to get nutrition details for: {item_name}")
-               nutrition_info = _extract_nutrition_details_for_item(driver, item_name)
-
-               # Parse ingredients into a list, remove '^' symbol
-               raw_ingredients = nutrition_info.get("ingredients", "N/A")
-               if raw_ingredients and raw_ingredients != "N/A":
-                   ingredients_list = [i.strip().replace('^', '') for i in raw_ingredients.split(',') if i.strip()]
-               else:
-                   ingredients_list = []
-
-               items_in_station.append({
-                   "name": item_name,
-                   "description": "",
-                   "labels": labels,
-                   "ingredients": ingredients_list,
-                   "portion_size": portion_size,
-                   "nutrients": nutrition_info.get("nutrients", {})
-               })
-
-           # Add a short randomized delay inside the item loop
-           human_wait(1.5, 3.0)  # Increased wait time in item loop
+               human_wait(1.5, 3.0)
+           except Exception as e:
+               print(f"[ERROR] Exception in row {row_idx}: {e}")
 
        if items_in_station: # Only add station if it has items
            stations_data.append({
@@ -290,9 +311,10 @@ def extract_data(driver, dining_hall_name):
         for tab in initial_meal_tabs_elements:
             tab_link = tab.find_element(By.TAG_NAME, "a")
             meal_tab_names.append(tab_link.text.strip())
+        print(f"[DEBUG] Dining hall: {dining_hall_name}, meal tabs: {meal_tab_names}")
 
         for tab_name in meal_tab_names:
-            print(f" Clicking meal tab: {tab_name}")
+            print(f"[DEBUG] Appending meal: {tab_name} for dining hall: {dining_hall_name}")
             # Re-locate the tab button for the current tab_name to avoid staleness
             tab_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, f"//ul[contains(@class, 'nav-tabs')]/li/a[normalize-space()='{tab_name}']"))
@@ -389,24 +411,16 @@ def scrape_full_menu_data(url):
                 EC.presence_of_element_located((By.CLASS_NAME, "dropdown-menu.show"))
             )
 
-            # Find all list items directly under the dropdown menu
-            # These can be headers or direct dining hall buttons or contain uls with dining halls
-            all_li_elements = dropdown_menu.find_elements(By.XPATH, "./li")
-
-            for li_element in all_li_elements:
-                # Check if it's a direct dining hall button
-                try:
-                    button = li_element.find_element(By.TAG_NAME, "button")
-                    all_dining_hall_names.append(button.text.strip())
-                except NoSuchElementException:
-                    # If not a direct button, check for a nested ul (common for categories like "Resident Dining")
-                    try:
-                        nested_ul = li_element.find_element(By.TAG_NAME, "ul")
-                        nested_buttons = nested_ul.find_elements(By.TAG_NAME, "button")
-                        for button in nested_buttons:
-                            all_dining_hall_names.append(button.text.strip())
-                    except NoSuchElementException:
-                        pass # This li element is neither a button nor contains a ul of buttons
+            # --- Iterative: Collect all unique <button> elements under the dropdown ---
+            all_buttons = dropdown_menu.find_elements(By.TAG_NAME, "button")
+            all_dining_hall_names = []
+            seen = set()
+            for btn in all_buttons:
+                name = btn.text.strip()
+                if name and name not in seen:
+                    print(f"[DEBUG] Found dining hall button: '{name}'")
+                    all_dining_hall_names.append(name)
+                    seen.add(name)
 
             dropdown_button.click() # Close the dropdown after collecting names
             print(f"Collected {len(all_dining_hall_names)} dining halls: {all_dining_hall_names}")
@@ -446,7 +460,7 @@ def scrape_full_menu_data(url):
                         "name": dining_hall_name,
                         "meals": meals_for_dining_hall
                     })
-                break # Added for faster testing: Process only the first dining hall
+                # break # Added for faster testing: Process only the first dining hall
 
             except Exception as e:
                 print(f" Failed to process {dining_hall_name}: {e}")
@@ -516,6 +530,7 @@ def save_foods_to_json(all_dining_hall_data, model, filename="foods.json"):
                     food_doc["date"] = date
                     # Compute and add embedding
                     food_doc["embedding"] = compute_food_embedding(food_doc, model)
+                    print(f"[DEBUG] Saving food: {food_doc.get('name')}, dining_hall: {food_doc.get('dining_hall')}, meal_name: {food_doc.get('meal_name')}")
                     foods.append(food_doc)
     with open(filename, "w") as f:
         json.dump(foods, f, indent=4)
@@ -567,6 +582,10 @@ if __name__ == "__main__":
         print("Scraping and upload complete.")
     else:
         print("No data scraped or scraping failed.")
+
+
+
+
 
 
 

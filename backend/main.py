@@ -920,3 +920,18 @@ def agent_chat(query: AgentQuery, request: Request):
         "role": "assistant",
         "content": result["response"]
     }
+
+@app.get("/api/available-options")
+def get_available_options(date: str):
+    print("Received date param:", date)
+    dining_halls = foods_collection.distinct("dining_hall", {"date": date})
+    meal_types_by_hall = {}
+    for hall in dining_halls:
+        meal_types = foods_collection.distinct("meal_name", {"date": date, "dining_hall": hall})
+        meal_types_by_hall[hall] = sorted(meal_types)
+    print("dining_halls", dining_halls)
+    print("meal_types_by_hall", meal_types_by_hall)
+    return {
+        "dining_halls": sorted(dining_halls),
+        "meal_types_by_hall": meal_types_by_hall
+    }

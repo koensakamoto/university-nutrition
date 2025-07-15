@@ -270,12 +270,12 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         onAddItem={addToTracker}
       />
       {/* Mobile AI Assistant FAB */}
-      <button
+      {/* <button
         onClick={toggleAIAssistant}
         className="md:hidden fixed right-4 bottom-20 bg-blue-600 text-white p-3 rounded-full shadow-lg z-10"
       >
         <MessageCircleIcon size={24} />
-      </button>
+      </button> */}
       {/* Desktop AI Assistant Panel */}
       <div className="hidden md:block mt-6">
         <AIAssistant
@@ -286,7 +286,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         />
       </div>
       {/* Mobile AI Assistant Panel (when active) */}
-      {showAIAssistant && (
+      {/* {showAIAssistant && (
         <div className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-20 flex items-end">
           <div className="bg-white rounded-t-xl w-full p-4 max-h-[70vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
@@ -317,7 +317,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
             />
           </div>
         </div>
-      )}
+      )} */}
     </div>
   )
 }
