@@ -1,15 +1,18 @@
 #!/bin/bash
 
-# Set environment variables
-export SSL_CERT_FILE="/Users/koensakamoto/Dev/NutritionCalculator/backend/.venv/lib/python3.11/site-packages/certifi/cacert.pem"
+# Log start time and environment for debugging
+LOGFILE="/Users/koensakamoto/Dev/NutritionCalculator/backend/cron_menu_scraper.log"
+echo "\n--- Run at $(date) ---" >> "$LOGFILE"
+env >> "$LOGFILE"
 
-LOG_PATH="/Users/koensakamoto/Dev/NutritionCalculator/backend/cron_menu_scraper.log"
-PYTHON_PATH="/Users/koensakamoto/Dev/NutritionCalculator/backend/.venv/bin/python"
-SCRIPT_PATH="/Users/koensakamoto/Dev/NutritionCalculator/backend/menu_scraper.py"
+# Change to backend directory
+cd /Users/koensakamoto/Dev/NutritionCalculator/backend || exit 1
 
-echo "---- Script started at $(date) ----" >> "$LOG_PATH"
-env >> "$LOG_PATH"
+# Activate virtual environment
+source .venv/bin/activate
 
-# Run the menu scraper using the venv Python
-"$PYTHON_PATH" "$SCRIPT_PATH" >> "$LOG_PATH" 2>&1
+# Run the scraper
+python3 menu_scraper.py >> "$LOGFILE" 2>&1
+
+
 
