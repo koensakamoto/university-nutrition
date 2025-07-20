@@ -24,7 +24,6 @@ function getLocalDateString(date) {
 function PrivateRoute({ children }) {
   const { user, loading, error } = useAuth(); 
 
-
   if(loading){
     return <div>Loading...</div>;
   }
@@ -35,14 +34,11 @@ function PrivateRoute({ children }) {
   return children;
 }
 
-
 export default function App() {
   const { user, logout } = useAuth();
   const [trackedItems, setTrackedItems] = React.useState([])
   const [date, setDate] = React.useState(new Date())
   
-  
-
   const addToTracker = (item, quantity = 1) => {
     const newItem = {
       ...item,
@@ -61,7 +57,6 @@ export default function App() {
   }
 
   const handleSavePlate = async () => {
-
     console.log('handleSavePlate called');
     const plateItems = trackedItems.map(item => {
       console.log('item', item);
@@ -101,49 +96,58 @@ export default function App() {
   }
 
   return (
-      <Routes>
-        <Route 
-          path="/" 
-          element={<HomeLayout isLoggedIn={!!user} onLogout={logout} />}
-        >
-          <Route index element={<Navigate to={user ? 'dashboard' : 'login'} />} />
-          <Route
-            path="dashboard"
-            element={
-              <div className="flex flex-col md:flex-row w-full flex-grow p-4 gap-4">
-                <Dashboard
-                  addToTracker={addToTracker}
+    <Routes>
+      {/* Standalone Authentication Routes (no header) */}
+      <Route 
+        path="/login" 
+        element={user ? <Navigate to="/dashboard" /> : <Login />} 
+      />
+      <Route 
+        path="/register" 
+        element={user ? <Navigate to="/dashboard" /> : <Register />} 
+      />
+      
+      {/* Main App Routes (with header layout) */}
+      <Route 
+        path="/" 
+        element={<HomeLayout isLoggedIn={!!user} onLogout={logout} />}
+      >
+        <Route index element={<Navigate to={user ? 'dashboard' : 'login'} />} />
+        <Route
+          path="dashboard"
+          element={
+            <div className="flex flex-col md:flex-row w-full flex-grow p-4 gap-4">
+              <Dashboard
+                addToTracker={addToTracker}
+                trackedItems={trackedItems}
+                setTrackedItems={setTrackedItems}
+                removeItem={removeFromTracker}
+                clearItems={clearTracker}
+                date={date}
+                setDate={setDate}
+                onSavePlate={handleSavePlate}
+              />
+              <div className="hidden md:block md:w-1/4">
+                <NutrientTracker
                   trackedItems={trackedItems}
-                  setTrackedItems={setTrackedItems}
                   removeItem={removeFromTracker}
                   clearItems={clearTracker}
-                  date={date}
-                  setDate={setDate}
+                  selectedDate={getLocalDateString(date)}
                   onSavePlate={handleSavePlate}
                 />
-                <div className="hidden md:block md:w-1/4">
-                  <NutrientTracker
-                    trackedItems={trackedItems}
-                    removeItem={removeFromTracker}
-                    clearItems={clearTracker}
-                    selectedDate={getLocalDateString(date)}
-                    onSavePlate={handleSavePlate}
-                  />
-                </div>
               </div>
-            }
-          />
-
-          <Route path="login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
-          <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
-          <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
-          <Route 
-            path="*"
-            element={<Navigate to="/" />}
-          />
-        </Route>
-      </Routes>
+            </div>
+          }
+        />
+        
+        <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
+        <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
+        <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
+        <Route 
+          path="*"
+          element={<Navigate to="/" />}
+        />
+      </Route>
+    </Routes>
   )
 }
