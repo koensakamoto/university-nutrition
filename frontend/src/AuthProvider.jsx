@@ -36,6 +36,10 @@ export function AuthProvider({ children }) {
     fetchProfile();
   }, []);
 
+  const clearError = () => {
+    setError(null);
+  };
+
   const register = async (email, password) => {
     setError(null);
     const res = await fetch("/auth/register", {
@@ -86,7 +90,7 @@ const login = async (email, password) => {
     return false;
   }
   else{
-    setError("Logout failed");
+    setError("Login failed");
     return false;
   }
 }
@@ -119,6 +123,7 @@ const refetchProfile = async () => {
   setLoading(true);
   const res = await fetch("/api/profile", { credentials: "include" });
   if (res.ok) {
+    console.log('User data received:', userData); 
     const userData = await res.json();
     setUser(userData);
     setWasAuthenticated(true);
@@ -130,7 +135,7 @@ const refetchProfile = async () => {
 };
 
 return (
-  <AuthContext.Provider value={{ user, login, logout, register, loading, error, isAuthenticated: !!user, guestLogin, wasAuthenticated, refetchProfile }}>
+  <AuthContext.Provider value={{ user, login, logout, register, loading, error, clearError,  isAuthenticated: !!user, guestLogin, wasAuthenticated, refetchProfile }}>
     {children}
   </AuthContext.Provider>
 );
