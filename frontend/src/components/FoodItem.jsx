@@ -10,16 +10,30 @@ import {
   XIcon,
 } from 'lucide-react'
 
-
 const FoodItem = ({ item, addToTracker }) => {
   const [showDetails, setShowDetails] = useState(false)
   const [servings, setServings] = useState(1);
 
+  // Helper function to display nutrient values, showing '-' for null/undefined
+  const displayNutrient = (value, unit = '', defaultText = '-') => {
+    if (value === null || value === undefined) {
+      return defaultText;
+    }
+    return `${value}${unit}`;
+  };
 
+  // Helper function to calculate calories from macros (only if all values are available)
+  const calculateCalories = (value, multiplier) => {
+    if (value === null || value === undefined) {
+      return '-';
+    }
+    return (value * multiplier).toFixed(0);
+  };
 
   const toggleDetails = () => {
     setShowDetails(!showDetails)
   }
+  
   const renderTag = (tag) => {
     const normalized = String(tag).toLowerCase()
     switch (normalized) {
@@ -57,6 +71,7 @@ const FoodItem = ({ item, addToTracker }) => {
         return null
     }
   }
+  
   return (
     <div className="p-4 hover:bg-gray-50">
       <div className="flex justify-between">
@@ -64,7 +79,7 @@ const FoodItem = ({ item, addToTracker }) => {
           <h4 className="font-medium text-gray-900">{item.name}</h4>
           <div className="flex items-center text-sm text-gray-500 mt-1">
             <span className="mr-3">{item.portionSize}</span>
-            <span className="font-medium">{item.calories} cal</span>
+            <span className="font-medium">{displayNutrient(item.calories, ' cal')}</span>
           </div>
           <div className="mt-2 space-x-1">
             {(item.tags || []).map((tag) => (
@@ -75,8 +90,6 @@ const FoodItem = ({ item, addToTracker }) => {
           </div>
         </div>
         <div className="flex items-start space-x-2">
-
-
           <div className="flex items-center space-x-2">
             <div className="flex items-center bg-gray-100 rounded-lg px-2 py-1">
               <button
@@ -124,13 +137,12 @@ const FoodItem = ({ item, addToTracker }) => {
       </div>
 
       <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="flex items-center mt-3 text-sm text-blue-600 hover:text-blue-800"
-        >
-          <InfoIcon className="h-3 w-3 mr-1" />
-          {showDetails ? 'Hide details' : 'Show details'}
-        </button>
-
+        onClick={() => setShowDetails(!showDetails)}
+        className="flex items-center mt-3 text-sm text-blue-600 hover:text-blue-800"
+      >
+        <InfoIcon className="h-3 w-3 mr-1" />
+        {showDetails ? 'Hide details' : 'Show details'}
+      </button>
 
       {showDetails && (
         <div className="mt-3 pt-3 border-t border-gray-100 text-sm text-gray-700">
@@ -141,100 +153,98 @@ const FoodItem = ({ item, addToTracker }) => {
             <div className="grid grid-cols-2 gap-x-4 gap-y-1">
               <div>
                 <span className="font-medium">Calories:</span>{' '}
-                {item.calories}
+                {displayNutrient(item.calories)}
               </div>
               <div>
                 <span className="font-medium">Calories from Fat:</span>{' '}
-                {(item.totalFat) * 9}
+                {calculateCalories(item.totalFat, 9)}
               </div>
               <div>
                 <span className="font-medium">Calories from Carbs:</span>{' '}
-                {(item.totalFat) * 4}
+                {calculateCalories(item.carbs, 4)}
               </div>
               <div>
                 <span className="font-medium">Calories from Protein:</span>{' '}
-                {(item.protein) * 4}
+                {calculateCalories(item.protein, 4)}
               </div>
             </div>
 
+            <div className="border-t border-gray-200 pt-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <span className="font-medium">Total Fat:</span>{' '}
+                  {displayNutrient(item.totalFat, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Saturated Fat:</span>{' '}
+                  {displayNutrient(item.saturatedFat, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Trans Fat:</span>{' '}
+                  {displayNutrient(item.transFat, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Cholesterol:</span>{' '}
+                  {displayNutrient(item.cholesterol, 'mg')}
+                </div>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-200 pt-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <span className="font-medium">Total Carbs:</span>{' '}
+                  {displayNutrient(item.carbs, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Dietary Fiber:</span>{' '}
+                  {displayNutrient(item.dietaryFiber, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Sugars:</span>{' '}
+                  {displayNutrient(item.sugars, 'g')}
+                </div>
+                <div>
+                  <span className="font-medium">Protein:</span>{' '}
+                  {displayNutrient(item.protein, 'g')}
+                </div>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-200 pt-2">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <span className="font-medium">Sodium:</span>{' '}
+                  {displayNutrient(item.sodium, 'mg')}
+                </div>
+                <div>
+                  <span className="font-medium">Potassium:</span>{' '}
+                  {displayNutrient(item.potassium, 'mg')}
+                </div>
+                <div>
+                  <span className="font-medium">Calcium:</span>{' '}
+                  {displayNutrient(item.calcium, 'mg')}
+                </div>
+                <div>
+                  <span className="font-medium">Iron:</span>{' '}
+                  {displayNutrient(item.iron, 'mg')}
+                </div>
+              </div>
+            </div>
 
             <div className="border-t border-gray-200 pt-2">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div>
-                    <span className="font-medium">Total Fat:</span>{' '}
-                    {item.totalFat}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Saturated Fat:</span>{' '}
-                    {(item.saturatedFat)}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Trans Fat:</span>{' '}
-                    {(item.transFat)}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Cholesterol:</span>{' '}
-                    {(item.cholesterol)}mg
-                  </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div>
+                  <span className="font-medium">Vitamin C:</span>{' '}
+                  {displayNutrient(item.vitaminC, 'mg')}
+                </div>
+                <div>
+                  <span className="font-medium">Vitamin D:</span>{' '}
+                  {item.vitaminD && item.vitaminD !== '-' ? `${item.vitaminD} IU` : '-'}
                 </div>
               </div>
-              <div className="border-t border-gray-200 pt-2">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div>
-                    <span className="font-medium">Total Carbs:</span>{' '}
-                    {(item.carbs)}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Dietary Fiber:</span>{' '}
-                    {(item.dietaryFiber)}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Sugar:</span>{' '}
-                    {(item.sugar)}g
-                  </div>
-                  <div>
-                    <span className="font-medium">Protein:</span>{' '}
-                    {(item.protein)}g
-                  </div>
-                </div>
-              </div>
-              <div className="border-t border-gray-200 pt-2">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div>
-                    <span className="font-medium">Sodium:</span>{' '}
-                    {(item.sodium)}mg
-                  </div>
-                  <div>
-                    <span className="font-medium">Potassium:</span>{' '}
-                    {(item.potassium)}mg
-                  </div>
-                  <div>
-                    <span className="font-medium">Calcium:</span>{' '}
-                    {(item.calcium)}mg
-                  </div>
-                  <div>
-                    <span className="font-medium">Iron:</span>{' '}
-                    {(item.iron)}mg
-                  </div>
-                </div>
-              </div>
+            </div>
 
-              <div className="border-t border-gray-200 pt-2">
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div>
-                    <span className="font-medium">Vitamin C:</span>{' '}
-                    {item.vitaminC
-                      ? `${item.vitaminC}mg`
-                      : '-'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Vitamin D:</span>{' '}
-                    {item.vitaminD
-                      ? `${item.vitaminD} IU`
-                      : '-'}
-                  </div>
-                </div>
-              </div>
   
 
             {item.description && (

@@ -1,101 +1,191 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { CalendarIcon, ChevronDownIcon } from 'lucide-react'
+import { CalendarIcon, ChevronDownIcon, ClockIcon, MapPinIcon } from 'lucide-react'
 
-const FilterBar = ({
+const Filter = ({
     diningHall,
     setDiningHall,
     date,
     setDate,
     mealType,
     setMealType,
+    onDataUpdate
 }) => {
     const [diningHalls, setDiningHalls] = useState([])
     const [mealTypesByHall, setMealTypesByHall] = useState({})
     const [mealTypes, setMealTypes] = useState([])
+    const [isLoading, setIsLoading] = useState(false)
+    
+    // Use refs to track if we're currently fetching to prevent duplicate calls
+    const isFetchingRef = useRef(false)
+    const lastFetchDateRef = useRef(null)
 
+    // Function to sort meal types in the correct order
+    const sortMealTypes = useCallback((meals) => {
+        const mealOrder = ['Breakfast', 'Lunch', 'Dinner', 'Everyday'];
+        
+        return meals.sort((a, b) => {
+            const indexA = mealOrder.indexOf(a);
+            const indexB = mealOrder.indexOf(b);
+            
+            if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            
+            return indexA - indexB;
+        });
+    }, []);
+
+    // Auto-set today's date on mount ONLY
     useEffect(() => {
-        if (date) {
-            const formattedDate = date.getFullYear() + '-' +
-                String(date.getMonth() + 1).padStart(2, '0') + '-' +
-                String(date.getDate()).padStart(2, '0');
-            fetch(`/api/available-options?date=${formattedDate}`)
-                .then(res => res.json())
-                .then(data => {
-                    setDiningHalls(data.dining_halls);
-                    setMealTypesByHall(data.meal_types_by_hall);
-                    // If a dining hall is already selected, update mealTypes
-                    if (diningHall && data.meal_types_by_hall[diningHall]) {
-                        setMealTypes(data.meal_types_by_hall[diningHall]);
-                        // If current mealType is not valid, reset it
-                        if (!data.meal_types_by_hall[diningHall].includes(mealType)) {
-                            setMealType('');
-                        }
-                    } else {
-                        setMealTypes([]);
-                        setMealType('');
-                    }
-                })
-                .catch(() => {
-                    setDiningHalls([]);
-                    setMealTypesByHall({});
-                    setMealTypes([]);
-                    setMealType('');
-                });
-        } else {
+        if (!date) {
+            setDate(new Date());
+        }
+    }, []); // Empty dependency array - only run once on mount
+
+    // Fetch available options when date changes
+    useEffect(() => {
+        if (!date) {
             setDiningHalls([]);
             setMealTypesByHall({});
             setMealTypes([]);
-            setMealType('');
+            if (onDataUpdate) {
+                onDataUpdate([], {});
+            }
+            return;
         }
-        // eslint-disable-next-line
-    }, [date]);
 
+        const formattedDate = date.getFullYear() + '-' +
+            String(date.getMonth() + 1).padStart(2, '0') + '-' +
+            String(date.getDate()).padStart(2, '0');
+
+        // Prevent duplicate fetches
+        if (isFetchingRef.current || lastFetchDateRef.current === formattedDate) {
+            return;
+        }
+
+        isFetchingRef.current = true;
+        lastFetchDateRef.current = formattedDate;
+        setIsLoading(true);
+        
+        fetch(`/api/available-options?date=${formattedDate}`)
+            .then(res => res.json())
+            .then(data => {
+                const halls = data.dining_halls || [];
+                const mealsByHall = data.meal_types_by_hall || {};
+                
+                setDiningHalls(halls);
+                setMealTypesByHall(mealsByHall);
+                
+                // Pass data back to Dashboard for progressive disclosure
+                if (onDataUpdate) {
+                    onDataUpdate(halls, mealsByHall);
+                }
+                
+                // If a dining hall is already selected, update mealTypes
+                if (diningHall && mealsByHall[diningHall]) {
+                    const sortedMeals = sortMealTypes([...mealsByHall[diningHall]]);
+                    setMealTypes(sortedMeals);
+                    // If current mealType is not valid, reset it
+                    if (!mealsByHall[diningHall].includes(mealType)) {
+                        setMealType('');
+                    }
+                } else if (diningHall && !halls.includes(diningHall)) {
+                    // Reset dining hall if it's not available on this date
+                    setDiningHall('');
+                    setMealTypes([]);
+                    setMealType('');
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching available options:', error);
+                setDiningHalls([]);
+                setMealTypesByHall({});
+                setMealTypes([]);
+                if (onDataUpdate) {
+                    onDataUpdate([], {});
+                }
+            })
+            .finally(() => {
+                setIsLoading(false);
+                isFetchingRef.current = false;
+            });
+    }, [date]); // Only depend on date
+
+    // Update meal types when dining hall changes
     useEffect(() => {
         if (diningHall && mealTypesByHall[diningHall]) {
-            setMealTypes(mealTypesByHall[diningHall]);
+            const sortedMeals = sortMealTypes([...mealTypesByHall[diningHall]]);
+            setMealTypes(sortedMeals);
             // If current mealType is not valid, reset it
             if (!mealTypesByHall[diningHall].includes(mealType)) {
                 setMealType('');
             }
-        } else {
+        } else if (diningHall) {
+            // Dining hall selected but no meal types available
             setMealTypes([]);
             setMealType('');
         }
-        // eslint-disable-next-line
-    }, [diningHall, mealTypesByHall]);
+    }, [diningHall, mealTypesByHall, mealType, setMealType, sortMealTypes]);
+
+    // Smart auto-selection when options become available
+    useEffect(() => {
+        // Auto-select if only one dining hall available
+        if (diningHalls.length === 1 && !diningHall) {
+            setDiningHall(diningHalls[0]);
+        }
+    }, [diningHalls, diningHall, setDiningHall]);
+
+    useEffect(() => {
+        // Auto-select current meal based on time when dining hall is selected
+        if (diningHall && mealTypes.length > 0 && !mealType) {
+            const currentHour = new Date().getHours();
+            let suggestedMeal = '';
+            
+            if (currentHour < 10 && mealTypes.includes('Breakfast')) {
+                suggestedMeal = 'Breakfast';
+            } else if (currentHour >= 10 && currentHour < 15 && mealTypes.includes('Lunch')) {
+                suggestedMeal = 'Lunch';
+            } else if (currentHour >= 15 && mealTypes.includes('Dinner')) {
+                suggestedMeal = 'Dinner';
+            } else if (mealTypes.includes('Everyday')) {
+                suggestedMeal = 'Everyday';
+            } else if (mealTypes.length === 1) {
+                // If only one meal available, select it
+                suggestedMeal = mealTypes[0];
+            }
+            
+            if (suggestedMeal) {
+                setMealType(suggestedMeal);
+            }
+        }
+    }, [mealTypes, diningHall, mealType, setMealType]);
+
+    // Quick action handlers
+    const handleQuickLunch = useCallback(() => {
+        const today = new Date();
+        setDate(today);
+        
+        // Set most common dining hall if available
+        const commonHalls = ['Main Dining', 'Student Union', 'Commons'];
+        const availableCommonHall = commonHalls.find(hall => diningHalls.includes(hall));
+        if (availableCommonHall) {
+            setDiningHall(availableCommonHall);
+        } else if (diningHalls.length > 0) {
+            setDiningHall(diningHalls[0]);
+        }
+    }, [setDate, diningHalls, setDiningHall]);
+
+    const handleQuickDinner = useCallback(() => {
+        const today = new Date();
+        setDate(today);
+        setMealType('Dinner');
+    }, [setDate, setMealType]);
 
     return (
         <div className="bg-white rounded-lg shadow p-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Dining Hall Selector */}
-                <div>
-                    <label
-                        htmlFor="dining-hall"
-                        className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                        Dining Hall
-                    </label>
-                    <div className="relative">
-                        <select
-                            id="dining-hall"
-                            value={diningHall}
-                            onChange={(e) => setDiningHall(e.target.value)}
-                            className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                        >
-                            <option value="">Select Dining Hall</option>
-                            {diningHalls.map((hall) => (
-                                <option key={hall} value={hall}>
-                                    {hall}
-                                </option>
-                            ))}
-                        </select>
-                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                            <ChevronDownIcon className="text-gray-500" size={20} />
-                        </div>
-                    </div>
-                </div>
                 {/* Date Picker */}
                 <div>
                     <label
@@ -110,31 +200,39 @@ const FilterBar = ({
                             onChange={(date) => setDate(date)}
                             className="block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                             wrapperClassName="w-full"
+                            minDate={new Date(new Date().setMonth(new Date().getMonth() - 3))}
+                            maxDate={new Date()}
                         />
                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
                             <CalendarIcon size={16} />
                         </div>
                     </div>
                 </div>
-                {/* Meal Type Selector */}
+
+                {/* Dining Hall Selector */}
                 <div>
                     <label
-                        htmlFor="meal-type"
+                        htmlFor="dining-hall"
                         className="block text-sm font-medium text-gray-700 mb-1"
                     >
-                        Meal
+                        Dining Hall
                     </label>
                     <div className="relative">
                         <select
-                            id="meal-type"
-                            value={mealType}
-                            onChange={(e) => setMealType(e.target.value)}
-                            className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            id="dining-hall"
+                            value={diningHall}
+                            onChange={(e) => setDiningHall(e.target.value)}
+                            disabled={isLoading || diningHalls.length === 0}
+                            className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500"
                         >
-                            <option value="">Select Meal Type</option>
-                            {mealTypes.map((meal) => (
-                                <option key={meal} value={meal}>
-                                    {meal}
+                            <option value="">
+                                {isLoading ? "Loading..." : 
+                                 diningHalls.length === 0 ? "No dining halls available" :
+                                 "Select Dining Hall"}
+                            </option>
+                            {diningHalls.map((hall) => (
+                                <option key={hall} value={hall}>
+                                    {hall}
                                 </option>
                             ))}
                         </select>
@@ -143,8 +241,57 @@ const FilterBar = ({
                         </div>
                     </div>
                 </div>
+
+                {/* Meal Type Selector - Only show if multiple options or no selection made */}
+                {(!diningHall || mealTypes.length > 1 || !mealType) && (
+                    <div>
+                        <label
+                            htmlFor="meal-type"
+                            className="block text-sm font-medium text-gray-700 mb-1"
+                        >
+                            Meal
+                        </label>
+                        <div className="relative">
+                            <select
+                                id="meal-type"
+                                value={mealType}
+                                onChange={(e) => setMealType(e.target.value)}
+                                disabled={!diningHall || mealTypes.length === 0}
+                                className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                            >
+                                <option value="">
+                                    {!diningHall ? "Select dining hall first" :
+                                     mealTypes.length === 0 ? "No meals available" :
+                                     "Select Meal Type"}
+                                </option>
+                                {mealTypes.map((meal) => (
+                                    <option key={meal} value={meal}>
+                                        {meal}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <ChevronDownIcon className="text-gray-500" size={20} />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Show selected meal when only one option and auto-selected */}
+                {diningHall && mealTypes.length === 1 && mealType && (
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Meal
+                        </label>
+                        <div className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 bg-gray-50 text-gray-700 sm:text-sm rounded-md">
+                            {mealType}
+                            <span className="text-xs text-gray-500 ml-2">(Only option available)</span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )
 }
-export default FilterBar
+
+export default Filter
