@@ -19,6 +19,8 @@ npm-debug.log*
 yarn-debug.log*
 .env
 
+CLAUDE.md
+
 #scraped json output
 /backend/foods.json
 
