@@ -28,3 +28,16 @@ CLAUDE.md
 
 /backend/static/profile_images
 
+# Debug and temporary files
+/backend/debug_screenshots/
+/backend/pageClickDropDown.html
+/backend/pageClickNutrition.html
+/backend/pageLoad.html
+/backend/progress_after_*_halls.json
+/backend/scrape_progress_summary.json
+/backend/dining_hall_data.json
+
+# Test images
+/frontend/desktopImages/
+/frontend/mobileImages/
+
