@@ -9,6 +9,7 @@ import certifi
 from datetime import datetime, timedelta
 import shutil
 import uuid
+import time
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
 import io
@@ -45,7 +46,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "dev-secret-key"))
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=os.getenv("SECRET_KEY", "dev-secret-key"),
+    max_age=1800,  # 30 minutes
+    same_site="lax",
+    https_only=False  # False for local development with HTTP
+)
 
 # Load environment variables
 load_dotenv()
@@ -832,7 +839,8 @@ def export_data(request: Request, body: dict = Body(...)):
                         if food:
                             n = food.get("nutrients", {})
                             pdf.cell(30, 8, str(date), border=1)
-                            pdf.cell(40, 8, str(food.get("name", "")), border=1)
+                            food_name = str(food.get("name", "")).encode('latin-1', 'replace').decode('latin-1')
+                            pdf.cell(40, 8, food_name, border=1)
                             pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
                             pdf.cell(20, 8, str(n.get("calories", "")), border=1)
                             pdf.cell(20, 8, str(n.get("protein", "")), border=1)
@@ -861,33 +869,113 @@ def export_data(request: Request, body: dict = Body(...)):
 
 @app.get('/auth/google/login')
 async def google_login(request: Request):
-    redirect_uri = request.url_for('google_auth')
-    return await oauth.google.authorize_redirect(request, redirect_uri)
+    # Use the exact same URI format as configured in Google Console
+    redirect_uri = "http://localhost:8000/auth/google/auth"
+    print(f"OAuth login initiated with redirect_uri: {redirect_uri}")
+    print(f"Session before OAuth redirect: {request.session}")
+    print(f"Session ID before OAuth: {getattr(request.session, 'session_id', 'No session ID')}")
+    
+    response = await oauth.google.authorize_redirect(request, redirect_uri)
+    print(f"Session after OAuth redirect: {request.session}")
+    return response
 
 @app.get('/auth/google/auth')
 async def google_auth(request: Request):
-    token = await oauth.google.authorize_access_token(request)
-    user_info = token.get("userinfo")
-    if not user_info:
-        user_info = await oauth.google.parse_id_token(request, token)
-    email = user_info['email']
-    db_user = get_user_by_email(users_collection, email)
-    if not db_user:
-        users_collection.insert_one({
-            "email": email,
-            "hashed_password": None,
-            "profile": {"name": user_info.get("name", "")}
-        })
+    try:
+        print(f"OAuth callback received. Query params: {request.query_params}")
+        print(f"Session data: {request.session}")
+        
+        # Try a different approach - manually handle the OAuth state
+        state = request.query_params.get('state')
+        code = request.query_params.get('code')
+        
+        if not state or not code:
+            print("Missing state or code parameters")
+            return RedirectResponse(url="http://localhost:5173/login?error=missing_params")
+        
+        print(f"Received state: {state}")
+        print(f"Received code: {code}")
+        
+        # Manual token exchange to bypass session state issues
+        print(f"Using manual token exchange to bypass session issues")
+        import httpx
+        token_data = {
+            'client_id': os.getenv("GOOGLE_CLIENT_ID"),
+            'client_secret': os.getenv("GOOGLE_CLIENT_SECRET"),
+            'code': code,
+            'grant_type': 'authorization_code',
+            'redirect_uri': "http://localhost:8000/auth/google/auth"
+        }
+        
+        async with httpx.AsyncClient() as client:
+            token_response = await client.post(
+                'https://oauth2.googleapis.com/token',
+                data=token_data
+            )
+            if token_response.status_code != 200:
+                print(f"Token exchange failed: {token_response.text}")
+                return RedirectResponse(url="http://localhost:5173/login?error=token_exchange_failed")
+            
+            token = token_response.json()
+            print(f"Token exchange successful: {token.keys()}")
+            
+        # Get user info manually
+        async with httpx.AsyncClient() as client:
+            user_response = await client.get(
+                'https://www.googleapis.com/oauth2/v2/userinfo',
+                headers={'Authorization': f"Bearer {token['access_token']}"}
+            )
+            if user_response.status_code != 200:
+                print(f"User info failed: {user_response.text}")
+                return RedirectResponse(url="http://localhost:5173/login?error=userinfo_failed")
+            
+            user_info = user_response.json()
+            print(f"User info received: {user_info}")
+    except Exception as e:
+        print(f"OAuth error: {str(e)}")
+        print(f"Error type: {type(e)}")
+        
+        # Redirect to frontend with error
+        return RedirectResponse(url="http://localhost:5173/login?error=oauth_failed")
+    
+    # Continue with user processing
+    try:
+        email = user_info['email']
+        print(f"Processing user: {email}")
+        
         db_user = get_user_by_email(users_collection, email)
-    # Issue JWT/cookie
-    jwt_token = create_access_token({"sub": email})
-    # Redirect based on password presence
-    if not db_user.get("hashed_password"):
-        response = RedirectResponse(url="http://localhost:5173/set-password")
-    else:
-        response = RedirectResponse(url="http://localhost:5173/dashboard")
-    set_auth_cookie(response, jwt_token)
-    return response
+        print(f"Found existing user: {bool(db_user)}")
+        
+        if not db_user:
+            print("Creating new user...")
+            users_collection.insert_one({
+                "email": email,
+                "hashed_password": None,
+                "profile": {"name": user_info.get("name", "")}
+            })
+            db_user = get_user_by_email(users_collection, email)
+            print(f"New user created: {bool(db_user)}")
+        
+        # Issue JWT/cookie
+        print("Creating JWT token...")
+        jwt_token = create_access_token({"sub": email})
+        print(f"Created JWT token for user: {email}")
+        print(f"User has password: {bool(db_user.get('hashed_password'))}")
+        
+        # Always redirect to dashboard for OAuth users - use same domain for cookie persistence
+        redirect_url = "http://localhost:5173/dashboard"
+        print(f"Redirecting OAuth user to dashboard: {redirect_url}")
+        response = RedirectResponse(url=redirect_url)
+        
+        print(f"Setting auth cookie with token: {jwt_token[:20]}...")
+        set_auth_cookie(response, jwt_token)
+        print(f"Cookie set, returning response")
+        return response
+        
+    except Exception as user_error:
+        print(f"Error processing user after OAuth: {str(user_error)}")
+        print(f"Error type: {type(user_error)}")
+        return RedirectResponse(url="http://localhost:5173/login?error=user_processing_failed")
 
 @app.post("/api/account/set-password")
 def set_password(request: Request, new_password: str = Body(...)):
@@ -900,6 +988,80 @@ def set_password(request: Request, new_password: str = Body(...)):
         {"$set": {"hashed_password": hashed_pw}}
     )
     return {"message": "Password set successfully"}
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(request: dict = Body(...)):
+    """Send password reset email to user"""
+    try:
+        email = request.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="Email is required")
+            
+        # Check if user exists
+        user = get_user_by_email(users_collection, email)
+        if not user:
+            # For security, always return success even if user doesn't exist
+            return {"message": "If the email exists in our system, a reset link has been sent."}
+        
+        # Generate reset token (expires in 1 hour)
+        reset_token = create_access_token({"sub": email, "type": "reset"}, expires_delta=timedelta(hours=1))
+        
+        # Store reset token in database (optional - for token invalidation)
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"reset_token": reset_token, "reset_token_expires": time.time() + 3600}}
+        )
+        
+        # Send password reset email
+        from email_util import send_password_reset_email
+        email_sent = await send_password_reset_email(email, reset_token)
+        
+        # Also log for development (remove in production)
+        reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+        print(f"Password reset link for {email}: {reset_link}")
+        print(f"Email sent: {email_sent}")
+        
+        return {"message": "If the email exists in our system, a reset link has been sent."}
+        
+    except Exception as e:
+        print(f"Forgot password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process password reset request")
+
+@app.post("/api/auth/reset-password")
+async def reset_password(token: str = Body(...), new_password: str = Body(...)):
+    """Reset password using reset token"""
+    try:
+        # Decode and validate reset token
+        payload = decode_access_token(token)
+        if payload.get("type") != "reset":
+            raise HTTPException(status_code=400, detail="Invalid reset token")
+        
+        email = payload["sub"]
+        user = get_user_by_email(users_collection, email)
+        if not user:
+            raise HTTPException(status_code=400, detail="User not found")
+        
+        # Check if token is still valid in database (optional security check)
+        if user.get("reset_token") != token or user.get("reset_token_expires", 0) < time.time():
+            raise HTTPException(status_code=400, detail="Reset token has expired")
+        
+        # Hash new password and update user
+        hashed_password = hash_password(new_password)
+        users_collection.update_one(
+            {"email": email},
+            {
+                "$set": {"hashed_password": hashed_password},
+                "$unset": {"reset_token": "", "reset_token_expires": ""}
+            }
+        )
+        
+        return {"message": "Password reset successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Reset password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
 
 # Serve static files (if not already present)
 app.mount("/static", StaticFiles(directory="static"), name="static")

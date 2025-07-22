@@ -202,7 +202,7 @@ import { useAuth } from '../AuthProvider'
 const getImageUrl = (url) => {
   if (!url) return null;
   if (url.startsWith('/static/')) {
-    return `http://localhost:8000${url}`;
+    return url; // Proxy will handle the routing
   }
   return url;
 };
@@ -309,12 +309,12 @@ const Header = () => {
                           />
                         ) : (
                           <span className="text-red-600 font-semibold text-sm">
-                            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                            {user.profile?.name ? user.profile.name.charAt(0).toUpperCase() : 'U'}
                           </span>
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">{user.name || 'User'}</p>
+                        <p className="text-sm font-semibold text-gray-900">{user.profile?.name || 'User'}</p>
                         <p className="text-xs text-gray-500">{user.email}</p>
                       </div>
                     </div>
@@ -367,12 +367,12 @@ const Header = () => {
                             />
                           ) : (
                             <span className="text-red-600 font-semibold text-lg">
-                              {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                              {user.profile?.name ? user.profile.name.charAt(0).toUpperCase() : 'U'}
                             </span>
                           )}
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">{user.name || 'User'}</p>
+                          <p className="font-semibold text-gray-900">{user.profile?.name || 'User'}</p>
                           <p className="text-sm text-gray-500">{user.email}</p>
                         </div>
                       </div>

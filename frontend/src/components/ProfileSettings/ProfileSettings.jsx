@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { ProfileSection } from './ProfileSection';
-import { WeightGoalSection } from './WeightGoalSection';
 import { MacroTargetsSection } from './MacroTargetsSection';
 // import { EnergyExpenditureSection } from './EnergyExpenditureSection';
 import { ActivityLevelSection } from './ActivityLevelSection';
@@ -25,16 +24,14 @@ export default function ProfileSettings(props) {
   }, [fetchEnergyTarget]);
 
   return (
-    <div className="max-w-4xl w-full mx-auto px-4 py-8">
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-            <p className="text-gray-600">Manage your personal information and nutrition targets</p>
-          </div>
-          
-          <ProfileSection refreshEnergyTarget={fetchEnergyTarget} />
-          <WeightGoalSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+      <div className="max-w-3xl px-4 py-8 mx-auto">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+          <p className="text-gray-600 mt-2">Manage your personal information and nutrition targets</p>
+        </div>
+        <div className="space-y-6">
+          <ProfileSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
           <WeightGoalRateSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
           <ActivityLevelSection refreshEnergyTarget={fetchEnergyTarget} />
           <MacroTargetsSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />

@@ -184,13 +184,13 @@ const Filter = ({
     }, [setDate, setMealType]);
 
     return (
-        <div className="bg-white rounded-lg shadow p-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 sm:p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 {/* Date Picker */}
                 <div>
                     <label
                         htmlFor="date"
-                        className="block text-sm font-medium text-gray-700 mb-1"
+                        className="block text-xs font-medium text-gray-700 mb-1"
                     >
                         Date
                     </label>
@@ -198,7 +198,7 @@ const Filter = ({
                         <DatePicker
                             selected={date}
                             onChange={(date) => setDate(date)}
-                            className="block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                            className="block w-full pl-3 pr-8 py-2.5 sm:py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md touch-manipulation"
                             wrapperClassName="w-full"
                             minDate={new Date(new Date().setMonth(new Date().getMonth() - 3))}
                             maxDate={new Date()}
@@ -213,7 +213,7 @@ const Filter = ({
                 <div>
                     <label
                         htmlFor="dining-hall"
-                        className="block text-sm font-medium text-gray-700 mb-1"
+                        className="block text-xs font-medium text-gray-700 mb-1"
                     >
                         Dining Hall
                     </label>
@@ -223,7 +223,7 @@ const Filter = ({
                             value={diningHall}
                             onChange={(e) => setDiningHall(e.target.value)}
                             disabled={isLoading || diningHalls.length === 0}
-                            className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                            className="appearance-none block w-full pl-3 pr-10 py-2.5 sm:py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md disabled:bg-gray-100 disabled:text-gray-500 touch-manipulation"
                         >
                             <option value="">
                                 {isLoading ? "Loading..." : 
@@ -247,7 +247,7 @@ const Filter = ({
                     <div>
                         <label
                             htmlFor="meal-type"
-                            className="block text-sm font-medium text-gray-700 mb-1"
+                            className="block text-xs font-medium text-gray-700 mb-1"
                         >
                             Meal
                         </label>
@@ -257,7 +257,7 @@ const Filter = ({
                                 value={mealType}
                                 onChange={(e) => setMealType(e.target.value)}
                                 disabled={!diningHall || mealTypes.length === 0}
-                                className="appearance-none block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md disabled:bg-gray-100 disabled:text-gray-500"
+                                className="appearance-none block w-full pl-3 pr-10 py-2.5 sm:py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md disabled:bg-gray-100 disabled:text-gray-500 touch-manipulation"
                             >
                                 <option value="">
                                     {!diningHall ? "Select dining hall first" :
@@ -280,10 +280,10 @@ const Filter = ({
                 {/* Show selected meal when only one option and auto-selected */}
                 {diningHall && mealTypes.length === 1 && mealType && (
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
                             Meal
                         </label>
-                        <div className="block w-full pl-3 pr-3 py-2 text-base border border-gray-300 bg-gray-50 text-gray-700 sm:text-sm rounded-md">
+                        <div className="block w-full pl-3 pr-3 py-2.5 sm:py-2 text-sm border border-gray-300 bg-gray-50 text-gray-700 rounded-md">
                             {mealType}
                             <span className="text-xs text-gray-500 ml-2">(Only option available)</span>
                         </div>

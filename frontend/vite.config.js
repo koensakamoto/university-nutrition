@@ -13,6 +13,7 @@ export default defineConfig({
       '/auth': 'http://127.0.0.1:8000',
       '/foods': 'http://127.0.0.1:8000',
       '/agent': 'http://127.0.0.1:8000',
+      '/static': 'http://127.0.0.1:8000',
     }
   }
 })

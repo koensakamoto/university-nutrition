@@ -19,7 +19,8 @@ def set_auth_cookie(response: Response, token: str):
         secure=False,  # Set to True in production (HTTPS)
         samesite="lax",
         max_age=3600,
-        path="/"
+        path="/",
+        domain=None  # Let browser set domain automatically for localhost/127.0.0.1 compatibility
     )
 
 def clear_auth_cookie(response: Response):
@@ -29,11 +30,22 @@ def get_user_by_email(users_collection: Collection, email: str):
     return users_collection.find_one({"email": email})
 
 def get_current_user(request: Request, users_collection: Collection):
+    print(f"Checking auth for: {request.url}")
+    print(f"All cookies: {dict(request.cookies)}")
     token = request.cookies.get("access_token")
+    print(f"Access token found: {bool(token)}")
     if not token:
+        print("No access token found in cookies")
         raise HTTPException(status_code=401, detail="Not authenticated")
-    payload = decode_access_token(token)
+    try:
+        payload = decode_access_token(token)
+        print(f"Token decoded successfully for: {payload.get('sub')}")
+    except Exception as e:
+        print(f"Token decode error: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token")
     user = users_collection.find_one({"email": payload["sub"]})
     if not user:
+        print(f"User not found for email: {payload.get('sub')}")
         raise HTTPException(status_code=401, detail="User not found")
+    print(f"User authenticated successfully: {payload.get('sub')}")
     return user

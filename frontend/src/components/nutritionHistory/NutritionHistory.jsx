@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import NutritionChart from './NutritionChart';
 import { WeightChart } from './WeightChart';
 import { MacroChart } from './MacroChart';
@@ -16,11 +16,20 @@ export default function NutritionHistory(props) {
   const [error, setError] = useState(null);
   const [macroData, setMacroData] = useState([]);
   const [macroLoading, setMacroLoading] = useState(false);
+  const [macroError, setMacroError] = useState(null);
+  const [energyChartData, setEnergyChartData] = useState([]);
+  const [energyChartLoading, setEnergyChartLoading] = useState(false);
+  const [energyChartError, setEnergyChartError] = useState(null);
   const [weightData, setWeightData] = useState([]);
+  const [weightError, setWeightError] = useState(null);
   const fetchWithAuth = useFetchWithAuth();
 
   // Utility to get local date string in YYYY-MM-DD format
   const getLocalDateString = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+
+  // Memoize expensive date calculations
+  const dateRangeBounds = useMemo(() => getDateRangeBounds(dateRange), [dateRange]);
+  const dateRangeLabel = useMemo(() => getDateRangeLabel(dateRangeBounds.start, dateRangeBounds.end), [dateRangeBounds]);
 
   // Helper to get start and end date strings for API
   function getDateRangeBounds(range) {
@@ -59,7 +68,10 @@ export default function NutritionHistory(props) {
 
   // Helper to aggregate macros by day/week/month
   function aggregateMacros(data, viewMode) {
-    if (!data || data.length === 0) return [];
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
     if (viewMode === 'daily') {
       // Group by date
       const grouped = {};
@@ -67,6 +79,7 @@ export default function NutritionHistory(props) {
         if (!grouped[item.date]) grouped[item.date] = [];
         grouped[item.date].push(item);
       });
+      
       return Object.entries(grouped).map(([date, items]) => ({
         name: date,
         date,
@@ -80,8 +93,12 @@ export default function NutritionHistory(props) {
       const grouped = {};
       data.forEach(item => {
         const d = new Date(item.date);
-        const year = d.getFullYear();
-        const week = Math.ceil((((d - new Date(year, 0, 1)) / 86400000) + new Date(year, 0, 1).getDay() + 1) / 7);
+        // Get ISO week number using proper algorithm
+        const thursday = new Date(d.getTime());
+        thursday.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+        const year = thursday.getFullYear();
+        const firstThursday = new Date(year, 0, 4);
+        const week = 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86400000 - 3 + (firstThursday.getDay() + 6) % 7) / 7);
         const key = `${year}-W${week}`;
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(item);
@@ -114,12 +131,15 @@ export default function NutritionHistory(props) {
 
   // Helper to fill missing dates with zero values for daily view
   function fillMissingDates(aggregated, start, end) {
-    const dateSet = new Set(aggregated.map(item => item.date));
     const result = [];
-    let current = new Date(start);
-    const endDate = new Date(end);
+    
+    // Parse dates correctly by adding 'T00:00:00' to avoid timezone issues
+    let current = new Date(start + 'T00:00:00');
+    const endDate = new Date(end + 'T00:00:00');
+    
     while (current <= endDate) {
-      const dateStr = current.toISOString().split('T')[0];
+      // Use getLocalDateString to avoid timezone issues
+      const dateStr = getLocalDateString(current);
       const found = aggregated.find(item => item.date === dateStr);
       if (found) {
         result.push(found);
@@ -133,25 +153,30 @@ export default function NutritionHistory(props) {
           fat: 0,
         });
       }
-      current.setDate(current.getDate() + 1);
+      // Add exactly one day
+      current = new Date(current.getTime() + 24 * 60 * 60 * 1000);
     }
     return result;
   }
 
   // Helper to fill missing weeks with zero values for weekly view
   function fillMissingWeeks(aggregated, start, end) {
-    // Get the first Monday on or after start
+    // Create new Date objects to avoid mutation
     let current = new Date(start);
-    current.setDate(current.getDate() - current.getDay() + 1); // Monday
+    // Get the first Monday on or after start
+    current = new Date(current.getTime() - (current.getDay() === 0 ? 6 : current.getDay() - 1) * 86400000);
     const endDate = new Date(end);
-    // Get the last Sunday on or before end
-    endDate.setDate(endDate.getDate() - endDate.getDay() + 7); // Next Monday
-    const weekSet = new Set(aggregated.map(item => item.name));
+    // Get the last Sunday on or before end  
+    const endWeek = new Date(endDate.getTime() + (7 - endDate.getDay()) * 86400000);
+    
     const result = [];
-    while (current < endDate) {
-      const year = current.getFullYear();
-      const firstJan = new Date(year, 0, 1);
-      const week = Math.ceil((((current - firstJan) / 86400000) + firstJan.getDay() + 1) / 7);
+    while (current < endWeek) {
+      // Get ISO week number using proper algorithm
+      const thursday = new Date(current.getTime());
+      thursday.setDate(current.getDate() + 3 - (current.getDay() + 6) % 7);
+      const year = thursday.getFullYear();
+      const firstThursday = new Date(year, 0, 4);
+      const week = 1 + Math.round(((thursday.getTime() - firstThursday.getTime()) / 86400000 - 3 + (firstThursday.getDay() + 6) % 7) / 7);
       const weekKey = `${year}-W${week}`;
       const found = aggregated.find(item => item.name === weekKey);
       if (found) {
@@ -165,21 +190,21 @@ export default function NutritionHistory(props) {
           fat: 0,
         });
       }
-      current.setDate(current.getDate() + 7);
+      current = new Date(current.getTime() + 7 * 86400000); // Add 7 days without mutation
     }
     return result;
   }
 
   // Helper to fill missing months with zero values for monthly view
   function fillMissingMonths(aggregated, start, end) {
+    // Create new Date objects to avoid mutation
     let current = new Date(start);
-    current.setDate(1); // first of the month
+    current = new Date(current.getFullYear(), current.getMonth(), 1); // first of the month
     const endDate = new Date(end);
-    endDate.setDate(1);
-    endDate.setMonth(endDate.getMonth() + 1); // go to first of next month
-    const monthSet = new Set(aggregated.map(item => item.name));
+    const endMonth = new Date(endDate.getFullYear(), endDate.getMonth() + 1, 1); // first of next month
+    
     const result = [];
-    while (current < endDate) {
+    while (current < endMonth) {
       const key = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}`;
       const found = aggregated.find(item => item.name === key);
       if (found) {
@@ -193,7 +218,7 @@ export default function NutritionHistory(props) {
           fat: 0,
         });
       }
-      current.setMonth(current.getMonth() + 1);
+      current = new Date(current.getFullYear(), current.getMonth() + 1, 1); // Next month without mutation
     }
     return result;
   }
@@ -223,20 +248,28 @@ export default function NutritionHistory(props) {
     const fetchSummary = async () => {
       setLoading(true);
       setError(null);
-      const { start, end } = getDateRangeBounds(dateRange);
+      const { start, end } = dateRangeBounds;
       try {
         const [profileRes, energyRes, summaryRes] = await Promise.all([
           fetchWithAuth('/api/profile'),
           fetchWithAuth('/api/profile/energy-target'),
           fetchWithAuth(`/api/plate/summary?start_date=${start}&end_date=${end}`)
         ]);
-        if (profileRes.error) throw new Error('Failed to fetch profile');
-        if (energyRes.error) throw new Error('Failed to fetch energy target');
-        if (summaryRes.error) throw new Error('Failed to fetch summary');
+        if (profileRes.error) throw new Error(profileRes.error);
+        if (energyRes.error) throw new Error(energyRes.error);
+        if (summaryRes.error) throw new Error(summaryRes.error);
+        
         const macronutrients = profileRes.data;
         const { energy_target } = energyRes.data;
         const data = summaryRes.data;
 
+        // Validate required data
+        if (!macronutrients?.profile) {
+          throw new Error('Invalid profile data received');
+        }
+        if (!data) {
+          throw new Error('No summary data received');
+        }
 
         // Calculate macro targets
         const energyTarget = energy_target || 2400;
@@ -308,67 +341,108 @@ export default function NutritionHistory(props) {
       }
     };
     fetchSummary();
-  }, [dateRange]);
+  }, [dateRangeBounds]);
 
-  // Fetch macro data for chart (when dateRange or viewMode changes)
+  // Fetch macro data for insights (only when dateRange changes, NOT viewMode)
   useEffect(() => {
     const fetchMacroData = async () => {
-      const { start, end } = getDateRangeBounds(dateRange);
+      const { start, end } = dateRangeBounds;
       setMacroLoading(true);
+      setMacroError(null);
       try {
         const { data, error } = await fetchWithAuth(`/api/plate/food-macros?start_date=${start}&end_date=${end}`);
-        // console.log("data", data )
-        if (error) throw new Error('Failed to fetch macro data');
-        const foodMacros = data;
-        const aggregated = aggregateMacros(foodMacros, viewMode);
-        if (viewMode === 'daily') {
-          setMacroData(fillMissingDates(aggregated, start, end));
-        } else if (viewMode === 'weekly') {
-          setMacroData(fillMissingWeeks(aggregated, start, end));
-        } else if (viewMode === 'monthly') {
-          setMacroData(fillMissingMonths(aggregated, start, end));
-        } else {
-          setMacroData(aggregated);
+        if (error) throw new Error(error);
+        if (!data) {
+          console.warn('No macro data received from API');
+          setMacroData([]);
+          return;
         }
+        const foodMacros = data;
+        // Always use daily aggregation for nutrition insights
+        const aggregated = aggregateMacros(foodMacros, 'daily');
+        setMacroData(fillMissingDates(aggregated, start, end));
       } catch (err) {
+        console.error('Failed to fetch macro data:', err);
+        setMacroError(err.message || 'Failed to load nutrition data');
         setMacroData([]);
       } finally {
         setMacroLoading(false);
       }
     };
     fetchMacroData();
-  }, [dateRange, viewMode]);
+  }, [dateRangeBounds]);
+
+  // Fetch energy chart data (when dateRange OR viewMode changes)
+  useEffect(() => {
+    const fetchEnergyChartData = async () => {
+      const { start, end } = dateRangeBounds;
+      setEnergyChartLoading(true);
+      setEnergyChartError(null);
+      try {
+        const { data, error } = await fetchWithAuth(`/api/plate/food-macros?start_date=${start}&end_date=${end}`);
+        if (error) throw new Error(error);
+        if (!data) {
+          console.warn('No energy chart data received from API');
+          setEnergyChartData([]);
+          return;
+        }
+        const foodMacros = data;
+        const aggregated = aggregateMacros(foodMacros, viewMode);
+        
+        if (viewMode === 'daily') {
+          setEnergyChartData(fillMissingDates(aggregated, start, end));
+        } else if (viewMode === 'weekly') {
+          setEnergyChartData(fillMissingWeeks(aggregated, start, end));
+        } else if (viewMode === 'monthly') {
+          setEnergyChartData(fillMissingMonths(aggregated, start, end));
+        } else {
+          setEnergyChartData(aggregated);
+        }
+      } catch (err) {
+        console.error('Failed to fetch energy chart data:', err);
+        setEnergyChartError(err.message || 'Failed to load energy chart data');
+        setEnergyChartData([]);
+      } finally {
+        setEnergyChartLoading(false);
+      }
+    };
+    fetchEnergyChartData();
+  }, [dateRangeBounds, viewMode]);
 
   // Fetch weight data for chart (when dateRange changes)
   useEffect(() => {
     const fetchWeightData = async () => {
-      const { start, end } = getDateRangeBounds(dateRange);
+      const { start, end } = dateRangeBounds;
+      setWeightError(null);
       try {
         const { data, error } = await fetchWithAuth(`/api/weight-log?start_date=${start}&end_date=${end}`);
-        if (error) throw new Error('Failed to fetch weight data');
+        if (error) throw new Error(error);
         setWeightData(data || []);
       } catch (err) {
+        console.error('Failed to fetch weight data:', err);
+        setWeightError(err.message || 'Failed to load weight data');
         setWeightData([]);
       }
     };
     fetchWeightData();
-  }, [dateRange]);
+  }, [dateRangeBounds]);
 
   return (
-    <div className="max-w-4xl w-full mx-auto px-4 py-8">
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-6 max-w-5xl">
-          <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Nutrition History</h1>
-              <p className="text-gray-600">Track your eating patterns and nutritional progress</p>
-            </div>
-            
-            <DateRangeSelector 
-              value={dateRange}
-              onChange={setDateRange}
-            />
-          </div>
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+      <div className="max-w-3xl px-4 py-8 mx-auto">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Nutrition History</h1>
+          <p className="text-gray-600 mt-2">Track your eating patterns and nutritional progress</p>
+        </div>
+        
+        <div className="mb-6 flex justify-center">
+          <DateRangeSelector 
+            value={dateRange}
+            onChange={setDateRange}
+          />
+        </div>
+        
+        <div className="space-y-6">
 
           {/* Content starts directly with the summary */}
 
@@ -382,11 +456,11 @@ export default function NutritionHistory(props) {
           ) : null}
           
           {/* Energy Consumed Chart */}
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Energy Consumed</h2>
-                <p className="text-sm text-gray-500">{(() => { const { start, end } = getDateRangeBounds(dateRange); return getDateRangeLabel(start, end); })()}</p>
+                <p className="text-sm text-gray-500">{dateRangeLabel}</p>
               </div>
               
               <div className="flex space-x-2 mt-3 md:mt-0">
@@ -397,7 +471,17 @@ export default function NutritionHistory(props) {
               </div>
             </div>
             
-            <MacroChart unit="kcal" viewMode={viewMode} data={macroData} loading={macroLoading} />
+            {energyChartError ? (
+              <div className="text-center text-red-500 py-8">{energyChartError}</div>
+            ) : (
+              <MacroChart 
+                key={`${viewMode}-${dateRange}`} 
+                unit="kcal" 
+                viewMode={viewMode} 
+                data={energyChartData} 
+                loading={energyChartLoading} 
+              />
+            )}
           </div>
           
         
@@ -405,7 +489,13 @@ export default function NutritionHistory(props) {
       
           
           {/* Additional Nutrition Charts */}
-          {(() => { const { start, end } = getDateRangeBounds(dateRange); return <NutritionChart macroData={macroData} start={start} end={end} /> })()}
+          {macroError ? (
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+              <div className="text-center text-red-500 py-8">{macroError}</div>
+            </div>
+          ) : (
+            <NutritionChart macroData={macroData} start={dateRangeBounds.start} end={dateRangeBounds.end} />
+          )}
 
           <div className="flex justify-end mt-4">
               <div className="flex items-center space-x-3">
@@ -424,13 +514,11 @@ export default function NutritionHistory(props) {
 
 
            {/* Weight Tracking Chart */}
-           <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800">Weight Progress</h2>
-                {(() => { const { start, end } = getDateRangeBounds(dateRange); return (
-                  <p className="text-sm text-gray-500">{formatDisplayDate(start)} to {formatDisplayDate(end)}</p>
-                ); })()}
+                <p className="text-sm text-gray-500">{formatDisplayDate(dateRangeBounds.start)} to {formatDisplayDate(dateRangeBounds.end)}</p>
               </div>
               
               <div className="flex space-x-2 mt-3 md:mt-0">
@@ -443,7 +531,11 @@ export default function NutritionHistory(props) {
               </div>
             </div>
             
-            <WeightChart weightData={weightData} />
+            {weightError ? (
+              <div className="text-center text-red-500 py-8">{weightError}</div>
+            ) : (
+              <WeightChart weightData={weightData} />
+            )}
         </div>
       </div>
     </div>

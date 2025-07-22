@@ -32,7 +32,7 @@ function getAdjustedPortion(portionSize, quantity) {
     return `${adjusted} ${unit}`.trim();
 }
 
-const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, onSavePlate }) => {
+const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, onSavePlate, isMobile = false }) => {
     const { user } = useAuth();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const plateEmpty = trackedItems.length === 0;
@@ -103,7 +103,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
         }
     }
     return (
-        <div className="bg-white rounded-xl shadow-lg p-4 flex flex-col h-full border border-gray-100">
+        <div className={`bg-white rounded-xl shadow-lg ${isMobile ? 'p-3 sm:p-4' : 'p-4'} flex flex-col h-full border border-gray-100`}>
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">My Plate</h2>
                 <button
@@ -116,28 +116,28 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
             </div>
             <div className="flex-grow overflow-y-auto">
             {plateEmpty ? (
-                <div className="text-center h-full px-4 text-gray-500 flex flex-col items-center justify-center">
+                <div className={`text-center h-full ${isMobile ? 'px-3 py-6' : 'px-4'} text-gray-500 flex flex-col items-center justify-center`}>
                     <ClipboardPlus size={48} className="text-gray-300 mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700">Your plate is empty</h3>
                     <p className="text-sm mt-1">Add items from the menu to see your nutrition breakdown.</p>
                 </div>
             ) : (
                 <>
-                    <div className="mb-4 grid grid-cols-2 gap-2">
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-gray-800">{totals.calories.toFixed(1)}</div>
+                    <div className={`${isMobile ? 'mb-3' : 'mb-4'} grid grid-cols-2 gap-2`}>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800`}>{totals.calories.toFixed(1)}</div>
                             <div className="text-xs text-gray-500">Calories</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-blue-600">{totals.protein.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-600`}>{totals.protein.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Protein</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-green-600">{totals.carbs.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-green-600`}>{totals.carbs.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Carbs</div>
                         </div>
-                        <div className="bg-gray-50 p-3 rounded-lg text-center">
-                            <div className="text-xl font-bold text-orange-600">{totals.fat.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-orange-600`}>{totals.fat.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Fat</div>
                         </div>
                     </div>
@@ -145,7 +145,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                     {user && !user.guest && (
                         <button
                             onClick={handleSave}
-                            className="w-full flex items-center justify-center gap-2 bg-[#c41e3a] text-white font-semibold py-2 rounded-lg shadow hover:bg-[#a81b2b] transition mb-2"
+                            className={`w-full flex items-center justify-center gap-2 bg-red-600 text-white font-semibold ${isMobile ? 'py-2.5 text-sm' : 'py-3'} rounded-lg shadow hover:bg-red-700 transition-all duration-200 ${isMobile ? 'mb-2' : 'mb-2'} touch-manipulation`}
                             disabled={saveSuccess}
                         >
                             {saveSuccess ? (
@@ -158,18 +158,18 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                             {saveSuccess ? 'Saved!' : 'Save Plate'}
                         </button>
                     )}
-                    <div className="mb-4">
+                    <div className={isMobile ? 'mb-4 mt-0' : 'mb-4'}>
                         <h3 className="text-sm font-medium text-gray-700 mb-2">Calorie Breakdown</h3>
-                        <ResponsiveContainer width="100%" height={120}>
-                            <PieChart>
+                        <ResponsiveContainer width="100%" height={isMobile ? 140 : 120}>
+                            <PieChart margin={{ top: isMobile ? 15 : 20, right: 5, bottom: isMobile ? 25 : 25, left: 5 }}>
                                 <Pie
                                     data={pieData}
                                     dataKey="value"
                                     nameKey="name"
                                     cx="50%"
-                                    cy="50%"
-                                    outerRadius={40}
-                                    innerRadius={28}
+                                    cy={isMobile ? "50%" : "45%"}
+                                    outerRadius={isMobile ? 45 : 45}
+                                    innerRadius={isMobile ? 32 : 35}
                                     labelLine={false}
                                 >
                                     {pieData.map((entry, idx) => (
@@ -181,23 +181,28 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                     verticalAlign="bottom"
                                     align="center"
                                     wrapperStyle={{
-                                        paddingTop: "20px",
-                                        height: "40px",
+                                        paddingTop: isMobile ? "15px" : "10px",
+                                        height: "25px",
+                                        fontSize: "12px"
                                     }}
                                 />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="mb-6">
+                    <div className={`${isMobile ? 'mb-2' : 'mb-6'}`}>
                         <h3 className="text-sm font-medium text-gray-700 mb-2">% Daily Values</h3>
-                        <ResponsiveContainer width="100%" height={140}>
+                        <ResponsiveContainer width="100%" height={isMobile ? 120 : 140}>
                             <BarChart
                                 data={barData}
                                 layout="vertical"
-                                margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+                                margin={{ left: 10, right: 20, top: 10, bottom: 5 }}
                                 barCategoryGap={14}
                             >
-                                <XAxis type="number" hide domain={[0, 100]} />
+                                <XAxis 
+                                    type="number" 
+                                    hide 
+                                    domain={[0, 'dataMax + 20']}
+                                />
                                 <YAxis
                                     type="category"
                                     dataKey="name"
@@ -215,13 +220,13 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="border-t border-gray-200 pt-4">
+                    <div className={`border-t border-gray-200 ${isMobile ? 'pt-3' : 'pt-4'}`}>
                         <h3 className="text-sm font-medium text-gray-700 mb-2">Items on your plate</h3>
                         <ul className="divide-y divide-gray-200">
                             {trackedItems.map((item) => (
                                 <li
                                     key={item.uniqueId}
-                                    className="py-2 flex justify-between items-center"
+                                    className={`${isMobile ? 'py-1.5' : 'py-2'} flex justify-between items-center`}
                                 >
                                     <div>
                                         <p className="text-sm font-medium text-gray-800">{item.name}</p>
@@ -231,7 +236,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                     </div>
                                     <button
                                         onClick={() => removeItem(item.uniqueId)}
-                                        className="text-gray-400 hover:text-gray-600"
+                                        className="text-gray-400 hover:text-gray-600 touch-manipulation p-1 -m-1"
                                     >
                                         <XIcon size={16} />
                                     </button>

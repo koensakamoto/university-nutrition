@@ -137,7 +137,7 @@ const NutritionChart = ({ macroData = [], start, end }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-800 mb-2 md:mb-0">Nutrition Insights</h2>
 

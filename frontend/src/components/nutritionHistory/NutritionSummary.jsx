@@ -6,7 +6,7 @@ export const NutritionSummary = ({summaryData}) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {summaryData.map((card, index) => (
-        <div key={index} className="bg-white rounded-lg shadow-sm p-4 border-l-4" style={{ borderLeftColor: card.color }}>
+        <div key={index} className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 border-l-4" style={{ borderLeftColor: card.color }}>
           <div className="flex justify-between items-start mb-2">
             <h3 className="text-gray-600 text-sm">{card.title}</h3>
             

@@ -1,30 +1,67 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Info, Minimize, TrendingDown, TrendingUp } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => {
-  const [goalType, setGoalType] = useState('lose');
   const [rateOption, setRateOption] = useState('moderate');
   const [customRate, setCustomRate] = useState('');
+  const [currentWeight, setCurrentWeight] = useState('');
+  const [weightGoal, setWeightGoal] = useState('');
   const [original, setOriginal] = useState({});
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [showTooltip, setShowTooltip] = useState(false);
 
-  // Fetch profile on mount
-  useEffect(() => {
+  // Auto-detect goal direction based on current vs target weight
+  const goalDirection = useMemo(() => {
+    const current = parseFloat(currentWeight);
+    const goal = parseFloat(weightGoal);
+    
+    if (!current || !goal) return null;
+    
+    if (goal > current + 1) return 'gaining'; // 1lb threshold for maintain weight
+    if (goal < current - 1) return 'losing';
+    return 'maintaining';
+  }, [currentWeight, weightGoal]);
+
+  // Get appropriate rate options based on goal direction
+  const rateOptions = useMemo(() => {
+    if (goalDirection === 'gaining') {
+      return [
+        { value: 'slow', label: 'Slow', lbsPerWeek: 0.5, description: '0.5 lbs per week', calories: '~250 extra calories/day' },
+        { value: 'moderate', label: 'Moderate', lbsPerWeek: 1, description: '1 lb per week', calories: '~500 extra calories/day' },
+        { value: 'fast', label: 'Fast', lbsPerWeek: 1.5, description: '1.5 lbs per week', calories: '~750 extra calories/day' },
+        { value: 'custom', label: 'Custom', description: 'Enter lbs/week to gain' }
+      ];
+    } else if (goalDirection === 'losing') {
+      return [
+        { value: 'slow', label: 'Slow', lbsPerWeek: 0.5, description: '0.5 lbs per week', calories: '~250 fewer calories/day' },
+        { value: 'moderate', label: 'Moderate', lbsPerWeek: 1, description: '1 lb per week', calories: '~500 fewer calories/day' },
+        { value: 'fast', label: 'Fast', lbsPerWeek: 1.5, description: '1.5 lbs per week', calories: '~750 fewer calories/day' },
+        { value: 'custom', label: 'Custom', description: 'Enter lbs/week to lose' }
+      ];
+    } else if (goalDirection === 'maintaining') {
+      return [
+        { value: 'maintain', label: 'Maintain Weight', lbsPerWeek: 0, description: '0 lbs per week', calories: 'No calorie adjustment' }
+      ];
+    }
+    return [];
+  }, [goalDirection]);
+
+  // Fetch profile data
+  const fetchProfileData = useCallback(() => {
     fetch('/api/profile', { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch profile');
         return res.json();
       })
       .then(data => {
-        setGoalType(data.profile.weight_goal_type || 'lose');
+        setCurrentWeight(data.profile.weight ? data.profile.weight.toString() : '');
+        setWeightGoal(data.profile.weight_goal ? data.profile.weight_goal.toString() : '');
         setRateOption(data.profile.weight_goal_rate || 'moderate');
         setCustomRate(data.profile.weight_goal_custom_rate ? String(data.profile.weight_goal_custom_rate) : '');
         setOriginal({
-          goalType: data.profile.weight_goal_type || 'lose',
           rateOption: data.profile.weight_goal_rate || 'moderate',
           customRate: data.profile.weight_goal_custom_rate ? String(data.profile.weight_goal_custom_rate) : '',
         });
@@ -35,10 +72,29 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
       });
   }, []);
 
+  // Fetch profile on mount
+  useEffect(() => {
+    fetchProfileData();
+  }, [fetchProfileData]);
+
+  // Listen for profile changes (when weight/weight goal is updated)
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchProfileData();
+    };
+
+    // Listen for custom profile update events
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    
+    // Cleanup
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+    };
+  }, [fetchProfileData]);
+
   // Helper to check if values changed
-  const checkShowSave = (newGoalType, newRateOption, newCustomRate) => {
+  const checkShowSave = (newRateOption, newCustomRate) => {
     setShowSaveButton(
-      newGoalType !== original.goalType ||
       newRateOption !== original.rateOption ||
       (newRateOption === 'custom' && newCustomRate !== original.customRate)
     );
@@ -46,30 +102,33 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
   };
 
   // Handlers
-  const handleGoalType = (type) => {
-    setGoalType(type);
-    if (type === 'maintain') {
-      setRateOption('maintain');
-      setCustomRate('');
-    }
-    checkShowSave(type, rateOption, customRate);
-  };
   const handleRateOption = (option) => {
     setRateOption(option);
-    checkShowSave(goalType, option, customRate);
+    if (option !== 'custom') {
+      setCustomRate('');
+    }
+    checkShowSave(option, customRate);
   };
   const handleCustomRate = (val) => {
+    // Prevent negative values
+    const numVal = parseFloat(val);
+    if (val !== '' && (isNaN(numVal) || numVal < 0)) {
+      return; // Don't update if negative or invalid
+    }
     setCustomRate(val);
-    checkShowSave(goalType, rateOption, val);
+    checkShowSave(rateOption, val);
   };
 
   // Save handler
   const handleSave = async () => {
+    // For maintaining weight, auto-set rate to 'maintain'
+    const finalRateOption = goalDirection === 'maintaining' ? 'maintain' : rateOption;
+    
     const body = {
-      weight_goal_type: goalType,
-      weight_goal_rate: rateOption,
+      weight_goal_type: goalDirection, // Use auto-detected goal direction
+      weight_goal_rate: finalRateOption,
     };
-    if (rateOption === 'custom') {
+    if (finalRateOption === 'custom') {
       body.weight_goal_custom_rate = parseFloat(customRate) || 0;
     } else {
       body.weight_goal_custom_rate = 0; // Always send this to clear custom if not used
@@ -83,7 +142,6 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
       });
       if (!res.ok) throw new Error('Failed to update weight goal info');
       setOriginal({
-        goalType: body.weight_goal_type,
         rateOption: body.weight_goal_rate,
         customRate: body.weight_goal_custom_rate ? String(body.weight_goal_custom_rate) : '',
       });
@@ -97,15 +155,17 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
 
   // Calculate values based on selected options
   const getRateValues = () => {
-    if (goalType === 'maintain') {
+    if (goalDirection === 'maintaining' || rateOption === 'maintain') {
       return {
         lbsPerWeek: 0,
         calorieAdjustment: 0,
         estimatedTime: 'N/A'
       };
     }
-    const direction = goalType === 'lose' ? -1 : 1;
+    
+    const direction = goalDirection === 'losing' ? -1 : 1;
     let lbsPerWeek = 0;
+    
     if (rateOption === 'custom') {
       lbsPerWeek = Math.abs(parseFloat(customRate)) || 0;
     } else {
@@ -121,9 +181,27 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
           break;
       }
     }
+    
     // 3500 calories roughly equals 1 pound of fat
     const calorieAdjustment = Math.round(lbsPerWeek * 3500 / 7) * direction;
-    const estimatedTime = goalType === 'lose' ? '10 weeks' : '8 weeks'; // Mock values
+    
+    // Calculate estimated time based on current vs goal weight
+    const current = parseFloat(currentWeight);
+    const goal = parseFloat(weightGoal);
+    const totalWeightChange = Math.abs(goal - current);
+    const estimatedWeeks = lbsPerWeek > 0 ? totalWeightChange / lbsPerWeek : 0;
+    
+    let estimatedTime = 'N/A';
+    if (estimatedWeeks > 0) {
+      if (estimatedWeeks < 1) {
+        const estimatedDays = Math.ceil(estimatedWeeks * 7);
+        estimatedTime = estimatedDays === 1 ? '1 day' : `${estimatedDays} days`;
+      } else {
+        const roundedWeeks = Math.ceil(estimatedWeeks);
+        estimatedTime = roundedWeeks === 1 ? '1 week' : `${roundedWeeks} weeks`;
+      }
+    }
+    
     return {
       lbsPerWeek: lbsPerWeek * direction,
       calorieAdjustment,
@@ -134,7 +212,7 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
   const values = getRateValues();
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Weight Goal Rate</h2>
@@ -155,140 +233,114 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
       />
       
       <p className="text-gray-600 mb-6">
-        Select your weight goal and preferred rate of progress. This will adjust your daily calorie target.
+        Select your preferred rate of progress. This will adjust your daily calorie target.
       </p>
       
       {fetchError && <div className="text-red-600 mb-4">{fetchError}</div>}
       
-      <div className="space-y-6">
-        <div>
-          <label className="block text-gray-700 font-medium mb-3">Weight Goal Type</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
-              onClick={() => handleGoalType('lose')}
-              className={`flex items-center justify-center p-4 rounded-lg border-2 ${
-                goalType === 'lose' 
-                  ? 'border-[#c41e3a] bg-[#c41e3a]/5' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <TrendingDown size={20} className={goalType === 'lose' ? 'text-[#c41e3a] mr-2' : 'text-gray-500 mr-2'} />
-              <span className={goalType === 'lose' ? 'font-medium text-[#c41e3a]' : 'text-gray-700'}>Lose Weight</span>
-            </button>
-            
-            <button
-              onClick={() => handleGoalType('gain')}
-              className={`flex items-center justify-center p-4 rounded-lg border-2 ${
-                goalType === 'gain' 
-                  ? 'border-[#2196F3] bg-[#2196F3]/5' 
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <TrendingUp size={20} className={goalType === 'gain' ? 'text-[#2196F3] mr-2' : 'text-gray-500 mr-2'} />
-              <span className={goalType === 'gain' ? 'font-medium text-[#2196F3]' : 'text-gray-700'}>Gain Weight</span>
-            </button>
-            <button
-              onClick={() => handleGoalType('maintain')}
-              className={`flex items-center justify-center p-4 rounded-lg border-2 ${
-                goalType === 'maintain'
-                  ? 'border-[#4CAF50] bg-[#4CAF50]/5'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <Minimize size={20} className={goalType === 'maintain' ? 'text-[#4CAF50] mr-2' : 'text-gray-500 mr-2'} />
-              <span className={goalType === 'maintain' ? 'font-medium text-[#4CAF50]' : 'text-gray-700'}>Maintain Weight</span>
-            </button>
+      {/* Goal Summary */}
+      {goalDirection && (
+        <div className="bg-blue-50 p-4 rounded-lg mb-6">
+          <div className="flex items-center mb-2">
+            {goalDirection === 'losing' && <TrendingDown size={20} className="text-blue-600 mr-2" />}
+            {goalDirection === 'gaining' && <TrendingUp size={20} className="text-blue-600 mr-2" />}
+            {goalDirection === 'maintaining' && <Minimize size={20} className="text-blue-600 mr-2" />}
+            <h4 className="font-medium text-blue-800">Your Goal</h4>
+          </div>
+          <div className="text-blue-700">
+            <p className="mb-2">
+              {goalDirection === 'gaining' && `Gain ${(parseFloat(weightGoal) - parseFloat(currentWeight)).toFixed(1)} lbs (${currentWeight} → ${weightGoal} lbs)`}
+              {goalDirection === 'losing' && `Lose ${(parseFloat(currentWeight) - parseFloat(weightGoal)).toFixed(1)} lbs (${currentWeight} → ${weightGoal} lbs)`}
+              {goalDirection === 'maintaining' && `Maintain current weight (~${currentWeight} lbs)`}
+            </p>
+            {goalDirection !== 'maintaining' && rateOption && (
+              <p className="text-sm text-blue-600">
+                <strong>Estimated time:</strong> {(() => {
+                  const current = parseFloat(currentWeight);
+                  const goal = parseFloat(weightGoal);
+                  const totalWeightChange = Math.abs(goal - current);
+                  
+                  let lbsPerWeek = 0;
+                  if (rateOption === 'custom') {
+                    lbsPerWeek = Math.abs(parseFloat(customRate)) || 0;
+                  } else {
+                    switch (rateOption) {
+                      case 'slow': lbsPerWeek = 0.5; break;
+                      case 'moderate': lbsPerWeek = 1; break;
+                      case 'fast': lbsPerWeek = 1.5; break;
+                    }
+                  }
+                  
+                  if (lbsPerWeek === 0) return 'N/A';
+                  
+                  const estimatedWeeks = totalWeightChange / lbsPerWeek;
+                  
+                  if (estimatedWeeks < 1) {
+                    const estimatedDays = Math.ceil(estimatedWeeks * 7);
+                    return estimatedDays === 1 ? '1 day' : `${estimatedDays} days`;
+                  } else {
+                    const roundedWeeks = Math.ceil(estimatedWeeks);
+                    return roundedWeeks === 1 ? '1 week' : `${roundedWeeks} weeks`;
+                  }
+                })()}
+              </p>
+            )}
           </div>
         </div>
+      )}
+
+      {!goalDirection && (
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <p className="text-gray-600">Please set your current weight and weight goal in the Profile section first.</p>
+        </div>
+      )}
+      
+      <div className="space-y-6">
         
-        {goalType !== 'maintain' && (
+        {goalDirection && goalDirection !== 'maintaining' && rateOptions.length > 0 && (
           <div>
             <label className="block text-gray-700 font-medium mb-3">Progress Rate</label>
             <div className="space-y-3">
-              <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center">
-                  <input 
-                    type="radio" 
-                    name="rate" 
-                    checked={rateOption === 'slow'} 
-                    onChange={() => handleRateOption('slow')}
-                    className="form-radio h-4 w-4 text-[#c41e3a]" 
-                  />
-                  <div className="ml-3">
-                    <span className="font-medium text-gray-800 block">Slow</span>
-                    <span className="text-sm text-gray-500">0.5 lbs per week</span>
+              {rateOptions.map((option) => (
+                <label key={option.value} className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center">
+                    <input 
+                      type="radio" 
+                      name="rate" 
+                      checked={rateOption === option.value} 
+                      onChange={() => handleRateOption(option.value)}
+                      className="form-radio h-4 w-4 text-[#c41e3a]" 
+                    />
+                    <div className="ml-3 flex items-center">
+                      <div>
+                        <span className="font-medium text-gray-800 block">{option.label}</span>
+                        <span className="text-sm text-gray-500">{option.description}</span>
+                      </div>
+                      {option.value === 'custom' && rateOption === 'custom' && (
+                        <input
+                          type="number"
+                          min="0.1"
+                          max="10"
+                          step="0.1"
+                          className="ml-2 w-20 border border-gray-300 rounded px-2 py-1"
+                          placeholder="lbs/wk"
+                          value={customRate}
+                          onChange={e => handleCustomRate(e.target.value)}
+                          onKeyDown={e => {
+                            // Prevent minus key
+                            if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-                <span className="text-sm font-medium text-gray-600">
-                  {goalType === 'lose' ? '~250 fewer calories/day' : '~250 extra calories/day'}
-                </span>
-              </label>
-              
-              <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center">
-                  <input 
-                    type="radio" 
-                    name="rate" 
-                    checked={rateOption === 'moderate'} 
-                    onChange={() => handleRateOption('moderate')}
-                    className="form-radio h-4 w-4 text-[#c41e3a]" 
-                  />
-                  <div className="ml-3">
-                    <span className="font-medium text-gray-800 block">Moderate</span>
-                    <span className="text-sm text-gray-500">1 lb per week</span>
-                  </div>
-                </div>
-                <span className="text-sm font-medium text-gray-600">
-                  {goalType === 'lose' ? '~500 fewer calories/day' : '~500 extra calories/day'}
-                </span>
-              </label>
-              
-              <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center">
-                  <input 
-                    type="radio" 
-                    name="rate" 
-                    checked={rateOption === 'fast'} 
-                    onChange={() => handleRateOption('fast')}
-                    className="form-radio h-4 w-4 text-[#c41e3a]" 
-                  />
-                  <div className="ml-3">
-                    <span className="font-medium text-gray-800 block">Fast</span>
-                    <span className="text-sm text-gray-500">1.5 lbs per week</span>
-                  </div>
-                </div>
-                <span className="text-sm font-medium text-gray-600">
-                  {goalType === 'lose' ? '~750 fewer calories/day' : '~750 extra calories/day'}
-                </span>
-              </label>
-              <label className="flex items-center justify-between p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    name="rate"
-                    checked={rateOption === 'custom'}
-                    onChange={() => handleRateOption('custom')}
-                    className="form-radio h-4 w-4 text-[#c41e3a]"
-                  />
-                  <div className="ml-3 flex items-center">
-                    <span className="font-medium text-gray-800 block">Custom</span>
-                    {rateOption === 'custom' && (
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        className="ml-2 w-20 border border-gray-300 rounded px-2 py-1"
-                        placeholder="lbs/wk"
-                        value={customRate}
-                        onChange={e => handleCustomRate(e.target.value)}
-                      />
-                    )}
-                  </div>
-                </div>
-                <span className="text-sm font-medium text-gray-600">
-                  {goalType === 'lose' ? 'Enter lbs/week to lose' : 'Enter lbs/week to gain'}
-                </span>
-              </label>
+                  <span className="text-sm font-medium text-gray-600">
+                    {option.calories}
+                  </span>
+                </label>
+              ))}
             </div>
           </div>
         )}
@@ -325,13 +377,13 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
             </div>
           </div>
         </div>
-        {energyTarget && (
+        {energyTarget && goalDirection && (
           <div className="flex flex-col items-center mt-6 mb-0">
             <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow p-8 text-center border border-gray-200">
               <span className="block text-lg font-medium mb-2 text-gray-700">Your current daily energy target</span>
               <span className="text-4xl font-extrabold text-[#c41e3a] tracking-tight">{energyTarget} kcal</span>
             </div>
-            {showSaveButton && (
+            {goalDirection && goalDirection !== 'maintaining' && showSaveButton && (
               <button
                 className="mt-6 bg-[#c41e3a] text-white px-8 py-3 rounded-lg font-semibold shadow hover:bg-[#a41930] transition"
                 onClick={handleSave}

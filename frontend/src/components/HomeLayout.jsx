@@ -5,7 +5,7 @@ export default function HomeLayout() {
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
             <Header />
-            <main className="flex-grow w-full flex">
+            <main className="flex-grow w-full flex justify-center">
                 <Outlet />
             </main>
         </div>

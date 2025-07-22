@@ -67,7 +67,7 @@ export const ActivityLevelSection = ({ refreshEnergyTarget }) => {
   const currentMultiplier = activityLevels.find(l => l.id === selectedLevel)?.multiplier ?? 1.55;
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Activity Level</h2>

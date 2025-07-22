@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Pencil, Info, Mail, User, Camera } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
 import { useAuth, useFetchWithAuth } from '../../AuthProvider';
 
 export const AccountSection = () => {
-  const { user } = useAuth();
+  const { user, logout, refetchProfile } = useAuth();
   const fetchWithAuth = useFetchWithAuth();
+  const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   
@@ -117,6 +119,8 @@ export const AccountSection = () => {
       setName(tempName);
       setEditingName(false);
       setSaveSuccess('Name updated!');
+      // Refetch profile to update the header and other components
+      refetchProfile();
     } catch (err) {
       setSaveError('Could not update name.');
     }
@@ -143,53 +147,36 @@ export const AccountSection = () => {
     }
   };
 
-  const handleSave = async () => {
-    let imageUrl = image; // current image
-    if (tempImage) {
-      const formData = new FormData();
-      formData.append("image", tempImage);
-      const { data, error } = await fetchWithAuth("/api/profile/image", {
-        method: "POST",
-        body: formData,
-      });
-      if (error || !data) throw new Error('Failed to upload image');
-      imageUrl = data.url;
-    }
-    // Save the profile with the new imageUrl and other fields
-    await saveProfile({ ...otherFields, image: imageUrl });
-    setPreviewImage(null);
-    setTempImage(null);
-  };
 
   // Helper to get the correct image URL
   const getImageUrl = (url) => {
     if (!url) return null;
     if (url.startsWith('/static/')) {
-      return `http://localhost:8000${url}`;
+      return url; // Proxy will handle the routing
     }
     return url;
   };
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 mb-6">
         <div className="text-gray-600">Loading account info...</div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Account Information</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Account Information</h2>
           <button
             type="button"
-            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+            className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
             onClick={() => setShowTooltip(true)}
             aria-label="Show account info"
           >
-            <Info size={16} />
+            <Info size={18} />
           </button>
         </div>
       </div>
@@ -200,10 +187,10 @@ export const AccountSection = () => {
       />
       
       <div className="space-y-6">  
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-gray-100">
-          <div className="flex items-center mb-3 md:mb-0">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-8 border-b border-gray-200">
+          <div className="flex items-center mb-4 md:mb-0">
             <div className="flex items-center">
-              <div className="relative w-28 h-28 rounded-full overflow-hidden flex items-center justify-center bg-gray-200">
+              <div className="relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 ring-4 ring-gray-100">
                 {previewImage ? (
                   <img
                     src={getImageUrl(previewImage)}
@@ -223,10 +210,10 @@ export const AccountSection = () => {
                 )}
                 <button
                   type="button"
-                  className="absolute bottom-2 right-2 bg-white border border-gray-300 rounded-full p-2 shadow-md flex items-center justify-center hover:bg-gray-100"
+                  className="absolute bottom-0 right-0 bg-white border-2 border-gray-300 rounded-full p-2 shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
                   onClick={handleImageUploadClick}
                 >
-                  <Camera className="w-5 h-5 text-gray-600" />
+                  <Camera className="w-4 h-4 text-gray-600" />
                 </button>
                 <input
                   type="file"
@@ -238,12 +225,11 @@ export const AccountSection = () => {
               </div>
 
               
-              <span className="ml-4 text-2xl font-semibold text-gray-800">{name}</span>
+              <div className="ml-5">
+                <span className="text-2xl font-bold text-gray-900">{name}</span>
+               
+              </div>
             </div>
-          </div>
-          <div className="bg-green-50 px-3 py-1 rounded-full text-green-600 text-sm font-medium inline-flex items-center">
-            <span className="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
-            Active Account
           </div>
         </div>
 
@@ -251,7 +237,7 @@ export const AccountSection = () => {
           <div className="flex items-center space-x-2 mb-2">
             <button
               onClick={handleImageUpload}
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
+              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-all duration-200"
               disabled={imageLoading}
             >
               {imageLoading ? 'Uploading...' : 'Save Image'}
@@ -268,89 +254,93 @@ export const AccountSection = () => {
         {imageError && <div className="text-red-600 mb-2">{imageError}</div>}
         {imageSuccess && <div className="text-green-600 mb-2">{imageSuccess}</div>}
 
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Name</label>
+        <div className="bg-gray-50 rounded-lg p-6">
+          <label className="block text-gray-800 font-semibold mb-3">Name</label>
           {editingName ? (
-            <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input 
                 type="text" 
                 value={tempName} 
                 onChange={(e) => setTempName(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
-              <button 
-                onClick={handleNameUpdate} 
-                className="ml-2 bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
-              >
-                Save
-              </button>
-              <button 
-                onClick={() => {
-                  setTempName(name);
-                  setEditingName(false);
-                }} 
-                className="ml-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleNameUpdate} 
+                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Save
+                </button>
+                <button 
+                  onClick={() => {
+                    setTempName(name);
+                    setEditingName(false);
+                  }} 
+                  className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <User size={18} className="text-gray-400 mr-2" />
-                <span className="text-gray-800">{name}</span>
+                <User size={20} className="text-gray-500 mr-3" />
+                <span className="text-gray-900 text-lg">{name}</span>
               </div>
               <button
                 onClick={() => setEditingName(true)}
-                className="p-2 rounded-full hover:bg-gray-100 transition"
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
                 aria-label="Edit Name"
-                title="Edit Name"
               >
-                <Pencil size={18} className="text-[#c41e3a]" />
+                <Pencil size={16} />
+                <span className="hidden sm:inline">Edit</span>
               </button>
             </div>
           )}
         </div>
         
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Email</label>
+        <div className="bg-gray-50 rounded-lg p-6">
+          <label className="block text-gray-800 font-semibold mb-3">Email</label>
           {editingEmail ? (
-            <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input 
                 type="email" 
                 value={tempEmail} 
                 onChange={(e) => setTempEmail(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent"
+                className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
-              <button 
-                onClick={handleEmailUpdate} 
-                className="ml-2 bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
-              >
-                Save
-              </button>
-              <button 
-                onClick={() => {
-                  setTempEmail(email);
-                  setEditingEmail(false);
-                }} 
-                className="ml-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition"
-              >
-                Cancel
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleEmailUpdate} 
+                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Save
+                </button>
+                <button 
+                  onClick={() => {
+                    setTempEmail(email);
+                    setEditingEmail(false);
+                  }} 
+                  className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <Mail size={18} className="text-gray-400 mr-2" />
-                <span className="text-gray-800">{email}</span>
+                <Mail size={20} className="text-gray-500 mr-3" />
+                <span className="text-gray-900 text-lg">{email}</span>
               </div>
               <button
                 onClick={() => setEditingEmail(true)}
-                className="p-2 rounded-full hover:bg-gray-100 transition"
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
                 aria-label="Edit Email"
-                title="Edit Email"
               >
-                <Pencil size={18} className="text-[#c41e3a]" />
+                <Pencil size={16} />
+                <span className="hidden sm:inline">Edit</span>
               </button>
             </div>
           )}

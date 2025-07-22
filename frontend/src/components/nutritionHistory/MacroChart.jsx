@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
 import {
   BarChart,
@@ -33,8 +33,13 @@ function getWeekDateRange(isoWeek) {
   };
 }
 
-export const MacroChart = ({ unit, viewMode, data }) => {
+export const MacroChart = ({ unit, viewMode, data, loading }) => {
   let chartData = data && data.length > 0 ? data : [];
+
+  // Show loading state
+  if (loading) {
+    return <div className="w-full h-80 flex items-center justify-center text-gray-500">Loading chart data...</div>;
+  }
 
   // If no data, show a message
   if (!chartData.length) {
@@ -42,22 +47,22 @@ export const MacroChart = ({ unit, viewMode, data }) => {
   }
 
   // Use direct values from chartData for macros
-  const convertedData = chartData.map(day => {
-    const protein = typeof day.protein === 'number' ? day.protein : 0;
-    const carbs = typeof day.carbs === 'number' ? day.carbs : 0;
-    const fat = typeof day.fat === 'number' ? day.fat : 0;
-    // Calculate calories from macros for display if needed
-    const calories = (protein * 4) + (carbs * 4) + (fat * 9);
-    console.log("cal", calories)
-    console.log("rounded",Math.round(calories))
-    return {
-      ...day,
-      protein: Math.round(protein * 4) < 1 ? 0 : Math.round(protein * 4),
-      carbs: Math.round(carbs * 4) < 1 ? 0 : Math.round(carbs * 4),
-      fat: Math.round(fat * 9) < 1 ? 0 : Math.round(fat * 9),
-      total: Math.round(calories)
-    };
-  });
+  const convertedData = useMemo(() => {
+    return chartData.map(day => {
+      const protein = typeof day.protein === 'number' ? day.protein : 0;
+      const carbs = typeof day.carbs === 'number' ? day.carbs : 0;
+      const fat = typeof day.fat === 'number' ? day.fat : 0;
+      // Calculate calories from macros for display if needed
+      const calories = (protein * 4) + (carbs * 4) + (fat * 9);
+      return {
+        ...day,
+        protein: Math.round(protein * 4) < 1 ? 0 : Math.round(protein * 4),
+        carbs: Math.round(carbs * 4) < 1 ? 0 : Math.round(carbs * 4),
+        fat: Math.round(fat * 9) < 1 ? 0 : Math.round(fat * 9),
+        total: Math.round(calories)
+      };
+    });
+  }, [chartData]);
 
   // Determine XAxis interval based on data length
   let xAxisInterval = 0;

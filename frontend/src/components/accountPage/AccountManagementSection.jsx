@@ -99,17 +99,17 @@ export const AccountManagementSection = () => {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <h2 className="text-xl font-semibold text-gray-800">Account Management</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Account Management</h2>
             <button
               type="button"
-              className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
+              className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
               onClick={() => setShowTooltip(true)}
               aria-label="Show account management info"
             >
-              <Info size={16} />
+              <Info size={18} />
             </button>
           </div>
         </div>
@@ -120,57 +120,57 @@ export const AccountManagementSection = () => {
           section="management"
         />
         
-        <div className="space-y-6">
-          <div>
-            <h3 className="font-medium text-gray-800 mb-3">Session Management</h3>
+        <div className="space-y-8">
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="font-bold text-gray-900 mb-4">Session Management</h3>
             <Link to="/login"  className="hover:text-red-200 flex items-center">
-            <button className="flex items-center text-[#c41e3a] hover:text-[#a41930]" onClick={logout}>
-              <LogOut size={18} className="mr-2" />
+            <button className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" onClick={logout}>
+              <LogOut size={20} />
               <span>Log Out</span>
             </button>
             </Link>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-600 mt-3">
               Sign out from your current session on this device.
             </p>
           </div>
           
-          <div>
-            <h3 className="font-medium text-gray-800 mb-3">Data & Privacy</h3>
-            <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4">
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="font-bold text-gray-900 mb-4">Data & Privacy</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button
                 onClick={() => setShowExportModal(true)}
-                className="flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md transition">
-                <Download size={18} className="mr-2" />
+                className="flex items-center justify-center gap-3 bg-blue-50 hover:bg-blue-100 text-blue-700 px-6 py-4 rounded-lg transition-colors font-medium border border-blue-200">
+                <Download size={20} />
                 <span>Export Your Data</span>
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)} 
-                className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-md transition"
+                className="flex items-center justify-center gap-3 bg-red-50 hover:bg-red-100 text-red-600 px-6 py-4 rounded-lg transition-colors font-medium border border-red-200"
               >
-                <Trash2 size={18} className="mr-2" />
+                <Trash2 size={20} />
                 <span>Delete Account</span>
               </button>
             </div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-600 mt-4">
               You can export all your nutrition data and account information in a portable format.
             </p>
           </div>
           
-          <div className="pt-4 border-t border-gray-100">
-            <h3 className="font-medium text-gray-800 mb-3">Help & Support</h3>
+          <div className="bg-gray-50 rounded-lg p-6">
+            <h3 className="font-bold text-gray-900 mb-4">Help & Support</h3>
             <a 
               href="https://docs.google.com/forms/d/e/1FAIpQLSfwEZ3ODAkAfoF7HQ0Xg1YMACf85FvpUSZehwipqvWZ4mOhlg/viewform?usp=header" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="flex items-center text-[#c41e3a] hover:underline"
+              className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
             >
-              <CircleHelp size={18} className="mr-2" />
+              <CircleHelp size={20} />
               <span>Contact Support via Google Form</span>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" viewBox="0 0 20 20" fill="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
               </svg>
             </a>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-gray-600 mt-3">
               Our support team will respond to your inquiry within 24 hours.
             </p>
           </div>
@@ -180,7 +180,7 @@ export const AccountManagementSection = () => {
       {/* Export Data Modal */}
       {showExportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4 text-gray-800">Export Your Data</h2>
             <div className="mb-4">
               <label className="block text-gray-700 font-medium mb-2">Format</label>
@@ -245,7 +245,7 @@ export const AccountManagementSection = () => {
       {/* Delete Account Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-100 max-w-md w-full p-6">
             <div className="flex items-center text-red-600 mb-4">
               <AlertTriangle size={24} className="mr-2" />
               <h3 className="text-xl font-bold">Delete Account</h3>

@@ -65,12 +65,21 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
         body: JSON.stringify(body)
       });
       if (!res.ok) throw new Error('Failed to update weight info');
-      await fetch('/api/weight-log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ weight: parseFloat(currentWeight) })
-      });
+      
+      // Log weight change - don't fail if this fails
+      try {
+        const weightLogRes = await fetch('/api/weight-log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ weight: parseFloat(currentWeight) })
+        });
+        if (!weightLogRes.ok) {
+          console.warn('Failed to log weight change');
+        }
+      } catch (weightLogErr) {
+        console.warn('Failed to log weight change:', weightLogErr);
+      }
       setOriginal({
         currentWeight: body.weight.toString(),
         weightGoal: body.weight_goal.toString(),
@@ -83,7 +92,7 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Weight Goal</h2>

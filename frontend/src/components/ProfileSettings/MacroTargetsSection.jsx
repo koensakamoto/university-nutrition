@@ -13,13 +13,15 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
   const [fatLocked, setFatLocked] = useState(false);
   const lockedCount = [proteinLocked, carbLocked, fatLocked].filter(Boolean).length;
   const calculateRatioGrams = (ratio, caloriesPerGram) => {
+    if (!baseEnergyTarget || !ratio || !caloriesPerGram) return 0;
     return Math.round((baseEnergyTarget * (ratio / 100)) / caloriesPerGram);
   };
   const handleRatioChange = (macro, value) => {
-    value = Math.max(0, Math.min(100, Number(value)));
-    let newProtein = proteinRatio;
-    let newCarb = carbRatio;
-    let newFat = fatRatio;
+    value = Math.max(0, Math.min(100, Number(value) || 0));
+    let newProtein = Math.max(0, proteinRatio || 0);
+    let newCarb = Math.max(0, carbRatio || 0);
+    let newFat = Math.max(0, fatRatio || 0);
+    
     if (lockedCount === 2) {
       return;
     }
@@ -132,9 +134,19 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
   }, []);
   useEffect(() => {
     fetch('/api/profile/energy-target', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => refreshEnergyTarget(data.energy_target));
-  }, [refreshEnergyTarget]);
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to fetch energy target');
+        return res.json();
+      })
+      .then(data => {
+        if (data.energy_target && refreshEnergyTarget) {
+          refreshEnergyTarget(data.energy_target);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to fetch energy target:', err);
+      });
+  }, []);
   const checkShowSave = (pr, cr, fr) => {
     setShowSaveButton(
       pr !== original.protein_ratio ||
@@ -171,7 +183,7 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
     return <div>Loading energy target...</div>;
   }
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Macro & Energy Targets</h2>

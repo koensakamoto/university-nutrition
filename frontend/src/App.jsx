@@ -13,6 +13,8 @@ import ProfileSettings from "./components/ProfileSettings/ProfileSettings"
 import NutritionHistory from './components/nutritionHistory/NutritionHistory.jsx'
 import UserAccount from './components/accountPage/UserAccount'
 import Register from './components/Register'
+import ForgotPassword from './components/ForgotPassword'
+import ResetPassword from './components/ResetPassword'
 import { useAuth } from './AuthProvider'
 
 // Utility to get local date string in YYYY-MM-DD format
@@ -106,6 +108,14 @@ export default function App() {
         path="/register" 
         element={user ? <Navigate to="/dashboard" /> : <Register />} 
       />
+      <Route 
+        path="/forgot-password" 
+        element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} 
+      />
+      <Route 
+        path="/reset-password" 
+        element={user ? <Navigate to="/dashboard" /> : <ResetPassword />} 
+      />
       
       {/* Main App Routes (with header layout) */}
       <Route 
@@ -116,7 +126,7 @@ export default function App() {
         <Route
           path="dashboard"
           element={
-            <div className="flex flex-col md:flex-row w-full flex-grow p-4 gap-4">
+            <div className="flex flex-col lg:flex-row w-full flex-grow p-2 sm:p-4 gap-2 sm:gap-4">
               <Dashboard
                 addToTracker={addToTracker}
                 trackedItems={trackedItems}
@@ -127,7 +137,7 @@ export default function App() {
                 setDate={setDate}
                 onSavePlate={handleSavePlate}
               />
-              <div className="hidden md:block md:w-1/4">
+              <div className="hidden lg:block lg:w-1/4">
                 <NutrientTracker
                   trackedItems={trackedItems}
                   removeItem={removeFromTracker}

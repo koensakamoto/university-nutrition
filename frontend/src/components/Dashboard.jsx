@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo} from 'react'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
 import AIAssistant from './AIAssistant'
 import CustomMealForm from './CustomMealForm'
+import LoadingSpinner from './LoadingSpinner'
 import { MessageCircleIcon, PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
 import { useFetchWithAuth, useAuth } from '../AuthProvider'
@@ -13,15 +14,15 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
   }
 
   // Helper function to safely parse nutrient values
-  const parseNutrient = (value) => {
+  const parseNutrient = useCallback((value) => {
     if (value === null || value === undefined || value === '' || value === '-') {
       return null;
     }
     const parsed = parseFloat(value);
     return isNaN(parsed) ? null : parsed;
-  };
+  }, []);
 
-  const transformFoodData = (data) => {
+  const transformFoodData = useCallback((data) => {
     if (!Array.isArray(data)) {
       console.warn("transformFoodData received invalid input:", data);
       return [];
@@ -74,19 +75,22 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
     });
 
     return Object.values(stationMap);
-  };
+  }, [parseNutrient]);
 
-  function getLocalDateString(date) {
+  const getLocalDateString = useCallback((date) => {
     return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
-  }
+  }, []);
 
   const [diningHall, setDiningHall] = useState("")
   const [mealType, setMealType] = useState("")
   const [foodStations, setFoodStations] = useState([])
+  const [foodStationsLoading, setFoodStationsLoading] = useState(false)
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
   const [diningHalls, setDiningHalls] = useState([])
   const [mealTypesByHall, setMealTypesByHall] = useState({})
+  const [plateLoading, setPlateLoading] = useState(false)
+  const [plateSaving, setPlateSaving] = useState(false)
 
   const fetchWithAuth = useFetchWithAuth();
   const { user, isAuthenticated } = useAuth();
@@ -103,16 +107,19 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
   useEffect(() => {
     if (!date || !diningHall || !mealType) {
       setFoodStations([]);
+      setFoodStationsLoading(false);
       return;
     }
 
+    setFoodStationsLoading(true);
+    const controller = new AbortController();
     const params = new URLSearchParams({
       dining_hall: diningHall,
       meal_name: mealType,
       date: getLocalDateString(date),
     });
 
-    fetch(`http://localhost:8000/foods?${params}`)
+    fetch(`/foods?${params}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
@@ -122,9 +129,16 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         setFoodStations(stations);
       })
       .catch((err) => {
-        console.error('Failed to fetch foods:', err);
-        setFoodStations([]);
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch foods:', err);
+          setFoodStations([]);
+        }
+      })
+      .finally(() => {
+        setFoodStationsLoading(false);
       });
+
+    return () => controller.abort();
   }, [diningHall, date, mealType]);
 
   // Fetch all stations for the selected date and dining hall (for plate loading)
@@ -134,12 +148,13 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
       return;
     }
 
+    const controller = new AbortController();
     const params = new URLSearchParams({
       dining_hall: diningHall || '',
       date: getLocalDateString(date),
     });
     
-    fetch(`http://localhost:8000/foods?${params}`)
+    fetch(`/foods?${params}`, { signal: controller.signal })
       .then((res) => {
         if (!res.ok) throw new Error('Network response was not ok');
         return res.json();
@@ -149,85 +164,111 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         setAllStations(stations);
       })
       .catch((err) => {
-        console.error('Failed to fetch foods:', err);
-        setAllStations([]);
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch foods:', err);
+          setAllStations([]);
+        }
       });
+
+    return () => controller.abort();
   }, [date, diningHall]);
 
   // Load plate on date or allStations change
   useEffect(() => {
     if (user && user.guest) {
       setTrackedItems([]);
+      setPlateLoading(false);
       return;
     }
     if (!date) return;
     
     const loadPlateForDate = async () => {
-      const dateStr = getLocalDateString(date);
-      const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
-      if (data && data.items && data.items.length > 0) {
-        // Fetch all foods for this date (from all dining halls) to match saved items
-        const allFoodsPromise = fetch(`http://localhost:8000/foods?date=${dateStr}`)
-          .then(res => res.json())
-          .then(data => transformFoodData(data).flatMap(station => station.items))
-          .catch(() => []);
-        
-        const allFoods = await allFoodsPromise;
-        
-        const loadedItems = data.items.map(item => {
-          if (item.custom_macros) {
-            return {
-              id: item.food_id || `custom-${crypto.randomUUID()}`,
-              name: item.name || 'Custom Food',
-              ...item.custom_macros,
-              quantity: item.quantity,
-              uniqueId: crypto.randomUUID(),
-              isCustom: true
-            };
-          } else {
-            const food = allFoods.find(f => f.id === item.food_id || f._id === item.food_id);
-            if (!food) return null;
-            return {
-              ...food,
-              quantity: item.quantity,
-              uniqueId: crypto.randomUUID()
-            };
-          }
-        }).filter(Boolean);
-        setTrackedItems(loadedItems);
-      } else {
+      setPlateLoading(true);
+      try {
+        const dateStr = getLocalDateString(date);
+        const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
+        if (data && data.items && data.items.length > 0) {
+          // Fetch all foods for this date (from all dining halls) to match saved items
+          const allFoodsPromise = fetch(`/foods?date=${dateStr}`)
+            .then(res => res.json())
+            .then(data => transformFoodData(data).flatMap(station => station.items))
+            .catch(() => []);
+          
+          const allFoods = await allFoodsPromise;
+          
+          const loadedItems = data.items.map(item => {
+            if (item.custom_macros) {
+              return {
+                id: item.food_id || `custom-${crypto.randomUUID()}`,
+                name: item.name || 'Custom Food',
+                ...item.custom_macros,
+                quantity: item.quantity,
+                uniqueId: crypto.randomUUID(),
+                isCustom: true
+              };
+            } else {
+              const food = allFoods.find(f => f.id === item.food_id || f._id === item.food_id);
+              if (!food) return null;
+              return {
+                ...food,
+                quantity: item.quantity,
+                uniqueId: crypto.randomUUID()
+              };
+            }
+          }).filter(Boolean);
+          setTrackedItems(loadedItems);
+        } else {
+          setTrackedItems([]);
+        }
+      } catch (err) {
+        console.error('Failed to load plate:', err);
         setTrackedItems([]);
+      } finally {
+        setPlateLoading(false);
       }
     };
     loadPlateForDate();
   }, [date, user]); // Removed allStations from dependencies
 
   const handleSavePlate = async () => {
-    const plateItems = trackedItems.map(item => {
-      const foodId = item.id || item._id;
-      const isCustom = String(foodId).startsWith('custom-');
-      const base = {
-        food_id: foodId,
-        quantity: item.quantity || 1
-      };
-      if (isCustom) {
-        if (!item.custom_macros || typeof item.custom_macros !== 'object') {
-          return null;
-        }
-        base.custom_macros = {
-          calories: item.custom_macros.calories,
-          protein: item.custom_macros.protein,
-          carbs: item.custom_macros.carbs,
-          fat: item.custom_macros.fat
+    setPlateSaving(true);
+    try {
+      const plateItems = trackedItems.map(item => {
+        const foodId = item.id || item._id;
+        const isCustom = String(foodId).startsWith('custom-');
+        const base = {
+          food_id: foodId,
+          quantity: item.quantity || 1
         };
-        base.name = item.name || 'Custom Food';
+        if (isCustom) {
+          if (!item.custom_macros || typeof item.custom_macros !== 'object') {
+            return null;
+          }
+          base.custom_macros = {
+            calories: item.custom_macros.calories,
+            protein: item.custom_macros.protein,
+            carbs: item.custom_macros.carbs,
+            fat: item.custom_macros.fat
+          };
+          base.name = item.name || 'Custom Food';
+        }
+        return base;
+      }).filter(Boolean);
+      
+      if (plateItems.some(i => i === null)) {
+        alert('One or more custom foods are missing valid macros. Please fix before saving.');
+        return;
       }
-      return base;
-    }).filter(Boolean);
-    
-    if (plateItems.some(i => i === null)) {
-      alert('One or more custom foods are missing valid macros. Please fix before saving.');
-      return;
+
+      // Call the save plate function passed from parent
+      if (onSavePlate) {
+        await onSavePlate();
+      }
+    } catch (error) {
+      console.error('Failed to save plate:', error);
+      alert('Failed to save plate. Please try again.');
+    } finally {
+      setPlateSaving(false);
     }
   }
 
@@ -262,13 +303,13 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {diningHalls.map(hall => {
               const availableMeals = mealTypesByHall[hall] || [];
               return (
                 <div 
                   key={hall} 
-                  className="border border-gray-200 rounded-lg p-6 cursor-pointer hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
+                  className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 cursor-pointer hover:border-blue-300 hover:shadow-lg transition-all duration-300 group shadow-sm touch-manipulation"
                   onClick={() => setDiningHall(hall)}
                 >
                   <div className="flex items-center justify-between">
@@ -318,7 +359,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-2xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
             {availableMeals.map(meal => {
               const currentHour = new Date().getHours();
               let isCurrentMeal = false;
@@ -348,10 +389,10 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
               return (
                 <div 
                   key={meal}
-                  className={`border rounded-lg p-6 cursor-pointer transition-all duration-200 group ${
+                  className={`bg-white border rounded-xl p-6 sm:p-8 cursor-pointer transition-all duration-300 group shadow-sm touch-manipulation ${
                     isCurrentMeal 
-                      ? 'border-blue-300 bg-blue-50 hover:bg-blue-100' 
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+                      ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:shadow-lg' 
+                      : 'border-gray-200 hover:border-gray-300 hover:shadow-lg'
                   }`}
                   onClick={() => setMealType(meal)}
                 >
@@ -388,71 +429,85 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
     
     // All selections made - show the menu
     return (
-      <div className="py-4">
-        {/* Breadcrumb */}
-        <div className="mb-6 text-sm text-gray-600">
-          <span className="font-medium">{diningHall}</span>
-          <span className="mx-2">•</span>
-          <span className="font-medium">{mealType}</span>
-          <span className="mx-2">•</span>
-          <span>{date.toLocaleDateString()}</span>
-        </div>
-        
-        {/* Header with Add Custom Meal button */}
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">
-              {diningHall} - {mealType} Menu
-            </h2>
-            <p className="text-gray-600">
-              {date.toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-              })}
-            </p>
+      <div className="space-y-8">
+        {/* Menu Header Card */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          {/* Header with Add Custom Meal button */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+            <div className="flex-1">
+              <h2 className="text-xl font-bold text-gray-800">
+                {diningHall} - {mealType} Menu
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {date.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </p>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsCustomMealFormOpen(true)}
+                className="flex items-center justify-center bg-gradient-to-r from-red-600 to-red-700 text-white px-4 sm:px-5 py-2.5 rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:scale-95 whitespace-nowrap touch-manipulation"
+              >
+                <PlusCircleIcon size={18} className="mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline">Add Custom Meal</span>
+                <span className="sm:hidden">Add Custom</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => setIsCustomMealFormOpen(true)}
-            className="flex items-center bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <PlusCircleIcon size={20} className="mr-2" />
-            <span>Add Custom Meal</span>
-          </button>
         </div>
         
         {/* Food Stations */}
-        <FoodStations stations={foodStations} addToTracker={addToTracker} />
+        {foodStationsLoading ? (
+          <LoadingSpinner message="Loading menu items..." />
+        ) : (
+          <FoodStations stations={foodStations} addToTracker={addToTracker} />
+        )}
       </div>
     );
   };
 
   return (
-    <div className="flex flex-col flex-grow w-full md:w-3/4 p-4 bg-white rounded-lg">
-      <Filter
-        diningHall={diningHall}
-        setDiningHall={setDiningHall}
-        date={date}
-        setDate={setDate}
-        mealType={mealType}
-        setMealType={setMealType}
-        // Pass callback to receive available options
-        onDataUpdate={handleDataUpdate}
-      />
-      
-      <div className="md:hidden mt-4 border rounded-lg flex flex-col flex-grow">
-        <NutrientTracker
-          trackedItems={trackedItems}
-          removeItem={removeItem}
-          clearItems={clearItems}
-          selectedDate={getLocalDateString(date)}
-          onSavePlate={onSavePlate}
+    <div className="flex flex-col flex-grow w-full p-2 sm:p-4 lg:p-6 bg-gray-50 rounded-lg">
+      {/* Filter Section with Card Design */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
+        <Filter
+          diningHall={diningHall}
+          setDiningHall={setDiningHall}
+          date={date}
+          setDate={setDate}
+          mealType={mealType}
+          setMealType={setMealType}
+          // Pass callback to receive available options
+          onDataUpdate={handleDataUpdate}
         />
       </div>
       
+      {/* Mobile Nutrient Tracker with Card Design */}
+      <div className="lg:hidden mb-4 sm:mb-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          <NutrientTracker
+            trackedItems={trackedItems}
+            removeItem={removeItem}
+            clearItems={clearItems}
+            selectedDate={getLocalDateString(date)}
+            onSavePlate={handleSavePlate}
+            plateLoading={plateLoading}
+            plateSaving={plateSaving}
+            isMobile={true}
+          />
+        </div>
+      </div>
+      
       {/* Content with Progressive Disclosure */}
-      <div className="mt-6">
+      <div className="space-y-4">
+        {plateLoading && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <LoadingSpinner message="Loading your saved meals..." size="sm" />
+          </div>
+        )}
         {renderContent()}
       </div>
       

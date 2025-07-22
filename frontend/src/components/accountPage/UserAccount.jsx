@@ -5,14 +5,13 @@ import { AccountManagementSection } from './AccountManagementSection';
 
 export default function UserAccount(props) {
   return (
-    <div className="max-w-4xl w-full mx-auto px-4 py-8">
-      <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-6 max-w-4xl">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-            <p className="text-gray-600">Manage your account details, security, and preferences</p>
-          </div>
-          
+    <div className="min-h-screen bg-gray-50 flex justify-center items-center">
+      <div className="max-w-3xl px-4 py-8 mx-auto">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
+          <p className="text-gray-600 mt-2">Manage your account details, security, and preferences</p>
+        </div>
+        <div className="space-y-6">
           <AccountSection />
           <AccountSecuritySection />
           <AccountManagementSection />

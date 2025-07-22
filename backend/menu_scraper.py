@@ -1,7 +1,4 @@
 
-
-
-
 # import time
 # import datetime
 # import random
@@ -48,7 +45,7 @@
 
 
 # class DiningHallScraper:
-#     """A robust web scraper for dining hall menu data with headless mode support."""
+#     """A robust web scraper for dining hall menu data with simple crash recovery."""
     
 #     def __init__(self, target_url: str, mongodb_uri: Optional[str] = None, max_retries: int = 3, headless: bool = False):
 #         self.target_url = target_url
@@ -222,6 +219,47 @@
 #         except Exception as e:
 #             self.logger.warning(f"Failed to apply stealth features: {e}")
     
+#     def restart_driver(self) -> bool:
+#         """Simple driver restart - clean and fast."""
+#         try:
+#             # Clean shutdown of old driver
+#             if hasattr(self, 'driver') and self.driver:
+#                 try:
+#                     self.driver.quit()
+#                 except:
+#                     pass  # Don't care if quit fails
+            
+#             self.logger.info("Restarting browser...")
+            
+#             # Start fresh driver
+#             self.driver = self.setup_driver()
+            
+#             # Navigate to main page
+#             self.driver.get(self.target_url)
+#             self.human_wait(3, 5)
+            
+#             self.logger.info("Browser restart successful")
+#             return True
+            
+#         except Exception as e:
+#             self.logger.error(f"Failed to restart driver: {e}")
+#             return False
+    
+#     def is_crash_related_error(self, error_message: str) -> bool:
+#         """Detect if an error is browser crash related."""
+#         crash_indicators = [
+#             "invalid session",
+#             "disconnected",
+#             "not connected to devtools", 
+#             "browser has closed",
+#             "session deleted",
+#             "target window already closed",
+#             "chrome not reachable"
+#         ]
+        
+#         error_lower = str(error_message).lower()
+#         return any(indicator in error_lower for indicator in crash_indicators)
+    
 #     @contextmanager
 #     def modal_context(self, item_name: str):
 #         """Context manager for handling modal operations safely."""
@@ -342,17 +380,18 @@
 #             return False
     
 #     def extract_nutrition_details(self, item_name: str) -> Dict[str, Any]:
-#         """Extract nutrition details for a menu item with improved error handling."""
+#         """Extract nutrition details with simple crash recovery."""
 #         nutrition_details = {"nutrients": {}, "ingredients": "N/A"}
         
-#         # Check if driver is alive
-#         if not self.is_driver_alive():
-#             self.logger.error(f"Driver not available for {item_name}")
-#             return nutrition_details
-        
-#         # Skip if we've already failed on this item
+#         # Skip if previously failed
 #         if item_name in self.failed_items:
 #             self.logger.debug(f"Skipping {item_name} - previously failed")
+#             return nutrition_details
+        
+#         # Quick driver health check
+#         if not self.is_driver_alive():
+#             self.logger.warning(f"Driver not alive for {item_name}, marking as skipped")
+#             nutrition_details["nutrients"] = {"error": "driver_not_alive"}
 #             return nutrition_details
         
 #         try:
@@ -360,7 +399,7 @@
 #             item_name_escaped = self._escape_xpath_text(item_name)
 #             xpath_query = f"//strong[normalize-space()={item_name_escaped}]/following::button[contains(@class, 'btn-nutrition')][1]"
             
-#             # Wait for and find nutrition button with timeout
+#             # Wait for and find nutrition button
 #             try:
 #                 WebDriverWait(self.driver, self.MODAL_TIMEOUT).until(
 #                     EC.element_to_be_clickable((By.XPATH, xpath_query))
@@ -386,7 +425,7 @@
                 
 #                 self.logger.debug(f"Clicked nutrition button for: {item_name}")
                 
-#                 # Wait for modal with timeout
+#                 # Wait for modal
 #                 try:
 #                     WebDriverWait(self.driver, self.MODAL_TIMEOUT).until(
 #                         EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-body ul"))
@@ -395,18 +434,28 @@
 #                     raise Exception(f"Modal did not open for {item_name}")
                 
 #                 nutrition_details = self._extract_modal_data()
-#                 self.human_wait(0.3, 0.7)  # Brief pause before closing
+#                 self.human_wait(0.3, 0.7)
+            
+#             return nutrition_details
             
 #         except Exception as e:
 #             self.logger.error(f"Error extracting nutrition for '{item_name}': {e}")
-#             self.failed_items.add(item_name)
-#             nutrition_details["nutrients"] = {"error": str(e)}
             
-#             # Take screenshot for debugging (if driver is alive)
+#             # Check if this is a crash - if so, mark item as failed and continue
+#             if self.is_crash_related_error(str(e)):
+#                 self.logger.warning(f"Crash detected during {item_name} - will skip and continue")
+#                 nutrition_details["nutrients"] = {"error": "browser_crash"}
+#             else:
+#                 # Regular error, mark as failed
+#                 nutrition_details["nutrients"] = {"error": str(e)}
+            
+#             self.failed_items.add(item_name)
+            
+#             # Take screenshot if driver still alive
 #             if self.is_driver_alive():
 #                 self.take_screenshot(f"error_{item_name.replace(' ', '_')}")
-        
-#         return nutrition_details
+            
+#             return nutrition_details
     
 #     def _escape_xpath_text(self, text: str) -> str:
 #         """Properly escape text for XPath queries."""
@@ -492,49 +541,67 @@
 #         return "N/A"
     
 #     def extract_menu_data(self, dining_hall_name: str, meal_type: str) -> List[Dict[str, Any]]:
-#         """Extract menu data for a specific dining hall and meal type."""
+#         """Extract menu data with crash detection."""
 #         if not self.is_driver_alive():
-#             self.logger.error("Driver not available for menu extraction")
+#             self.logger.error(f"Driver not available for menu extraction: {dining_hall_name} - {meal_type}")
 #             return []
         
 #         self.logger.info(f"Extracting menu for {dining_hall_name} - {meal_type}")
         
-#         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-#         menu_tables = soup.find_all('table', class_='menu-items')
-        
-#         stations_data = []
-        
-#         for idx, table in enumerate(menu_tables):
-#             # Get station name
-#             caption_tag = table.find('caption')
-#             station_name = caption_tag.text.strip() if caption_tag else f"Station {idx + 1}"
+#         try:
+#             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+#             menu_tables = soup.find_all('table', class_='menu-items')
             
-#             items_in_station = []
-#             rows = table.find('tbody').find_all('tr') if table.find('tbody') else []
+#             stations_data = []
             
-#             for row_idx, row in enumerate(rows):
-#                 try:
-#                     item_data = self._extract_item_from_row(row)
-#                     if item_data:
-#                         items_in_station.append(item_data)
-#                         self.human_wait(1.0, 2.0)  # Slightly longer wait for headless
+#             for idx, table in enumerate(menu_tables):
+#                 # Get station name
+#                 caption_tag = table.find('caption')
+#                 station_name = caption_tag.text.strip() if caption_tag else f"Station {idx + 1}"
                 
-#                 except Exception as e:
-#                     self.logger.error(f"Error processing row {row_idx} in {station_name}: {e}")
-#                     continue
+#                 items_in_station = []
+#                 rows = table.find('tbody').find_all('tr') if table.find('tbody') else []
+                
+#                 for row_idx, row in enumerate(rows):
+#                     try:
+#                         # Health check every 5 items
+#                         if row_idx % 5 == 0 and not self.is_driver_alive():
+#                             self.logger.error(f"Driver died during {station_name} - stopping station processing")
+#                             break
+                        
+#                         item_data = self._extract_item_from_row(row)
+#                         if item_data:
+#                             items_in_station.append(item_data)
+#                             self.human_wait(0.8, 1.5)  # Reasonable wait time
+                    
+#                     except Exception as e:
+#                         self.logger.error(f"Error processing row {row_idx} in {station_name}: {e}")
+                        
+#                         # If it's a crash, stop processing this station
+#                         if self.is_crash_related_error(str(e)):
+#                             self.logger.warning(f"Crash detected in {station_name}, stopping station")
+#                             break
+                        
+#                         # Otherwise continue with next item
+#                         continue
+                
+#                 if items_in_station:
+#                     stations_data.append({
+#                         "name": station_name,
+#                         "items": items_in_station
+#                     })
             
-#             if items_in_station:
-#                 stations_data.append({
-#                     "name": station_name,
-#                     "items": items_in_station
-#                 })
-        
-#         return stations_data
-    
+#             return stations_data
+            
+#         except Exception as e:
+#             self.logger.error(f"Error extracting menu data: {e}")
+#             return []
+ 
 #     def _extract_item_from_row(self, row) -> Optional[Dict[str, Any]]:
 #         """Extract item data from a table row."""
 #         item_td = row.find('td', {'data-label': 'Menu item'})
 #         portion_td = row.find('td', {'data-label': 'Portion'})
+#         calories_td = row.find('td', {'data-label': 'Calories'})
         
 #         if not item_td:
 #             return None
@@ -556,6 +623,20 @@
 #             portion_div = portion_td.find('div')
 #             portion_size = portion_div.text.strip() if portion_div else portion_td.text.strip()
         
+#         # Extract calories from table row as fallback
+#         table_calories = None
+#         if calories_td:
+#             calories_div = calories_td.find('div')
+#             calories_text = calories_div.text.strip() if calories_div else calories_td.text.strip()
+#             # Clean up the calories text and convert to number
+#             try:
+#                 # Remove any non-numeric characters except decimal points
+#                 calories_clean = re.sub(r'[^\d.]', '', calories_text)
+#                 if calories_clean:
+#                     table_calories = float(calories_clean)
+#             except (ValueError, TypeError):
+#                 table_calories = None
+        
 #         # Extract dietary labels
 #         labels = []
 #         for icon_path, preference_name in self.dietary_icons.items():
@@ -569,6 +650,12 @@
 #             self.logger.error(f"Failed to get nutrition for {item_name}: {e}")
 #             nutrition_info = {"nutrients": {"error": str(e)}, "ingredients": "N/A"}
         
+#         # Check if calories is missing from nutrition modal and use table calories as fallback
+#         nutrients = nutrition_info.get("nutrients", {})
+#         if not nutrients.get("calories") and table_calories is not None:
+#             self.logger.info(f"Using table calories ({table_calories}) for {item_name} - modal calories not found")
+#             nutrients["calories"] = str(table_calories)
+        
 #         # Process ingredients
 #         raw_ingredients = nutrition_info.get("ingredients", "N/A")
 #         ingredients_list = []
@@ -581,11 +668,52 @@
 #             "labels": labels,
 #             "ingredients": ingredients_list,
 #             "portion_size": portion_size,
-#             "nutrients": nutrition_info.get("nutrients", {})
+#             "nutrients": nutrients
 #         }
     
+#     def _process_dining_hall_with_recovery(self, dining_hall_name: str) -> List[Dict[str, Any]]:
+#         """Process dining hall with simple crash recovery."""
+#         max_attempts = 3
+        
+#         for attempt in range(max_attempts):
+#             try:
+#                 self.logger.info(f"Processing {dining_hall_name} (attempt {attempt + 1})")
+                
+#                 # Check driver health before starting
+#                 if not self.is_driver_alive():
+#                     self.logger.warning("Driver not alive, restarting...")
+#                     if not self.restart_driver():
+#                         self.logger.error("Could not restart driver")
+#                         continue  # Try next attempt
+                
+#                 # Process the dining hall
+#                 return self._process_dining_hall(dining_hall_name)
+                
+#             except Exception as e:
+#                 self.logger.error(f"Attempt {attempt + 1} failed for {dining_hall_name}: {e}")
+                
+#                 # If this is a crash-related error, restart driver
+#                 if self.is_crash_related_error(str(e)):
+#                     self.logger.info(f"Browser crash detected for {dining_hall_name}, restarting...")
+#                     if attempt < max_attempts - 1:  # Not the last attempt
+#                         if self.restart_driver():
+#                             self.logger.info("Driver restarted successfully, retrying...")
+#                             continue
+#                         else:
+#                             self.logger.error("Failed to restart driver")
+#                             break
+#                 else:
+#                     # Non-crash error, wait a bit and retry
+#                     if attempt < max_attempts - 1:
+#                         self.logger.info(f"Non-crash error, waiting before retry...")
+#                         self.human_wait(2, 4)
+#                         continue
+        
+#         self.logger.error(f"All attempts failed for {dining_hall_name}")
+#         return []
+    
 #     def scrape_all_dining_halls(self) -> Dict[str, Any]:
-#         """Main scraping method for all dining halls with improved error handling."""
+#         """Main scraping method with simple crash recovery."""
 #         self.logger.info(f"Starting scrape of {self.target_url} (headless={self.headless})")
         
 #         self.driver = None
@@ -595,16 +723,15 @@
 #         }
         
 #         try:
+#             # Initial driver setup
 #             self.driver = self.setup_driver()
             
-#             # Verify driver is working
 #             if not self.is_driver_alive():
 #                 raise RuntimeError("Driver failed to initialize properly")
             
 #             self.driver.get(self.target_url)
 #             self.human_wait(5, 8)
             
-#             # Verify page loaded
 #             if not self.is_driver_alive():
 #                 raise RuntimeError("Driver died after loading page")
             
@@ -614,52 +741,96 @@
 #                 self.logger.error("No dining halls found")
 #                 return all_dining_hall_data
             
-#             # Process each dining hall
-#             for dining_hall_name in dining_hall_names:
+#             self.logger.info(f"Found {len(dining_hall_names)} dining halls to process")
+            
+#             # Process each dining hall with recovery
+#             for idx, dining_hall_name in enumerate(dining_hall_names):
 #                 try:
-#                     if not self.is_driver_alive():
-#                         self.logger.error("Driver died during processing")
-#                         break
-                    
-#                     self.logger.info(f"Processing dining hall: {dining_hall_name}")
+#                     self.logger.info(f"Processing dining hall {idx + 1}/{len(dining_hall_names)}: {dining_hall_name}")
                     
 #                     # Clear failed items for each dining hall
 #                     self.failed_items.clear()
                     
-#                     meals_data = self._process_dining_hall(dining_hall_name)
+#                     # Use recovery version
+#                     meals_data = self._process_dining_hall_with_recovery(dining_hall_name)
                     
 #                     if meals_data:
 #                         all_dining_hall_data["dining_halls"].append({
 #                             "name": dining_hall_name,
 #                             "meals": meals_data
 #                         })
-#                         self.logger.info(f"Successfully processed {dining_hall_name}")
+#                         self.logger.info(f"✓ Successfully processed {dining_hall_name}")
+                        
+#                         # Save progress checkpoint
+#                         self._save_progress_checkpoint(all_dining_hall_data, idx + 1)
 #                     else:
-#                         self.logger.warning(f"No meals found for {dining_hall_name}")
-                
+#                         self.logger.warning(f"✗ No meals found for {dining_hall_name}")
+                    
 #                 except Exception as e:
-#                     self.logger.error(f"Failed to process {dining_hall_name}: {e}")
+#                     self.logger.error(f"✗ Failed to process {dining_hall_name}: {e}")
+                    
+#                     # If it's a crash, try to restart for next dining hall
+#                     if self.is_crash_related_error(str(e)):
+#                         self.logger.info("Crash detected, restarting for next dining hall...")
+#                         if not self.restart_driver():
+#                             self.logger.error("Could not restart driver, stopping scrape")
+#                             break
+                    
+#                     # Take screenshot if driver is alive
 #                     if self.is_driver_alive():
 #                         self.take_screenshot(f"error_{dining_hall_name.replace(' ', '_')}")
+                    
 #                     continue
             
 #             self.logger.info("Scraping completed successfully")
 #             return all_dining_hall_data
-        
+            
 #         except Exception as e:
 #             self.logger.error(f"Scraping failed: {e}")
 #             traceback.print_exc()
+            
 #             if self.is_driver_alive():
 #                 self.take_screenshot("critical_error")
+                
 #             return all_dining_hall_data
-        
+            
 #         finally:
+#             # Clean shutdown
 #             if self.driver:
 #                 try:
 #                     self.driver.quit()
 #                 except:
 #                     pass
 #                 self.logger.info("Driver session closed")
+    
+#     def _save_progress_checkpoint(self, data: Dict[str, Any], hall_number: int):
+#         """Save progress after each dining hall."""
+#         try:
+#             filename = f"progress_after_{hall_number}_halls.json"
+#             with open(filename, "w") as f:
+#                 json.dump(data, f, indent=2)
+            
+#             # Also save a summary
+#             summary = {
+#                 "completed_halls": len(data["dining_halls"]),
+#                 "total_items": sum(
+#                     len(item) 
+#                     for hall in data["dining_halls"] 
+#                     for meal in hall["meals"] 
+#                     for station in meal["stations"] 
+#                     for item in station["items"]
+#                 ),
+#                 "last_completed": data["dining_halls"][-1]["name"] if data["dining_halls"] else None,
+#                 "timestamp": datetime.datetime.now().isoformat()
+#             }
+            
+#             with open("scrape_progress_summary.json", "w") as f:
+#                 json.dump(summary, f, indent=2)
+                
+#             self.logger.info(f"✓ Progress saved: {summary['completed_halls']} halls, {summary['total_items']} items")
+            
+#         except Exception as e:
+#             self.logger.warning(f"Failed to save progress: {e}")
     
 #     def _get_dining_hall_names(self) -> List[str]:
 #         """Get list of all available dining halls."""
@@ -696,44 +867,6 @@
 #         except Exception as e:
 #             self.logger.error(f"Error getting dining hall names: {e}")
 #             return []
-    
-#     def _get_meal_tabs(self) -> List[str]:
-#         """Get list of available meal tabs."""
-#         try:
-#             meal_container = self.driver.find_element(By.CSS_SELECTOR, ".nav.nav-tabs")
-#             tab_elements = meal_container.find_elements(By.TAG_NAME, "li")
-            
-#             meal_names = []
-#             for tab in tab_elements:
-#                 tab_link = tab.find_element(By.TAG_NAME, "a")
-#                 meal_names.append(tab_link.text.strip())
-            
-#             return meal_names
-        
-#         except Exception as e:
-#             self.logger.error(f"Error getting meal tabs: {e}")
-#             return []
-    
-#     def _select_meal_tab(self, meal_name: str) -> bool:
-#         """Select a specific meal tab."""
-#         try:
-#             tab_button = WebDriverWait(self.driver, 20).until(
-#                 EC.element_to_be_clickable((By.XPATH, f"//ul[contains(@class, 'nav-tabs')]/li/a[normalize-space()='{meal_name}']"))
-#             )
-            
-#             if not self.safe_click(tab_button, f"meal tab for {meal_name}"):
-#                 return False
-            
-#             # Wait for content to load
-#             WebDriverWait(self.driver, 15).until(
-#                 EC.presence_of_element_located((By.CSS_SELECTOR, "table.menu-items tbody tr"))
-#             )
-            
-#             return True
-        
-#         except Exception as e:
-#             self.logger.error(f"Error selecting meal tab {meal_name}: {e}")
-#             return False
     
 #     def _process_dining_hall(self, dining_hall_name: str) -> List[Dict[str, Any]]:
 #         """Process a single dining hall and extract all meal data."""
@@ -778,7 +911,7 @@
 #             self.logger.error(f"Error processing dining hall {dining_hall_name}: {e}")
         
 #         return meals_data
-
+    
 #     def _select_dining_hall(self, dining_hall_name: str) -> bool:
 #         """Select a specific dining hall from the dropdown."""
 #         try:
@@ -812,6 +945,44 @@
         
 #         except Exception as e:
 #             self.logger.error(f"Error selecting dining hall {dining_hall_name}: {e}")
+#             return False
+    
+#     def _get_meal_tabs(self) -> List[str]:
+#         """Get list of available meal tabs."""
+#         try:
+#             meal_container = self.driver.find_element(By.CSS_SELECTOR, ".nav.nav-tabs")
+#             tab_elements = meal_container.find_elements(By.TAG_NAME, "li")
+            
+#             meal_names = []
+#             for tab in tab_elements:
+#                 tab_link = tab.find_element(By.TAG_NAME, "a")
+#                 meal_names.append(tab_link.text.strip())
+            
+#             return meal_names
+        
+#         except Exception as e:
+#             self.logger.error(f"Error getting meal tabs: {e}")
+#             return []
+    
+#     def _select_meal_tab(self, meal_name: str) -> bool:
+#         """Select a specific meal tab."""
+#         try:
+#             tab_button = WebDriverWait(self.driver, 20).until(
+#                 EC.element_to_be_clickable((By.XPATH, f"//ul[contains(@class, 'nav-tabs')]/li/a[normalize-space()='{meal_name}']"))
+#             )
+            
+#             if not self.safe_click(tab_button, f"meal tab for {meal_name}"):
+#                 return False
+            
+#             # Wait for content to load
+#             WebDriverWait(self.driver, 15).until(
+#                 EC.presence_of_element_located((By.CSS_SELECTOR, "table.menu-items tbody tr"))
+#             )
+            
+#             return True
+        
+#         except Exception as e:
+#             self.logger.error(f"Error selecting meal tab {meal_name}: {e}")
 #             return False
     
 #     def generate_embedding_text(self, food: Dict[str, Any]) -> str:
@@ -954,7 +1125,7 @@
 
 # if __name__ == "__main__":
 #     main()
-
+               
 import time
 import datetime
 import random
@@ -1001,7 +1172,7 @@ from fake_useragent import UserAgent
 
 
 class DiningHallScraper:
-    """A robust web scraper for dining hall menu data with simple crash recovery."""
+    """A robust web scraper for dining hall menu data with null handling for missing nutrition data."""
     
     def __init__(self, target_url: str, mongodb_uri: Optional[str] = None, max_retries: int = 3, headless: bool = False):
         self.target_url = target_url
@@ -1052,6 +1223,21 @@ class DiningHallScraper:
             ]
         )
         self.logger = logging.getLogger(__name__)
+    
+    def clean_nutrition_value(self, value_text: str) -> Optional[str]:
+        """Clean and standardize nutrition values, return None for missing data."""
+        if not value_text or value_text.strip() in ['-', 'N/A', '', 'g', 'mg', 'mcg', 'µg', 'ug', '%', 'cal', 'kcal']:
+            return None  # Missing data
+        
+        # Remove extra whitespace
+        cleaned = value_text.strip()
+        
+        # Extract numeric part (including decimals)
+        number_match = re.search(r'(\d+(?:\.\d+)?)', cleaned)
+        if number_match:
+            return number_match.group(1)
+        
+        return None  # No number found = missing data
     
     def human_wait(self, min_sec: float = None, max_sec: float = None):
         """Simulate human-like waiting times."""
@@ -1336,7 +1522,7 @@ class DiningHallScraper:
             return False
     
     def extract_nutrition_details(self, item_name: str) -> Dict[str, Any]:
-        """Extract nutrition details with simple crash recovery."""
+        """Extract nutrition details with null handling for missing data."""
         nutrition_details = {"nutrients": {}, "ingredients": "N/A"}
         
         # Skip if previously failed
@@ -1425,7 +1611,7 @@ class DiningHallScraper:
         return "concat(" + ", '\'', ".join([f"'{part}'" for part in parts]) + ")"
     
     def _extract_modal_data(self) -> Dict[str, Any]:
-        """Extract nutrition data from the modal."""
+        """Extract nutrition data from the modal with null handling."""
         nutrition_details = {"nutrients": {}, "ingredients": "N/A"}
         
         try:
@@ -1444,7 +1630,8 @@ class DiningHallScraper:
                             label = self._clean_nutrient_label(strong_tag.text.strip())
                             value = self._extract_nutrient_value(strong_tag)
                             
-                            if label and value:
+                            # Only add nutrients that have actual values (not None)
+                            if label and value is not None:
                                 nutrients[label] = value
                 
                 nutrition_details["nutrients"] = nutrients
@@ -1473,15 +1660,17 @@ class DiningHallScraper:
         # Apply renames
         return self.nutrient_key_renames.get(label_clean, label_clean)
     
-    def _extract_nutrient_value(self, strong_tag) -> str:
-        """Extract the value following a nutrient label."""
+    def _extract_nutrient_value(self, strong_tag) -> Optional[str]:
+        """Extract and clean the value following a nutrient label."""
         texts = []
         for sibling in strong_tag.next_siblings:
             if isinstance(sibling, NavigableString):
                 texts.append(str(sibling))
             else:
                 break
-        return ''.join(texts).strip()
+        
+        raw_value = ''.join(texts).strip()
+        return self.clean_nutrition_value(raw_value)
     
     def _extract_ingredients(self, modal_body) -> str:
         """Extract ingredients from modal body."""
@@ -1552,11 +1741,12 @@ class DiningHallScraper:
         except Exception as e:
             self.logger.error(f"Error extracting menu data: {e}")
             return []
-    
+ 
     def _extract_item_from_row(self, row) -> Optional[Dict[str, Any]]:
         """Extract item data from a table row."""
         item_td = row.find('td', {'data-label': 'Menu item'})
         portion_td = row.find('td', {'data-label': 'Portion'})
+        calories_td = row.find('td', {'data-label': 'Calories'})
         
         if not item_td:
             return None
@@ -1578,6 +1768,14 @@ class DiningHallScraper:
             portion_div = portion_td.find('div')
             portion_size = portion_div.text.strip() if portion_div else portion_td.text.strip()
         
+        # Extract calories from table row as fallback
+        table_calories = None
+        if calories_td:
+            calories_div = calories_td.find('div')
+            calories_text = calories_div.text.strip() if calories_div else calories_td.text.strip()
+            # Clean up the calories using our nutrition value cleaner
+            table_calories = self.clean_nutrition_value(calories_text)
+        
         # Extract dietary labels
         labels = []
         for icon_path, preference_name in self.dietary_icons.items():
@@ -1591,6 +1789,12 @@ class DiningHallScraper:
             self.logger.error(f"Failed to get nutrition for {item_name}: {e}")
             nutrition_info = {"nutrients": {"error": str(e)}, "ingredients": "N/A"}
         
+        # Check if calories is missing from nutrition modal and use table calories as fallback
+        nutrients = nutrition_info.get("nutrients", {})
+        if not nutrients.get("calories") and table_calories is not None:
+            self.logger.info(f"Using table calories ({table_calories}) for {item_name} - modal calories not found")
+            nutrients["calories"] = table_calories
+        
         # Process ingredients
         raw_ingredients = nutrition_info.get("ingredients", "N/A")
         ingredients_list = []
@@ -1603,7 +1807,7 @@ class DiningHallScraper:
             "labels": labels,
             "ingredients": ingredients_list,
             "portion_size": portion_size,
-            "nutrients": nutrition_info.get("nutrients", {})
+            "nutrients": nutrients
         }
     
     def _process_dining_hall_with_recovery(self, dining_hall_name: str) -> List[Dict[str, Any]]:
@@ -1921,7 +2125,7 @@ class DiningHallScraper:
             return False
     
     def generate_embedding_text(self, food: Dict[str, Any]) -> str:
-        """Generate text for semantic embedding."""
+        """Generate text for semantic embedding with null-aware handling."""
         name = food.get("name", "")
         portion = food.get("portion_size", "")
         labels = ", ".join(food.get("labels", []))
@@ -1931,10 +2135,11 @@ class DiningHallScraper:
         hall = food.get("dining_hall", "")
         
         nutrients = food.get("nutrients", {})
-        calories = nutrients.get("calories", "")
-        protein = nutrients.get("protein", "")
-        carbs = nutrients.get("total_carbohydrates", "")
-        fat = nutrients.get("total_fat", "")
+        # Handle null values in embedding text
+        calories = nutrients.get("calories") or ""
+        protein = nutrients.get("protein") or ""
+        carbs = nutrients.get("total_carbohydrates") or ""
+        fat = nutrients.get("total_fat") or ""
         
         return (
             f"{name}, {portion}. "
@@ -2060,5 +2265,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-               
+
+
 

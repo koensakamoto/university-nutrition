@@ -83,7 +83,7 @@ const Login = () => {
             />
           </div>
           <div className={`transition-all duration-700 delay-100 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Campus Nutrition</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">CrimsonBites</h1>
             <p className="text-gray-400 text-xs md:text-sm font-light text-center">Track your nutrition journey</p>
           </div>
         </div>
@@ -163,11 +163,11 @@ const Login = () => {
             {/* Remember Me & Forgot Password - Match Register Page Style */}
             <div className="flex items-center justify-between pt-1">
               <label className="flex items-center">
-                <input 
+                {/* <input 
                   type="checkbox" 
                   className="h-4 w-4 text-red-600 border-gray-300 rounded "
                 />
-                <span className="ml-2 text-sm text-gray-700">Remember me</span>
+                <span className="ml-2 text-sm text-gray-700">Remember me</span> */}
               </label>
               <Link to="/forgot-password" className="text-sm text-red-600 hover:underline font-medium">
                 Forgot password?
@@ -178,7 +178,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
+              className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
             >
               {loading ? (
                 <>
@@ -211,7 +211,7 @@ const Login = () => {
           <button
             type="button"
             onClick={() => {
-              window.location.href = "http://localhost:8000/auth/google/login";
+              window.location.href = "/auth/google/login";
             }}
             className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:ring-4 focus:ring-gray-200 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
           >
@@ -253,10 +253,7 @@ const Login = () => {
           </div>
         </div>
 
-        {/* Footer - Responsive */}
-        <div className={`text-center mt-3 md:mt-4 text-gray-600 text-sm transition-all duration-700 delay-300 ${animate ? 'opacity-100' : 'opacity-0'}`}>
-          <p>&copy; 2025 University of Utah. All rights reserved.</p>
-        </div>
+
       </div>
     </div>
   )

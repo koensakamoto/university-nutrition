@@ -21,10 +21,10 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
       id: `custom-${crypto.randomUUID()}`,
       portionSize: '1 serving',
       ...meal,
-      calories: parseInt(meal.calories, 10) || 0,
-      protein: parseInt(meal.protein, 10) || 0,
-      carbs: parseInt(meal.carbs, 10) || 0,
-      totalFat: parseInt(meal.totalFat, 10) || 0,
+      calories: parseFloat(meal.calories) || 0,
+      protein: parseFloat(meal.protein) || 0,
+      carbs: parseFloat(meal.carbs) || 0,
+      totalFat: parseFloat(meal.totalFat) || 0,
     };
     onAddItem(finalMeal, 1);
 

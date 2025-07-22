@@ -22,20 +22,53 @@ function TermsOfServiceModal({ isOpen, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">Terms of Service</h2>
+          <h2 className="text-xl font-bold text-gray-900">Terms of Service</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
         </div>
         <div className="p-6 overflow-y-auto">
-          <div className="prose prose-sm max-w-none">
-            <h3>Campus Nutrition Terms of Service</h3>
-            <p><strong>Effective Date:</strong> July 5, 2025</p>
-            <p>By using this app, you agree to our terms and privacy policy.</p>
+          <div className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-gray-900">Terms of Service</h3>
+              <p className="text-sm text-gray-600 mt-1">Last updated: July 20, 2025</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">What this app does</h4>
+                <p className="text-gray-700">Campus Nutrition helps you track your meals and nutrition from university dining halls. It's free to use for students and staff.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Your account</h4>
+                <p className="text-gray-700">Keep your login details safe. You're responsible for what happens with your account. Let us know if something seems wrong.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">The nutrition data</h4>
+                <p className="text-gray-700">We get nutrition info from dining halls, but it might not be 100% accurate. This isn't medical advice - talk to a doctor or nutritionist for health questions.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Be respectful</h4>
+                <p className="text-gray-700">Don't spam, hack, or do anything that might harm the app or other users. Just use it normally to track your meals.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Changes and updates</h4>
+                <p className="text-gray-700">We might update the app or these terms sometimes. We'll let you know about important changes.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Questions?</h4>
+                <p className="text-gray-700">If you have issues or questions, contact us through the support form in your account settings.</p>
+              </div>
+            </div>
           </div>
         </div>
         <div className="p-4 border-t flex justify-end">
-          <button onClick={onClose} className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
+          <button onClick={onClose} className="bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
             I Understand
           </button>
         </div>
@@ -50,20 +83,65 @@ function PrivacyPolicyModal({ isOpen, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-800">Privacy Policy</h2>
+          <h2 className="text-xl font-bold text-gray-900">Privacy Policy</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X size={24} />
           </button>
         </div>
         <div className="p-6 overflow-y-auto">
-          <div className="prose prose-sm max-w-none">
-            <h3>Campus Nutrition Privacy Policy</h3>
-            <p><strong>Effective Date:</strong> July 5, 2025</p>
-            <p>Your privacy is important to us. We collect only the information necessary to provide our nutrition tracking services. We do not share your personal data with third parties except as required by law. For more details, please contact support.</p>
+          <div className="space-y-6">
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-gray-900">Privacy Policy</h3>
+              <p className="text-sm text-gray-600 mt-1">Last updated: July 20, 2025</p>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">What info we collect</h4>
+                <p className="text-gray-700 mb-2">We collect your email, name, and profile details like:</p>
+                <ul className="text-gray-700 space-y-1 ml-4">
+                  <li>• Basic info: height, weight, age, activity level</li>
+                  <li>• Goals: weight goals and nutrition preferences</li>
+                  <li>• Dietary needs: allergies, food sensitivities, diet type</li>
+                  <li>• Meal tracking: what you eat and when</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">How we use your info</h4>
+                <p className="text-gray-700 mb-2">We use your data to:</p>
+                <ul className="text-gray-700 space-y-1 ml-4">
+                  <li>• Show personalized nutrition recommendations</li>
+                  <li>• Track your meals and progress toward goals</li>
+                  <li>• Filter foods based on your allergies and preferences</li>
+                  <li>• Keep your account secure and send important updates</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Sharing your data</h4>
+                <p className="text-gray-700">We don't sell or share your personal info with anyone. The only exception is if we're legally required to (like by a court order).</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Your choices</h4>
+                <p className="text-gray-700">You can update your profile anytime or delete your account completely. When you delete your account, we remove all your personal data and meal history.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Data security</h4>
+                <p className="text-gray-700">We use encryption and secure practices to protect your account. Your password is hashed and your personal health info stays private.</p>
+              </div>
+              
+              <div>
+                <h4 className="font-bold text-gray-900 mb-2">Questions?</h4>
+                <p className="text-gray-700">Contact us through the support form if you have privacy concerns or want to delete your data.</p>
+              </div>
+            </div>
           </div>
         </div>
         <div className="p-4 border-t flex justify-end">
-          <button onClick={onClose} className="bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
+          <button onClick={onClose} className="bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
             I Understand
           </button>
         </div>
@@ -131,11 +209,12 @@ export default function Register() {
           const data = await res.json();
           setApiError(data.detail || 'Registration failed');
         } else {
+          setApiError(''); // Clear any previous errors
           await refetchProfile();
           navigate('/dashboard');
         }
       } catch (err) {
-        setApiError('Network error. Please try again.');
+        setApiError('Error. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -190,20 +269,21 @@ export default function Register() {
         {/* Main Card - Same as Login */}
         <div className={`bg-white rounded-2xl shadow-2xl p-6 md:p-8 border border-white/60 transition-all duration-700 delay-200 hover:shadow-3xl ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Welcome Message */}
-          <div className="flex flex-col items-center mb-4 md:mb-6">
+          <div className="flex flex-col items-center mb-2 md:mb-3">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Create Your Account</h2>
             <p className="text-gray-400 text-xs md:text-sm font-light text-center">Start tracking your campus nutrition today</p>
           </div>
 
           {/* API Error Message */}
-          {apiError && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
-              <div>
-                <h3 className="text-sm font-medium text-red-800">Registration Error</h3>
-                <p className="text-sm text-red-700 mt-1">{apiError}</p>
+          <div className="h-12 mb-1">
+            {apiError && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
+                <div>
+                  <p className="text-sm text-red-700">{apiError}</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             {/* Name Fields */}
@@ -361,7 +441,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
+              className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
             >
               {loading ? (
                 <>
