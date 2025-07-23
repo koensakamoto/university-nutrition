@@ -18,17 +18,23 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
-      const res = await fetch("/api/profile", {
-        credentials: "include",
-      });
-      if (res.ok) {
-        const userData = await res.json();
-        setUser(userData);
-        setWasAuthenticated(true);
-        setLoading(false);
-      } else {
+      try {
+        const res = await fetch("/api/profile", {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const userData = await res.json();
+          setUser(userData);
+          setWasAuthenticated(true);
+        } else {
+          setUser(null);
+          setError("Not authenticated");
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
         setUser(null);
-        setError("Not authenticated");
+        setError("Failed to connect to server");
+      } finally {
         setLoading(false);
       }
     };

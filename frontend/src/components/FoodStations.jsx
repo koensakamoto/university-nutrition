@@ -83,7 +83,9 @@ const FoodStations = ({ stations, addToTracker }) => {
         >
           <button
             onClick={() => toggleStation(station.station_id)}
-            className="w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset hover:bg-gray-50 transition-colors duration-150"
+            className={`w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-inset hover:bg-gray-50 transition-colors duration-150 ${
+              expandedStations[station.station_id] ? 'rounded-t-xl' : 'rounded-xl'
+            }`}
           >
             <div className="flex-1">
               <div className="flex items-center justify-between">
@@ -107,7 +109,7 @@ const FoodStations = ({ stations, addToTracker }) => {
             </div>
           </button>
           {expandedStations[station.station_id] && (
-            <div className="border-t border-gray-100">
+            <div className="border-t border-gray-100 rounded-b-xl">
               <div className="divide-y divide-gray-100">
                 {station.items.map((item) => (
                   <FoodItem

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pencil, Info, Mail, User, Camera } from 'lucide-react';
+import { Pencil, Info, Mail, User, Camera, Key, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
 import { useAuth, useFetchWithAuth } from '../../AuthProvider';
@@ -14,19 +14,51 @@ export const AccountSection = () => {
   const [image, setImage] = useState('');
   const [editingName, setEditingName] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
   const [tempName, setTempName] = useState('');
-  const [tempEmail, setTempEmail] = useState('');
+  const [tempEmail, setTempEmail] = useState('');  
   const [tempImage, setTempImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState('');
   const [imageSuccess, setImageSuccess] = useState('');
-  const [saveError, setSaveError] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState('');
+  const [nameLoading, setNameLoading] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [nameSuccess, setNameSuccess] = useState('');
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [emailSuccess, setEmailSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
   const [loading, setLoading] = useState(true);
   const [showTooltip, setShowTooltip] = useState(false);
 
+  // Password fields
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const fileInputRef = useRef(null);
+  const timeoutRefs = useRef([]);
+
+  // Helper function to create cleanup-able timeouts
+  const createTimeout = (callback, delay) => {
+    const timeoutId = setTimeout(callback, delay);
+    timeoutRefs.current.push(timeoutId);
+    return timeoutId;
+  };
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach(clearTimeout);
+      timeoutRefs.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -40,7 +72,9 @@ export const AccountSection = () => {
         setPreviewImage('');
         setTempImage(null);
       } catch (err) {
-        setSaveError('Could not load account info.');
+        console.error('Could not load account info:', err);
+        // Set a general error state that can be displayed to user
+        setNameError('Failed to load account information');
       } finally {
         setLoading(false);
       }
@@ -61,10 +95,35 @@ export const AccountSection = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setImageError('Image must be smaller than 5MB');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setImageError('Please select a valid image file');
+        return;
+      }
+      
+      setImageError('');
       setTempImage(file);
       const reader = new FileReader();
+      
+      const cleanup = () => {
+        reader.onloadend = null;
+        reader.onerror = null;
+      };
+      
       reader.onloadend = () => {
         setPreviewImage(reader.result);
+        cleanup();
+      };
+      reader.onerror = () => {
+        setImageError('Failed to read image file');
+        setPreviewImage('');
+        cleanup();
       };
       reader.readAsDataURL(file);
     }
@@ -79,7 +138,11 @@ export const AccountSection = () => {
     setImageLoading(true);
     setImageError('');
     setImageSuccess('');
+    
+    let uploadedImageUrl = null;
+    
     try {
+      // Step 1: Upload image file
       const formData = new FormData();
       formData.append('image', tempImage);
       const { data, error } = await fetchWithAuth('/api/profile/image', {
@@ -87,74 +150,271 @@ export const AccountSection = () => {
         body: formData,
       });
       if (error || !data) throw new Error('Failed to upload image');
-      const imageUrl = data.url;
-      // Update profile with new image URL
+      
+      uploadedImageUrl = data.url;
+      
+      // Step 2: Update profile with new image URL
       const { data: updateData, error: updateError } = await fetchWithAuth('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageUrl })
+        body: JSON.stringify({ image: uploadedImageUrl })
       });
-      if (updateError || !updateData) throw new Error('Failed to update profile image');
-      setImage(imageUrl);
+      
+      if (updateError || !updateData) {
+        // If profile update fails, attempt to clean up uploaded image
+        try {
+          await fetchWithAuth('/api/profile/image', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrl: uploadedImageUrl })
+          });
+        } catch (cleanupError) {
+          console.warn('Failed to cleanup uploaded image:', cleanupError);
+        }
+        throw new Error('Failed to update profile with new image');
+      }
+      
+      // Success - update UI state
+      setImage(uploadedImageUrl);
       setTempImage(null);
       setPreviewImage('');
       setImageSuccess('Profile image updated!');
+      createTimeout(() => setImageSuccess(''), 3000);
+      
     } catch (err) {
-      setImageError('Could not upload image.');
+      console.error('Image upload failed:', err);
+      if (err.message?.includes('size')) {
+        setImageError('Image file is too large. Please select a smaller image.');
+      } else if (err.message?.includes('format') || err.message?.includes('type')) {
+        setImageError('Invalid image format. Please select a JPG, PNG, or GIF image.');
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        setImageError('Network error. Please check your connection and try again.');
+      } else {
+        setImageError('Failed to upload image. Please try again.');
+      }
     } finally {
       setImageLoading(false);
     }
   };
 
   const handleNameUpdate = async () => {
-    setSaveError('');
-    setSaveSuccess('');
+    // Validation
+    if (!tempName.trim()) {
+      setNameError('Name cannot be empty');
+      return;
+    }
+    if (tempName.trim().length < 2) {
+      setNameError('Name must be at least 2 characters');
+      return;
+    }
+    if (tempName.trim().length > 50) {
+      setNameError('Name must be less than 50 characters');
+      return;
+    }
+    
+    setNameLoading(true);
+    setNameError('');
+    setNameSuccess('');
+    
     try {
       const { data, error } = await fetchWithAuth('/api/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: tempName })
+        body: JSON.stringify({ name: tempName.trim() })
       });
       if (error || !data) throw new Error('Failed to update name');
-      setName(tempName);
+      setName(tempName.trim());
       setEditingName(false);
-      setSaveSuccess('Name updated!');
-      // Refetch profile to update the header and other components
-      refetchProfile();
+      setNameSuccess('Name updated!');
+      createTimeout(() => setNameSuccess(''), 3000);
+      // Delay refetch to allow smooth UI transition first
+      createTimeout(() => {
+        refetchProfile();
+      }, 100);
     } catch (err) {
-      setSaveError('Could not update name.');
+      console.error('Name update failed:', err);
+      if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        setNameError('Network error. Please check your connection and try again.');
+      } else if (err.message?.includes('validation')) {
+        setNameError('Invalid name format. Please use only letters and spaces.');
+      } else {
+        setNameError('Failed to update name. Please try again.');
+      }
+    } finally {
+      setNameLoading(false);
     }
   };
 
   const handleEmailUpdate = async () => {
-    setSaveError('');
-    setSaveSuccess('');
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!tempEmail.trim()) {
+      setEmailError('Email cannot be empty');
+      return;
+    }
+    if (!emailRegex.test(tempEmail.trim())) {
+      setEmailError('Please enter a valid email address');
+      return;
+    }
+    
+    setEmailLoading(true);
+    setEmailError('');
+    setEmailSuccess('');
+    
     try {
       const { data, error } = await fetchWithAuth('/api/profile/email', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: tempEmail })
+        body: JSON.stringify({ email: tempEmail.trim() })
       });
       if (error || !data) throw new Error('Failed to update email');
-      setEmail(tempEmail);
+      
+      setEmail(tempEmail.trim());
       setEditingEmail(false);
-      setSaveSuccess('Email updated!');
-      navigate('/login', { replace: true });
-      await logout();
-      // console.log('Navigated to login');
+      setEmailSuccess('Email updated! Redirecting to login...');
+      
+      // Small delay to show success message before redirect
+      createTimeout(async () => {
+        await logout();
+        navigate('/login', { replace: true });
+      }, 1500);
+      
     } catch (err) {
-      setSaveError('Could not update email.');
+      console.error('Email update failed:', err);
+      if (err.message?.includes('duplicate') || err.message?.includes('exists')) {
+        setEmailError('This email address is already in use.');
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        setEmailError('Network error. Please check your connection and try again.');
+      } else if (err.message?.includes('validation') || err.message?.includes('invalid')) {
+        setEmailError('Invalid email format. Please enter a valid email address.');
+      } else {
+        setEmailError('Failed to update email. Please try again.');
+      }
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handlePasswordUpdate = async () => {
+    // Enhanced password validation
+    if (!currentPassword) {
+      setPasswordError('Current password is required');
+      return;
+    }
+    if (tempPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/(?=.*[a-z])/.test(tempPassword)) {
+      setPasswordError('Password must contain at least one lowercase letter');
+      return;
+    }
+    if (!/(?=.*[A-Z])/.test(tempPassword)) {
+      setPasswordError('Password must contain at least one uppercase letter');
+      return;
+    }
+    if (!/(?=.*\d)/.test(tempPassword)) {
+      setPasswordError('Password must contain at least one number');
+      return;
+    }
+    if (tempPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    try {
+      const { data, error } = await fetchWithAuth('/api/account/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: tempPassword
+        })
+      });
+      if (error || !data) {
+        setPasswordError((data && data.detail) || 'Failed to update password');
+        return;
+      }
+      setEditingPassword(false);
+      setPasswordSuccess('Password updated successfully!');
+      setTempPassword('');
+      setConfirmPassword('');
+      setCurrentPassword('');
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
+      createTimeout(() => setPasswordSuccess(''), 3000);
+    } catch (err) {
+      console.error('Password update failed:', err);
+      if (err.message?.includes('current password') || err.message?.includes('incorrect')) {
+        setPasswordError('Current password is incorrect.');
+      } else if (err.message?.includes('weak') || err.message?.includes('strength')) {
+        setPasswordError('Password is too weak. Please choose a stronger password.');
+      } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+        setPasswordError('Network error. Please check your connection and try again.');
+      } else {
+        setPasswordError('Failed to update password. Please try again.');
+      }
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
 
-  // Helper to get the correct image URL
+  // Helper to get the correct image URL with XSS protection
   const getImageUrl = (url) => {
     if (!url) return null;
-    if (url.startsWith('/static/')) {
-      return url; // Proxy will handle the routing
+    
+    // Block potentially dangerous URL schemes
+    const dangerousSchemes = ['javascript:', 'data:text/', 'data:application/', 'vbscript:', 'data:text/html'];
+    const urlLower = url.toLowerCase();
+    
+    for (const scheme of dangerousSchemes) {
+      if (urlLower.startsWith(scheme)) {
+        console.warn('Blocked potentially dangerous image URL:', url);
+        return null;
+      }
     }
-    return url;
+    
+    // Allow safe data URLs for images
+    if (urlLower.startsWith('data:image/')) {
+      return url;
+    }
+    
+    // Allow relative paths from our static directory
+    if (url.startsWith('/static/')) {
+      return url;
+    }
+    
+    // Allow HTTPS URLs from trusted domains (adjust as needed)
+    if (url.startsWith('https://')) {
+      try {
+        const urlObj = new URL(url);
+        // Add your trusted domains here
+        const trustedDomains = ['imgur.com', 'gravatar.com', 'amazonaws.com'];
+        const isTrusted = trustedDomains.some(domain => 
+          urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
+        );
+        if (isTrusted) {
+          return url;
+        }
+      } catch (e) {
+        console.warn('Invalid URL format:', url);
+        return null;
+      }
+    }
+    
+    // For local development, allow localhost
+    if (url.startsWith('http://localhost')) {
+      return url;
+    }
+    
+    console.warn('Blocked untrusted image URL:', url);
+    return null;
   };
 
   if (loading) {
@@ -166,13 +426,13 @@ export const AccountSection = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-      <div className="flex items-center justify-between mb-6">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8" style={{width: '100%', maxWidth: 'none'}}>
+      <div className="flex items-center justify-between mb-6 w-full max-w-2xl">
         <div className="flex items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Account Information</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Account Information</h2>
           <button
             type="button"
-            className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+            className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
             onClick={() => setShowTooltip(true)}
             aria-label="Show account info"
           >
@@ -257,30 +517,41 @@ export const AccountSection = () => {
         <div className="bg-gray-50 rounded-lg p-6">
           <label className="block text-gray-800 font-semibold mb-3">Name</label>
           {editingName ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input 
-                type="text" 
-                value={tempName} 
-                onChange={(e) => setTempName(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-              <div className="flex gap-2">
-                <button 
-                  onClick={handleNameUpdate} 
-                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
-                >
-                  Save
-                </button>
-                <button 
-                  onClick={() => {
-                    setTempName(name);
-                    setEditingName(false);
-                  }} 
-                  className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
+            <div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input 
+                  type="text" 
+                  value={tempName} 
+                  onChange={(e) => setTempName(e.target.value)}
+                  aria-label="Edit name"
+                  aria-describedby={nameError ? "name-error" : undefined}
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleNameUpdate} 
+                    disabled={nameLoading}
+                    className={`px-6 py-3 rounded-lg font-medium ${nameLoading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
+                  >
+                    {nameLoading ? 'Saving...' : 'Save'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setTempName(name);
+                      setEditingName(false);
+                      setNameError('');
+                    }} 
+                    className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
+              {nameError && (
+                <div id="name-error" className="mt-2 text-red-600 text-sm" role="alert">{nameError}</div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between">
@@ -289,7 +560,11 @@ export const AccountSection = () => {
                 <span className="text-gray-900 text-lg">{name}</span>
               </div>
               <button
-                onClick={() => setEditingName(true)}
+                onClick={() => {
+                  setEditingName(true);
+                  setNameSuccess('');
+                  setNameError('');
+                }}
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
                 aria-label="Edit Name"
               >
@@ -298,29 +573,167 @@ export const AccountSection = () => {
               </button>
             </div>
           )}
+          {nameSuccess && (
+            <div className="mt-2 text-green-600 text-sm">{nameSuccess}</div>
+          )}
         </div>
         
         <div className="bg-gray-50 rounded-lg p-6">
           <label className="block text-gray-800 font-semibold mb-3">Email</label>
           {editingEmail ? (
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input 
-                type="email" 
-                value={tempEmail} 
-                onChange={(e) => setTempEmail(e.target.value)}
-                className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-              <div className="flex gap-2">
+            <div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input 
+                  type="email" 
+                  value={tempEmail} 
+                  onChange={(e) => setTempEmail(e.target.value)}
+                  aria-label="Edit email address"
+                  aria-describedby={emailError ? "email-error" : undefined}
+                  className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                <div className="flex gap-2">
+                  <button 
+                    onClick={handleEmailUpdate} 
+                    disabled={emailLoading}
+                    className={`px-6 py-3 rounded-lg font-medium ${emailLoading 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
+                  >
+                    {emailLoading ? 'Saving...' : 'Save'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setTempEmail(email);
+                      setEditingEmail(false);
+                      setEmailError('');
+                    }} 
+                    className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+              {emailError && (
+                <div id="email-error" className="mt-2 text-red-600 text-sm" role="alert">{emailError}</div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <Mail size={20} className="text-gray-500 mr-3" />
+                <span className="text-gray-900 text-lg">{email}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingEmail(true);
+                  setEmailSuccess('');
+                  setEmailError('');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
+                aria-label="Edit Email"
+              >
+                <Pencil size={16} />
+                <span className="hidden sm:inline">Edit</span>
+              </button>
+            </div>
+          )}
+          {emailSuccess && (
+            <div className="mt-2 text-green-600 text-sm">{emailSuccess}</div>
+          )}
+        </div>
+
+        <div className="bg-gray-50 rounded-lg p-6">
+          <label className="block text-gray-800 font-semibold mb-3">Password</label>
+          {editingPassword ? (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-medium">Current Password</label>
+                <div className="relative">
+                  <input 
+                    type={showCurrentPassword ? "text" : "password"} 
+                    value={currentPassword} 
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    aria-label="Current password"
+                    aria-describedby={passwordError ? "password-error" : undefined}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <button 
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)} 
+                    aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showCurrentPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-medium">New Password</label>
+                <div className="relative">
+                  <input 
+                    type={showNewPassword ? "text" : "password"} 
+                    value={tempPassword} 
+                    onChange={(e) => setTempPassword(e.target.value)}
+                    aria-label="New password"
+                    aria-describedby={passwordError ? "password-error" : undefined}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <button 
+                    onClick={() => setShowNewPassword(!showNewPassword)} 
+                    aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showNewPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-700 mb-2 font-medium">Confirm New Password</label>
+                <div className="relative">
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    value={confirmPassword} 
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    aria-label="Confirm new password"
+                    aria-describedby={passwordError ? "password-error" : undefined}
+                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <button 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    {showConfirmPassword ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </div>
+              
+              {passwordError && (
+                <div id="password-error" className="text-red-500 text-sm" role="alert">{passwordError}</div>
+              )}
+              
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button 
-                  onClick={handleEmailUpdate} 
-                  className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  onClick={handlePasswordUpdate} 
+                  disabled={passwordLoading}
+                  className={`px-6 py-3 rounded-lg font-medium ${passwordLoading 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
                 >
-                  Save
+                  {passwordLoading ? 'Updating...' : 'Update Password'}
                 </button>
                 <button 
                   onClick={() => {
-                    setTempEmail(email);
-                    setEditingEmail(false);
+                    setEditingPassword(false);
+                    setPasswordError('');
+                    setPasswordSuccess('');
+                    setTempPassword('');
+                    setConfirmPassword('');
+                    setCurrentPassword('');
+                    setShowCurrentPassword(false);
+                    setShowNewPassword(false);
+                    setShowConfirmPassword(false);
                   }} 
                   className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
                 >
@@ -331,18 +744,24 @@ export const AccountSection = () => {
           ) : (
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <Mail size={20} className="text-gray-500 mr-3" />
-                <span className="text-gray-900 text-lg">{email}</span>
+                <Lock size={20} className="text-gray-500 mr-3" />
+                <span className="text-gray-900 text-lg">••••••••••••</span>
               </div>
-              <button
-                onClick={() => setEditingEmail(true)}
+              <button 
+                onClick={() => {
+                  setEditingPassword(true);
+                  setPasswordSuccess('');
+                  setPasswordError('');
+                }} 
                 className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-                aria-label="Edit Email"
               >
-                <Pencil size={16} />
-                <span className="hidden sm:inline">Edit</span>
+                <Key size={16} />
+                <span className="hidden sm:inline">Change Password</span>
               </button>
             </div>
+          )}
+          {passwordSuccess && (
+            <div className="mt-2 text-green-600 text-sm">{passwordSuccess}</div>
           )}
         </div>
       </div>

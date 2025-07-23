@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Info, Lock, Unlock } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
-export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
+export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget, triggerProfileRefresh }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [proteinRatio, setProteinRatio] = useState(29);
   const [carbRatio, setCarbRatio] = useState(58);
@@ -133,20 +133,10 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
       });
   }, []);
   useEffect(() => {
-    fetch('/api/profile/energy-target', { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch energy target');
-        return res.json();
-      })
-      .then(data => {
-        if (data.energy_target && refreshEnergyTarget) {
-          refreshEnergyTarget(data.energy_target);
-        }
-      })
-      .catch(err => {
-        console.error('Failed to fetch energy target:', err);
-      });
-  }, []);
+    if (refreshEnergyTarget) {
+      refreshEnergyTarget();
+    }
+  }, [refreshEnergyTarget]);
   const checkShowSave = (pr, cr, fr) => {
     setShowSaveButton(
       pr !== original.protein_ratio ||
@@ -175,6 +165,8 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget }) => {
       }));
       setShowSaveButton(false);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      if (triggerProfileRefresh) triggerProfileRefresh();
     } catch (err) {
       setSaveSuccess(false);
     }

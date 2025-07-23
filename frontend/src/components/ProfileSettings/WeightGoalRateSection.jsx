@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Info, Minimize, TrendingDown, TrendingUp } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
-export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => {
+export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profileRefreshTrigger }) => {
   const [rateOption, setRateOption] = useState('moderate');
   const [customRate, setCustomRate] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
@@ -64,6 +64,7 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
         setOriginal({
           rateOption: data.profile.weight_goal_rate || 'moderate',
           customRate: data.profile.weight_goal_custom_rate ? String(data.profile.weight_goal_custom_rate) : '',
+          goalType: data.profile.weight_goal_type || null,
         });
         setFetchError(null);
       })
@@ -72,25 +73,63 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
       });
   }, []);
 
-  // Fetch profile on mount
+  // Fetch profile data when component mounts
   useEffect(() => {
     fetchProfileData();
   }, [fetchProfileData]);
 
-  // Listen for profile changes (when weight/weight goal is updated)
+  // Re-fetch profile data when energy target changes (indicates activity level or other profile changes)
   useEffect(() => {
-    const handleProfileUpdate = () => {
+    if (energyTarget) {
       fetchProfileData();
-    };
+    }
+  }, [energyTarget, fetchProfileData]);
 
-    // Listen for custom profile update events
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('profileUpdated', handleProfileUpdate);
-    };
-  }, [fetchProfileData]);
+  // Re-fetch profile data when profile refresh trigger changes (indicates weight goal changes)
+  useEffect(() => {
+    if (profileRefreshTrigger) {
+      fetchProfileData();
+    }
+  }, [profileRefreshTrigger, fetchProfileData]);
+
+  // Auto-update weight_goal_type when goalDirection changes to 'maintaining'
+  useEffect(() => {
+    if (goalDirection === 'maintaining' && currentWeight && weightGoal) {
+      // Only auto-update if we haven't already set it to maintain
+      if (original.goalType !== 'maintain') {
+        const autoSave = async () => {
+          try {
+            const body = {
+              weight_goal_type: 'maintain',
+              weight_goal_rate: 'maintain',
+            };
+            const res = await fetch('/api/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify(body)
+            });
+            if (res.ok) {
+              setOriginal(prev => ({
+                ...prev,
+                goalType: 'maintain',
+                rateOption: 'maintain'
+              }));
+              setRateOption('maintain');
+              if (refreshEnergyTarget) {
+                setTimeout(() => {
+                  refreshEnergyTarget();
+                }, 500);
+              }
+            }
+          } catch (err) {
+            console.error('Failed to auto-update maintenance goal:', err);
+          }
+        };
+        autoSave();
+      }
+    }
+  }, [goalDirection, currentWeight, weightGoal, original.goalType, refreshEnergyTarget]);
 
   // Helper to check if values changed
   const checkShowSave = (newRateOption, newCustomRate) => {
@@ -125,7 +164,7 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
     const finalRateOption = goalDirection === 'maintaining' ? 'maintain' : rateOption;
     
     const body = {
-      weight_goal_type: goalDirection, // Use auto-detected goal direction
+      weight_goal_type: goalDirection === 'losing' ? 'lose' : goalDirection === 'gaining' ? 'gain' : goalDirection === 'maintaining' ? 'maintain' : goalDirection, // Convert to backend format
       weight_goal_rate: finalRateOption,
     };
     if (finalRateOption === 'custom') {
@@ -143,11 +182,19 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
       if (!res.ok) throw new Error('Failed to update weight goal info');
       setOriginal({
         rateOption: body.weight_goal_rate,
-        customRate: body.weight_goal_custom_rate ? String(body.weight_goal_custom_rate) : '',
+        customRate: body.weight_goal_custom_rate !== undefined ? String(body.weight_goal_custom_rate) : '',
+        goalType: body.weight_goal_type,
       });
       setShowSaveButton(false);
       setSaveSuccess(true);
-      if (refreshEnergyTarget) refreshEnergyTarget(); // Always fetch new energy target after save
+      setTimeout(() => setSaveSuccess(false), 3000);
+      if (refreshEnergyTarget) {
+        console.log('Refreshing energy target after weight goal rate change');
+        // Add a small delay to allow backend to recalculate
+        setTimeout(() => {
+          refreshEnergyTarget(); // Always fetch new energy target after save
+        }, 500);
+      }
     } catch (err) {
       setSaveSuccess(false);
     }
@@ -383,7 +430,7 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget }) => 
               <span className="block text-lg font-medium mb-2 text-gray-700">Your current daily energy target</span>
               <span className="text-4xl font-extrabold text-[#c41e3a] tracking-tight">{energyTarget} kcal</span>
             </div>
-            {goalDirection && goalDirection !== 'maintaining' && showSaveButton && (
+            {goalDirection && showSaveButton && (
               <button
                 className="mt-6 bg-[#c41e3a] text-white px-8 py-3 rounded-lg font-semibold shadow hover:bg-[#a41930] transition"
                 onClick={handleSave}

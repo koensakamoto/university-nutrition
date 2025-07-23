@@ -29,7 +29,7 @@ from auth_util import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
     get_user_by_email, get_current_user
 )
-from jwt_util import create_access_token
+from jwt_util import create_access_token, decode_access_token
 
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -79,6 +79,33 @@ def fix_id(food):
     food["_id"] = str(food["_id"])
     return food
 
+# Helper to check if food has complete macros (protein, carbs, fat)
+def has_complete_macros(food):
+    nutrients = food.get("nutrients")
+    if not nutrients:
+        return False
+    
+    # Check for required macros - allow multiple key variations
+    protein_keys = ["protein"]
+    carb_keys = ["total_carbohydrates", "carbs"]
+    fat_keys = ["total_fat", "totalFat", "fat"]
+    
+    def has_valid_value(keys):
+        for key in keys:
+            value = nutrients.get(key)
+            if value is not None and value != '' and value != '-':
+                try:
+                    # Allow 0 as valid value (some foods legitimately have 0g of a macro)
+                    float_val = float(value)
+                    if float_val >= 0:
+                        return True
+                except (ValueError, TypeError):
+                    continue
+        return False
+    
+    # All three macros must have valid values
+    return has_valid_value(protein_keys) and has_valid_value(carb_keys) and has_valid_value(fat_keys)
+
 @app.get("/foods", response_model=List[Food])
 def get_foods(
     name: Optional[str] = Query(None, description="Partial name match, case-insensitive"),
@@ -104,6 +131,8 @@ def get_foods(
             food["_id"] = str(food["_id"])
         else:
             food["_id"] = None
+        # Add trackable field based on macro completeness
+        food["trackable"] = has_complete_macros(food)
     return [Food(**food) for food in foods]
 
 @app.get("/foods/{food_id}", response_model=Food)
@@ -206,14 +235,59 @@ def update_profile(request: Request, data: dict = Body(...)):
 @app.post("/api/profile/image")
 async def upload_profile_image(request: Request, image: UploadFile = File(...)):
     user = get_current_user(request, users_collection)
-    # Generate a unique filename
-    ext = os.path.splitext(image.filename)[-1]
+    
+    # File size validation (5MB limit)
+    max_size = 5 * 1024 * 1024  # 5MB in bytes
+    if image.size and image.size > max_size:
+        raise HTTPException(status_code=400, detail="File size too large. Maximum size is 5MB.")
+    
+    # File type validation
+    allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"}
+    if image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail="Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.")
+    
+    # File extension validation
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(image.filename)[-1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="Invalid file extension.")
+    
+    # Read file content and validate it's actually an image
+    content = await image.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Empty file.")
+    
+    # Additional size check on actual content
+    if len(content) > max_size:
+        raise HTTPException(status_code=400, detail="File size too large. Maximum size is 5MB.")
+    
+    # Basic file header validation (magic bytes)
+    image_signatures = {
+        b'\xff\xd8\xff': 'jpg',  # JPEG
+        b'\x89\x50\x4e\x47': 'png',  # PNG
+        b'\x47\x49\x46\x38': 'gif',  # GIF
+        b'\x52\x49\x46\x46': 'webp'  # WEBP (starts with RIFF)
+    }
+    
+    file_is_valid = False
+    for signature in image_signatures:
+        if content.startswith(signature):
+            file_is_valid = True
+            break
+    
+    if not file_is_valid:
+        raise HTTPException(status_code=400, detail="Invalid image file. File content doesn't match expected image format.")
+    
+    # Generate a secure filename
     filename = f"{uuid.uuid4().hex}{ext}"
     save_dir = "static/profile_images"
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(save_dir, filename)
+    
+    # Write file content
     with open(save_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+        buffer.write(content)
+    
     # Construct the URL
     url = f"/static/profile_images/{filename}"
     return {"url": url}
@@ -245,6 +319,11 @@ def get_energy_target(request: Request):
     weight_goal_type = profile.get("weight_goal_type", "maintain")
     weight_goal_rate = profile.get("weight_goal_rate", 0)
     weight_goal_custom_rate = profile.get("weight_goal_custom_rate", 0)
+    
+    # Debug logging
+    print(f"DEBUG: weight_goal_type = '{weight_goal_type}'")
+    print(f"DEBUG: weight_goal_rate = '{weight_goal_rate}'")
+    print(f"DEBUG: weight_goal_custom_rate = '{weight_goal_custom_rate}'")
 
     weight_kg = float(weight_lbs) * 0.453592
     height_cm = float(height_in) * 2.54
@@ -267,7 +346,7 @@ def get_energy_target(request: Request):
     rate_map = {"slow": 0.5, "moderate": 1.0, "fast": 1.5}
 
     # Adjust for weight goal
-    if weight_goal_type == "lose":
+    if weight_goal_type == "lose" or weight_goal_type == "losing":
         if str(weight_goal_rate) == "custom":
             try:
                 custom_rate = float(weight_goal_custom_rate)
@@ -283,7 +362,7 @@ def get_energy_target(request: Request):
                     tdee -= 500 * float(weight_goal_rate)
                 except Exception:
                     pass
-    elif weight_goal_type == "gain":
+    elif weight_goal_type == "gain" or weight_goal_type == "gaining":
         if str(weight_goal_rate) == "custom":
             try:
                 custom_rate = float(weight_goal_custom_rate)
@@ -299,12 +378,17 @@ def get_energy_target(request: Request):
                     tdee += 500 * float(weight_goal_rate)
                 except Exception:
                     pass
+    elif weight_goal_type == "maintain" or weight_goal_type == "maintaining":
+        # For maintenance, don't adjust TDEE - return the calculated TDEE as-is
+        print(f"DEBUG: Maintenance case hit - no TDEE adjustment")
+        pass
     elif weight_goal_type == "custom":
         try:
             tdee += 500 * float(weight_goal_custom_rate)
         except Exception:
             pass
 
+    print(f"DEBUG: Final TDEE = {round(tdee)}")
     return {"energy_target": round(tdee)}
 
 @app.post("/api/account/change-password")
@@ -322,9 +406,26 @@ def change_password(request: Request, data: ChangePasswordRequest):
 @app.delete("/api/account")
 def delete_account(request: Request):
     user = get_current_user(request, users_collection)
+    user_id = str(user["_id"])
+    
+    # Delete profile image file if it exists
+    if user.get("profile", {}).get("image"):
+        image_url = user["profile"]["image"]
+        if image_url.startswith("/static/profile_images/"):
+            image_path = image_url[1:]  # Remove leading slash
+            full_path = os.path.join(os.getcwd(), image_path)
+            try:
+                if os.path.exists(full_path):
+                    os.remove(full_path)
+            except Exception as e:
+                print(f"Failed to delete profile image: {e}")
+    
+    # Delete all user-related data from database
     users_collection.delete_one({"email": user["email"]})
-    # Optionally, delete related data (nutrition logs, etc.)
-    return {"message": "Account deleted"}
+    db["plates"].delete_many({"user_id": user_id})
+    db["weight_log"].delete_many({"user_id": user_id})
+    
+    return {"message": "Account and all associated data deleted"}
 
 @app.get("/api/plate")
 def get_plate(request: Request, date: str):
@@ -752,7 +853,7 @@ def export_data(request: Request, body: dict = Body(...)):
         try:
             from fpdf import FPDF
         except ImportError:
-            return JSONResponse({"error": "PDF export requires fpdf2. Please install with 'pip install fpdf2'."}, status_code=500)
+            return JSONResponse({"error": "PDF export is temporarily unavailable. Please try CSV or JSON format instead."}, status_code=400)
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
@@ -839,8 +940,10 @@ def export_data(request: Request, body: dict = Body(...)):
                         if food:
                             n = food.get("nutrients", {})
                             pdf.cell(30, 8, str(date), border=1)
-                            food_name = str(food.get("name", "")).encode('latin-1', 'replace').decode('latin-1')
-                            pdf.cell(40, 8, food_name, border=1)
+                            food_name = str(food.get("name", ""))
+                            # Handle special characters by replacing problematic ones
+                            safe_food_name = food_name.encode('latin-1', 'replace').decode('latin-1')
+                            pdf.cell(40, 8, safe_food_name, border=1)
                             pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
                             pdf.cell(20, 8, str(n.get("calories", "")), border=1)
                             pdf.cell(20, 8, str(n.get("protein", "")), border=1)
@@ -851,11 +954,6 @@ def export_data(request: Request, body: dict = Body(...)):
                             pdf.cell(30, 8, str(date), border=1)
                             pdf.cell(40, 8, "", border=1)
                             pdf.cell(20, 8, str(item.get("quantity", 1)), border=1)
-                            pdf.cell(20, 8, "", border=1)
-                            pdf.cell(20, 8, "", border=1)
-                            pdf.cell(20, 8, "", border=1)
-                            pdf.cell(20, 8, "", border=1)
-                            pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)
                             pdf.cell(20, 8, "", border=1)

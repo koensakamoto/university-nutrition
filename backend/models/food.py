@@ -16,6 +16,7 @@ class Food(BaseModel):
     station_id: Optional[str] = None
     item_id: Optional[str] = None
     portion_size: Optional[str] = None
+    trackable: Optional[bool] = None  # Whether food can be tracked (has complete macros)
 
     class Config:
         populate_by_name = True

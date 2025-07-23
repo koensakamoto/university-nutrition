@@ -134,6 +134,7 @@ export const AllergensSection = () => {
       setOriginalNotes(allergyNotes);
       setShowSaveButton(false);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error(err);
       setSaveSuccess(false);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
     PieChart,
     Pie,
@@ -11,7 +11,7 @@ import {
     Legend,
     Tooltip,
 } from 'recharts'
-import { XIcon, DownloadIcon, TrashIcon, ClipboardPlus, CheckIcon } from 'lucide-react'
+import { XIcon, TrashIcon, ClipboardPlus, CheckIcon } from 'lucide-react'
 import { useAuth } from '../AuthProvider'
 
 function getAdjustedPortion(portionSize, quantity) {
@@ -36,6 +36,14 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
     const { user } = useAuth();
     const [saveSuccess, setSaveSuccess] = useState(false);
     const plateEmpty = trackedItems.length === 0;
+    
+    // Auto-clear save success message with proper cleanup
+    useEffect(() => {
+        if (saveSuccess) {
+            const timer = setTimeout(() => setSaveSuccess(false), 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [saveSuccess]);
     // Calculate nutrition totals
     const totals = trackedItems.reduce(
         (acc, item) => {
@@ -99,11 +107,10 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
         if (onSavePlate) {
             await onSavePlate();
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 2000);
         }
     }
     return (
-        <div className={`bg-white rounded-xl shadow-lg ${isMobile ? 'p-3 sm:p-4' : 'p-4'} flex flex-col h-full border border-gray-100`}>
+        <div className={`bg-white rounded-xl shadow-lg ${isMobile ? 'p-3 sm:p-4' : 'p-4'} flex flex-col h-full border border-gray-100 overflow-hidden`}>
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
                 <h2 className="text-lg font-semibold text-gray-800">My Plate</h2>
                 <button
@@ -114,7 +121,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                     <TrashIcon size={18} />
                 </button>
             </div>
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-y-auto overflow-x-hidden">
             {plateEmpty ? (
                 <div className={`text-center h-full ${isMobile ? 'px-3 py-6' : 'px-4'} text-gray-500 flex flex-col items-center justify-center`}>
                     <ClipboardPlus size={48} className="text-gray-300 mb-4" />
@@ -123,21 +130,21 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                 </div>
             ) : (
                 <>
-                    <div className={`${isMobile ? 'mb-3' : 'mb-4'} grid grid-cols-2 gap-2`}>
-                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
-                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800`}>{totals.calories.toFixed(1)}</div>
+                    <div className={`${isMobile ? 'mb-3' : 'mb-4'} grid grid-cols-2 gap-2 min-w-0`}>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center min-w-0`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-gray-800 truncate`}>{totals.calories.toFixed(1)}</div>
                             <div className="text-xs text-gray-500">Calories</div>
                         </div>
-                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
-                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-600`}>{totals.protein.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center min-w-0`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-blue-600 truncate`}>{totals.protein.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Protein</div>
                         </div>
-                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
-                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-green-600`}>{totals.carbs.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center min-w-0`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-green-600 truncate`}>{totals.carbs.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Carbs</div>
                         </div>
-                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center`}>
-                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-orange-600`}>{totals.fat.toFixed(1)}g</div>
+                        <div className={`bg-gray-50 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg text-center min-w-0`}>
+                            <div className={`${isMobile ? 'text-lg' : 'text-xl'} font-bold text-orange-600 truncate`}>{totals.fat.toFixed(1)}g</div>
                             <div className="text-xs text-gray-500">Fat</div>
                         </div>
                     </div>
@@ -160,14 +167,14 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                     )}
                     <div className={isMobile ? 'mb-4 mt-0' : 'mb-4'}>
                         <h3 className="text-sm font-medium text-gray-700 mb-2">Calorie Breakdown</h3>
-                        <ResponsiveContainer width="100%" height={isMobile ? 140 : 120}>
-                            <PieChart margin={{ top: isMobile ? 15 : 20, right: 5, bottom: isMobile ? 25 : 25, left: 5 }}>
+                        <ResponsiveContainer width="100%" height={isMobile ? 140 : 160}>
+                            <PieChart margin={{ top: isMobile ? 10 : 15, right: 0, bottom: isMobile ? 20 : 30, left: 0 }}>
                                 <Pie
                                     data={pieData}
                                     dataKey="value"
                                     nameKey="name"
                                     cx="50%"
-                                    cy={isMobile ? "50%" : "45%"}
+                                    cy={isMobile ? "50%" : "40%"}
                                     outerRadius={isMobile ? 45 : 45}
                                     innerRadius={isMobile ? 32 : 35}
                                     labelLine={false}
@@ -181,7 +188,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                     verticalAlign="bottom"
                                     align="center"
                                     wrapperStyle={{
-                                        paddingTop: isMobile ? "15px" : "10px",
+                                        paddingTop: isMobile ? "15px" : "20px",
                                         height: "25px",
                                         fontSize: "12px"
                                     }}
@@ -195,7 +202,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                             <BarChart
                                 data={barData}
                                 layout="vertical"
-                                margin={{ left: 10, right: 20, top: 10, bottom: 5 }}
+                                margin={{ left: 5, right: 10, top: 5, bottom: 5 }}
                                 barCategoryGap={14}
                             >
                                 <XAxis 
@@ -206,8 +213,8 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                 <YAxis
                                     type="category"
                                     dataKey="name"
-                                    width={70}
-                                    tick={{ fontSize: 12 }}
+                                    width={60}
+                                    tick={{ fontSize: 11 }}
                                     axisLine={false}
                                     tickLine={false}
                                 />

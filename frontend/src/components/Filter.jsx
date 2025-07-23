@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react'
 import DatePicker from 'react-datepicker'
 import 'react-datepicker/dist/react-datepicker.css'
-import { CalendarIcon, ChevronDownIcon, ClockIcon, MapPinIcon } from 'lucide-react'
+import { CalendarIcon, ChevronDownIcon } from 'lucide-react'
 
 const Filter = ({
     diningHall,
@@ -162,26 +162,6 @@ const Filter = ({
         }
     }, [mealTypes, diningHall, mealType, setMealType]);
 
-    // Quick action handlers
-    const handleQuickLunch = useCallback(() => {
-        const today = new Date();
-        setDate(today);
-        
-        // Set most common dining hall if available
-        const commonHalls = ['Main Dining', 'Student Union', 'Commons'];
-        const availableCommonHall = commonHalls.find(hall => diningHalls.includes(hall));
-        if (availableCommonHall) {
-            setDiningHall(availableCommonHall);
-        } else if (diningHalls.length > 0) {
-            setDiningHall(diningHalls[0]);
-        }
-    }, [setDate, diningHalls, setDiningHall]);
-
-    const handleQuickDinner = useCallback(() => {
-        const today = new Date();
-        setDate(today);
-        setMealType('Dinner');
-    }, [setDate, setMealType]);
 
     return (
         <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-3 sm:p-4">

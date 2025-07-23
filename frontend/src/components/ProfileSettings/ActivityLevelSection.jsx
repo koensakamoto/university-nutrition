@@ -10,7 +10,7 @@ const activityLevels = [
   { id: "extreme", label: "Extremely Active", description: "Very hard exercise, physical job or training twice a day", multiplier: 1.9 },
 ];
 
-export const ActivityLevelSection = ({ refreshEnergyTarget }) => {
+export const ActivityLevelSection = ({ energyTarget, refreshEnergyTarget, triggerProfileRefresh }) => {
   const [selectedLevel, setSelectedLevel] = useState(null);
   const [originalLevel, setOriginalLevel] = useState(null);
   const [showSaveButton, setShowSaveButton] = useState(false);
@@ -56,7 +56,9 @@ export const ActivityLevelSection = ({ refreshEnergyTarget }) => {
       setOriginalLevel(selectedLevel);
       setShowSaveButton(false);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
       if (refreshEnergyTarget) refreshEnergyTarget();
+      if (triggerProfileRefresh) triggerProfileRefresh();
       
     } catch (err) {
       console.error(err);

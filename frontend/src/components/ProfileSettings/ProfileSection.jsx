@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Info } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
-export const ProfileSection = ({ energyTarget, refreshEnergyTarget }) => {
+export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfileRefresh }) => {
   // State for profile fields
   const [sex, setSex] = useState('male');
   const [birthday, setBirthday] = useState({ day: '', month: '', year: '' });
@@ -393,10 +393,9 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget }) => {
       });
       setShowSaveButton(false);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
       if (refreshEnergyTarget) refreshEnergyTarget();
-      
-      // Dispatch event to notify other components that profile was updated
-      window.dispatchEvent(new CustomEvent('profileUpdated'));
+      if (triggerProfileRefresh) triggerProfileRefresh();
     } catch (err) {
       setSaveSuccess(false);
     }
@@ -413,7 +412,7 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget }) => {
   const years = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 overflow-visible">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <h2 className="text-xl font-semibold text-gray-800">Profile</h2>
@@ -435,16 +434,40 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget }) => {
       {fetchError && <div className="text-red-600 mb-4">{fetchError}</div>}
       {validationErrors.general && <div className="text-red-600 mb-4">{validationErrors.general}</div>}
       <div className="space-y-6">
-        <div>
+        <div className="overflow-visible">
           <label className="block text-gray-700 font-medium mb-2">Sex</label>
-          <div className="flex space-x-4">
-            <label className="flex items-center">
-              <input type="radio" name="sex" value="male" className="form-radio h-4 w-4 text-[#c41e3a]" checked={sex === 'male'} onChange={handleSexChange} />
-              <span className="ml-2">Male</span>
+          <div className="flex space-x-8">
+            <label className="flex items-center cursor-pointer">
+              <div className="relative">
+                <input 
+                  type="radio" 
+                  name="sex" 
+                  value="male" 
+                  className="sr-only" 
+                  checked={sex === 'male'} 
+                  onChange={handleSexChange} 
+                />
+                <div className={`w-4 h-4 rounded-full border-2 ${sex === 'male' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                  {sex === 'male' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+                </div>
+              </div>
+              <span className="text-gray-700">Male</span>
             </label>
-            <label className="flex items-center">
-              <input type="radio" name="sex" value="female" className="form-radio h-4 w-4 text-[#c41e3a]" checked={sex === 'female'} onChange={handleSexChange} />
-              <span className="ml-2">Female</span>
+            <label className="flex items-center cursor-pointer">
+              <div className="relative">
+                <input 
+                  type="radio" 
+                  name="sex" 
+                  value="female" 
+                  className="sr-only" 
+                  checked={sex === 'female'} 
+                  onChange={handleSexChange} 
+                />
+                <div className={`w-4 h-4 rounded-full border-2 ${sex === 'female' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                  {sex === 'female' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+                </div>
+              </div>
+              <span className="text-gray-700">Female</span>
             </label>
           </div>
         </div>
@@ -575,6 +598,12 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget }) => {
               
               const wKg = wLb * 0.453592;
               const hM = hIn * 0.0254;
+              
+              // Prevent division by zero
+              if (hM === 0) {
+                return '';
+              }
+              
               const bmi = wKg / (hM * hM);
               
               // Validate result

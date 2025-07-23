@@ -7,7 +7,6 @@ import {
   SaladIcon,
   BeefIcon,
   ThermometerIcon,
-  XIcon,
 } from 'lucide-react'
 
 const FoodItem = ({ item, addToTracker }) => {
@@ -22,17 +21,6 @@ const FoodItem = ({ item, addToTracker }) => {
     return `${value}${unit}`;
   };
 
-  // Helper function to calculate calories from macros (only if all values are available)
-  const calculateCalories = (value, multiplier) => {
-    if (value === null || value === undefined) {
-      return '-';
-    }
-    return (value * multiplier).toFixed(0);
-  };
-
-  const toggleDetails = () => {
-    setShowDetails(!showDetails)
-  }
   
   const renderTag = (tag) => {
     const normalized = String(tag).toLowerCase()
@@ -82,13 +70,27 @@ const FoodItem = ({ item, addToTracker }) => {
           </div>
           {/* Key nutrition info always visible */}
           <div className="mt-2 text-xs sm:text-sm text-gray-700">
-            <span className="font-semibold text-gray-900">{displayNutrient(item.calories, ' cal')}</span>
-            <span className="mx-2 text-gray-400">•</span>
-            <span>{displayNutrient(item.protein, 'g protein')}</span>
-            <span className="mx-2 text-gray-400">•</span>
-            <span>{displayNutrient(item.carbs, 'g carbs')}</span>
-            <span className="mx-2 text-gray-400">•</span>
-            <span>{displayNutrient(item.totalFat, 'g fat')}</span>
+            {(() => {
+              const nutritionItems = [
+                { value: item.calories, label: ' cal', isCalories: true },
+                { value: item.protein, label: 'g protein' },
+                { value: item.carbs, label: 'g carbs' },
+                { value: item.totalFat, label: 'g fat' }
+              ];
+              
+              const validItems = nutritionItems.filter(item => 
+                item.value !== null && item.value !== undefined && item.value !== '-' && item.value !== ''
+              );
+              
+              return validItems.map((nutrient, index) => (
+                <span key={index}>
+                  {index > 0 && <span className="mx-2 text-gray-400">•</span>}
+                  <span className={nutrient.isCalories ? "font-semibold text-gray-900" : ""}>
+                    {displayNutrient(nutrient.value, nutrient.label)}
+                  </span>
+                </span>
+              ));
+            })()}
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {(item.tags || []).map((tag) => (
@@ -102,7 +104,7 @@ const FoodItem = ({ item, addToTracker }) => {
           <div className="flex items-center bg-white border border-gray-100 rounded-xl shadow-lg">
             <button
               onClick={() => setServings(Math.max(0.1, Math.round((servings - 0.1) * 10) / 10))}
-              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors touch-manipulation"
               aria-label="Decrease servings"
               tabIndex={-1}
             >
@@ -114,7 +116,7 @@ const FoodItem = ({ item, addToTracker }) => {
               min="0.1"
               value={servings}
               onChange={e => setServings(Math.max(0.1, parseFloat(e.target.value) || 0.1))}
-              className="w-12 sm:w-14 text-center bg-transparent border-none focus:ring-2 focus:ring-blue-500 focus:bg-white rounded outline-none appearance-none py-1.5 sm:py-2 text-sm font-medium touch-manipulation"
+              className="w-12 sm:w-14 text-center bg-transparent border-none focus:ring-2 focus:ring-red-500 focus:bg-white rounded outline-none appearance-none py-1.5 sm:py-2 text-sm font-medium touch-manipulation"
               aria-label="Servings"
               style={{
                 MozAppearance: 'textfield',
@@ -123,7 +125,7 @@ const FoodItem = ({ item, addToTracker }) => {
             />
             <button
               onClick={() => setServings(Math.max(0.1, Math.round((servings + 0.1) * 10) / 10))}
-              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors touch-manipulation"
+              className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-r-lg focus:outline-none focus:ring-2 focus:ring-red-500 transition-colors touch-manipulation"
               aria-label="Increase servings"
               tabIndex={-1}
             >
@@ -132,20 +134,39 @@ const FoodItem = ({ item, addToTracker }) => {
           </div>
           <button
             onClick={() => {
-              addToTracker(item, servings);
-              setServings(1);
+              if (item.trackable !== false) {
+                addToTracker(item, servings);
+                setServings(1);
+              }
             }}
-            className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 sm:p-3 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation"
-            aria-label="Add item to plate"
+            disabled={item.trackable === false}
+            className={`${
+              item.trackable === false
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-red-600 hover:bg-red-700 text-white hover:shadow-md transform hover:-translate-y-0.5"
+            } p-2.5 sm:p-3 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 touch-manipulation`}
+            aria-label={item.trackable === false ? "Cannot track - incomplete nutrition data" : "Add item to plate"}
           >
             <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
       </div>
 
+      {/* Warning message for non-trackable foods */}
+      {item.trackable === false && (
+        <div className="mt-3 border-l border-amber-300 pl-3 py-1">
+          <div className="flex items-center space-x-1.5">
+            <div className="w-1 h-1 bg-amber-400 rounded-full"></div>
+            <p className="text-xs text-gray-600">
+              Missing nutrition data — try <span className="font-medium text-gray-800">"Add Custom Meal"</span>
+            </p>
+          </div>
+        </div>
+      )}
+
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="flex items-center mt-4 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors duration-150 touch-manipulation"
+        className="flex items-center mt-4 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors duration-150 touch-manipulation"
       >
         <InfoIcon className="h-4 w-4 mr-2" />
         {showDetails ? 'Hide details' : 'Show details'}
@@ -165,7 +186,7 @@ const FoodItem = ({ item, addToTracker }) => {
                 <div className="text-gray-600">Calories</div>
               </div>
               <div className="text-center">
-                <div className="font-semibold text-blue-600">{displayNutrient(item.protein, 'g')}</div>
+                <div className="font-semibold text-red-600">{displayNutrient(item.protein, 'g')}</div>
                 <div className="text-gray-600">Protein</div>
               </div>
               <div className="text-center">

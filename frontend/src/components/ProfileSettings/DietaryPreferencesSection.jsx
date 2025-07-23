@@ -122,6 +122,7 @@ export const DietaryPreferencesSection = () => {
       });
       setShowSaveButton(false);
       setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setSaveSuccess(false);
     }

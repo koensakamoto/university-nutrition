@@ -17,14 +17,32 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Validation
+    if (!meal.name.trim()) {
+      alert('Please enter a meal name');
+      return;
+    }
+    
+    const calories = parseFloat(meal.calories) || 0;
+    const protein = parseFloat(meal.protein) || 0;
+    const carbs = parseFloat(meal.carbs) || 0;
+    const totalFat = parseFloat(meal.totalFat) || 0;
+    
+    if (calories < 0 || protein < 0 || carbs < 0 || totalFat < 0) {
+      alert('Nutrition values cannot be negative');
+      return;
+    }
+    
     const finalMeal = {
       id: `custom-${crypto.randomUUID()}`,
       portionSize: '1 serving',
       ...meal,
-      calories: parseFloat(meal.calories) || 0,
-      protein: parseFloat(meal.protein) || 0,
-      carbs: parseFloat(meal.carbs) || 0,
-      totalFat: parseFloat(meal.totalFat) || 0,
+      name: meal.name.trim(),
+      calories,
+      protein,
+      carbs,
+      totalFat,
     };
     onAddItem(finalMeal, 1);
 
@@ -73,6 +91,8 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
                   id="calories"
                   value={meal.calories}
                   onChange={handleChange}
+                  min="0"
+                  step="0.1"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
                   required
                 />
@@ -85,6 +105,8 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
                   id="protein"
                   value={meal.protein}
                   onChange={handleChange}
+                  min="0"
+                  step="0.1"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
                   required
                 />
@@ -97,6 +119,8 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
                   id="carbs"
                   value={meal.carbs}
                   onChange={handleChange}
+                  min="0"
+                  step="0.1"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
                   required
                 />
@@ -109,6 +133,8 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
                   id="totalFat"
                   value={meal.totalFat}
                   onChange={handleChange}
+                  min="0"
+                  step="0.1"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-red-500 focus:border-red-500"
                   required
                 />

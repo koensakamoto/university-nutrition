@@ -10,14 +10,25 @@ import { useFetchWithAuth } from '../../AuthProvider';
 
 export default function ProfileSettings(props) {
   const [energyTarget, setEnergyTarget] = useState(null);
+  const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
   const fetchWithAuth = useFetchWithAuth();
 
   const fetchEnergyTarget = useCallback(() => {
+    console.log('Fetching energy target...');
     fetchWithAuth('/api/profile/energy-target')
       .then(({ data, error }) => {
-        if (!error && data) setEnergyTarget(data.energy_target);
+        if (!error && data) {
+          console.log('Energy target updated:', data.energy_target);
+          setEnergyTarget(data.energy_target);
+        } else {
+          console.error('Error fetching energy target:', error);
+        }
       });
   }, [fetchWithAuth]);
+
+  const triggerProfileRefresh = useCallback(() => {
+    setProfileRefreshTrigger(prev => prev + 1);
+  }, []);
 
   useEffect(() => {
     fetchEnergyTarget();
@@ -31,10 +42,10 @@ export default function ProfileSettings(props) {
           <p className="text-gray-600 mt-2">Manage your personal information and nutrition targets</p>
         </div>
         <div className="space-y-6">
-          <ProfileSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
-          <WeightGoalRateSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
-          <ActivityLevelSection refreshEnergyTarget={fetchEnergyTarget} />
-          <MacroTargetsSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} />
+          <ProfileSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} triggerProfileRefresh={triggerProfileRefresh} />
+          <WeightGoalRateSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} profileRefreshTrigger={profileRefreshTrigger} />
+          <ActivityLevelSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} triggerProfileRefresh={triggerProfileRefresh} />
+          <MacroTargetsSection energyTarget={energyTarget} refreshEnergyTarget={fetchEnergyTarget} triggerProfileRefresh={triggerProfileRefresh} />
           {/* <EnergyExpenditureSection /> */}
           <DietaryPreferencesSection />
           <AllergensSection />

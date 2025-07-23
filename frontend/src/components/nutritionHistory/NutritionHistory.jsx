@@ -7,22 +7,45 @@ import { DateRangeSelector } from './DateRangeSelector';
 import { FilterControl } from './FilterControl';
 import { useFetchWithAuth } from '../../AuthProvider';
 import { format } from 'date-fns';
+import LoadingSpinner from '../LoadingSpinner';
+import { 
+  SummarySkeleton, 
+  ChartSkeleton, 
+  InsightsSkeleton, 
+  WeightSkeleton 
+} from './SkeletonLoaders';
 
-export default function NutritionHistory(props) {
+export default function NutritionHistory() {
   const [dateRange, setDateRange] = useState('last-week');
   const [viewMode, setViewMode] = useState('daily');
+  // Progressive loading state management
+  const [loadingState, setLoadingState] = useState({
+    summary: 'loading',      // loading | loaded | error
+    energyChart: 'loading',  // loading | loaded | error  
+    insights: 'loading',     // loading | loaded | error
+    weight: 'loading'        // loading | loaded | error
+  });
+
+  // Data states
   const [summaryData, setSummaryData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [macroData, setMacroData] = useState([]);
-  const [macroLoading, setMacroLoading] = useState(false);
-  const [macroError, setMacroError] = useState(null);
   const [energyChartData, setEnergyChartData] = useState([]);
-  const [energyChartLoading, setEnergyChartLoading] = useState(false);
-  const [energyChartError, setEnergyChartError] = useState(null);
   const [weightData, setWeightData] = useState([]);
+
+  // Error states
+  const [summaryError, setSummaryError] = useState(null);
+  const [macroError, setMacroError] = useState(null);
+  const [energyChartError, setEnergyChartError] = useState(null);
   const [weightError, setWeightError] = useState(null);
   const fetchWithAuth = useFetchWithAuth();
+
+  // Helper to update loading state
+  const updateLoadingState = (section, status) => {
+    setLoadingState(prev => ({
+      ...prev,
+      [section]: status
+    }));
+  };
 
   // Utility to get local date string in YYYY-MM-DD format
   const getLocalDateString = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -246,8 +269,8 @@ export default function NutritionHistory(props) {
   // Fetch nutrition summary (only when dateRange changes)
   useEffect(() => {
     const fetchSummary = async () => {
-      setLoading(true);
-      setError(null);
+      updateLoadingState('summary', 'loading');
+      setSummaryError(null);
       const { start, end } = dateRangeBounds;
       try {
         const [profileRes, energyRes, summaryRes] = await Promise.all([
@@ -333,11 +356,11 @@ export default function NutritionHistory(props) {
             trendValue: '0%'
           }
         ]);
+        updateLoadingState('summary', 'loaded');
       } catch (err) {
-        setError(err.message);
+        setSummaryError(err.message);
         setSummaryData(null);
-      } finally {
-        setLoading(false);
+        updateLoadingState('summary', 'error');
       }
     };
     fetchSummary();
@@ -347,7 +370,7 @@ export default function NutritionHistory(props) {
   useEffect(() => {
     const fetchMacroData = async () => {
       const { start, end } = dateRangeBounds;
-      setMacroLoading(true);
+      updateLoadingState('insights', 'loading');
       setMacroError(null);
       try {
         const { data, error } = await fetchWithAuth(`/api/plate/food-macros?start_date=${start}&end_date=${end}`);
@@ -361,12 +384,12 @@ export default function NutritionHistory(props) {
         // Always use daily aggregation for nutrition insights
         const aggregated = aggregateMacros(foodMacros, 'daily');
         setMacroData(fillMissingDates(aggregated, start, end));
+        updateLoadingState('insights', 'loaded');
       } catch (err) {
         console.error('Failed to fetch macro data:', err);
         setMacroError(err.message || 'Failed to load nutrition data');
         setMacroData([]);
-      } finally {
-        setMacroLoading(false);
+        updateLoadingState('insights', 'error');
       }
     };
     fetchMacroData();
@@ -376,7 +399,7 @@ export default function NutritionHistory(props) {
   useEffect(() => {
     const fetchEnergyChartData = async () => {
       const { start, end } = dateRangeBounds;
-      setEnergyChartLoading(true);
+      updateLoadingState('energyChart', 'loading');
       setEnergyChartError(null);
       try {
         const { data, error } = await fetchWithAuth(`/api/plate/food-macros?start_date=${start}&end_date=${end}`);
@@ -398,12 +421,12 @@ export default function NutritionHistory(props) {
         } else {
           setEnergyChartData(aggregated);
         }
+        updateLoadingState('energyChart', 'loaded');
       } catch (err) {
         console.error('Failed to fetch energy chart data:', err);
         setEnergyChartError(err.message || 'Failed to load energy chart data');
         setEnergyChartData([]);
-      } finally {
-        setEnergyChartLoading(false);
+        updateLoadingState('energyChart', 'error');
       }
     };
     fetchEnergyChartData();
@@ -413,15 +436,18 @@ export default function NutritionHistory(props) {
   useEffect(() => {
     const fetchWeightData = async () => {
       const { start, end } = dateRangeBounds;
+      updateLoadingState('weight', 'loading');
       setWeightError(null);
       try {
         const { data, error } = await fetchWithAuth(`/api/weight-log?start_date=${start}&end_date=${end}`);
         if (error) throw new Error(error);
         setWeightData(data || []);
+        updateLoadingState('weight', 'loaded');
       } catch (err) {
         console.error('Failed to fetch weight data:', err);
         setWeightError(err.message || 'Failed to load weight data');
         setWeightData([]);
+        updateLoadingState('weight', 'error');
       }
     };
     fetchWeightData();
@@ -447,49 +473,57 @@ export default function NutritionHistory(props) {
           {/* Content starts directly with the summary */}
 
           {/* Nutrition Summary */}
-          {loading ? (
-            <div className="text-center py-8">Loading summary...</div>
-          ) : error ? (
-            <div className="text-center text-red-500 py-8">{error}</div>
+          {loadingState.summary === 'loading' ? (
+            <SummarySkeleton />
+          ) : loadingState.summary === 'error' ? (
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+              <div className="text-center text-red-500 py-8">{summaryError}</div>
+            </div>
           ) : summaryData ? (
             <NutritionSummary summaryData={summaryData} />
           ) : null}
           
           {/* Energy Consumed Chart */}
-          <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Energy Consumed</h2>
-                <p className="text-sm text-gray-500">{dateRangeLabel}</p>
+          {loadingState.energyChart === 'loading' ? (
+            <ChartSkeleton title="Energy Consumed" />
+          ) : (
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Energy Consumed</h2>
+                  <p className="text-sm text-gray-500">{dateRangeLabel}</p>
+                </div>
+                
+                <div className="flex space-x-2 mt-3 md:mt-0">
+                  <FilterControl
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                  />
+                </div>
               </div>
               
-              <div className="flex space-x-2 mt-3 md:mt-0">
-                <FilterControl
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
+              {loadingState.energyChart === 'error' ? (
+                <div className="text-center text-red-500 py-8">{energyChartError}</div>
+              ) : (
+                <MacroChart 
+                  key={`${viewMode}-${dateRange}`} 
+                  unit="kcal" 
+                  viewMode={viewMode} 
+                  data={energyChartData} 
+                  loading={false} 
                 />
-              </div>
+              )}
             </div>
-            
-            {energyChartError ? (
-              <div className="text-center text-red-500 py-8">{energyChartError}</div>
-            ) : (
-              <MacroChart 
-                key={`${viewMode}-${dateRange}`} 
-                unit="kcal" 
-                viewMode={viewMode} 
-                data={energyChartData} 
-                loading={energyChartLoading} 
-              />
-            )}
-          </div>
+          )}
           
         
             
       
           
-          {/* Additional Nutrition Charts */}
-          {macroError ? (
+          {/* Additional Nutrition Charts - Insights */}
+          {loadingState.insights === 'loading' ? (
+            <InsightsSkeleton />
+          ) : loadingState.insights === 'error' ? (
             <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
               <div className="text-center text-red-500 py-8">{macroError}</div>
             </div>
@@ -497,45 +531,52 @@ export default function NutritionHistory(props) {
             <NutritionChart macroData={macroData} start={dateRangeBounds.start} end={dateRangeBounds.end} />
           )}
 
-          <div className="flex justify-end mt-4">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center">
-                  <span className="w-3 h-3 inline-block rounded-full bg-[#c41e3a] mr-1"></span>
-                  <span className="text-sm text-gray-600">Weight</span>
-                </div>
-                <div className="flex items-center">
-                  <span className="w-3 h-3 inline-block rounded-full bg-[#b7e4c7] mr-1"></span>
-                  <span className="text-sm text-gray-600">Goal Weight</span>
+          {/* Weight Tracking Chart */}
+          {loadingState.weight === 'loading' ? (
+            <WeightSkeleton />
+          ) : (
+            <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Weight Progress</h2>
+                  <p className="text-sm text-gray-500">{formatDisplayDate(dateRangeBounds.start)} to {formatDisplayDate(dateRangeBounds.end)}</p>
                 </div>
                 
-              </div>
-            </div>
-          </div>
-
-
-           {/* Weight Tracking Chart */}
-           <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-800">Weight Progress</h2>
-                <p className="text-sm text-gray-500">{formatDisplayDate(dateRangeBounds.start)} to {formatDisplayDate(dateRangeBounds.end)}</p>
+                <div className="flex space-x-2 mt-3 md:mt-0">
+                  <button className="text-gray-500 hover:text-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                    </svg>
+                  </button>
+                </div>
               </div>
               
-              <div className="flex space-x-2 mt-3 md:mt-0">
-
-                <button className="text-gray-500 hover:text-gray-700">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                  </svg>
-                </button>
-              </div>
+              {loadingState.weight === 'error' ? (
+                <div className="text-center text-red-500 py-8">{weightError}</div>
+              ) : (
+                <>
+                  <WeightChart weightData={weightData} />
+                  
+                  {/* Legend for weight chart */}
+                  <div className="flex justify-end mt-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center">
+                        <span className="w-3 h-3 inline-block rounded-full bg-[#c41e3a] mr-1"></span>
+                        <span className="text-sm text-gray-600">Weight</span>
+                      </div>
+                      {weightData.some(d => d.goal_weight !== undefined) && (
+                        <div className="flex items-center">
+                          <span className="w-3 h-3 inline-block rounded-full bg-[#b7e4c7] mr-1"></span>
+                          <span className="text-sm text-gray-600">Goal Weight</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-            
-            {weightError ? (
-              <div className="text-center text-red-500 py-8">{weightError}</div>
-            ) : (
-              <WeightChart weightData={weightData} />
-            )}
+          )}
+        
         </div>
       </div>
     </div>

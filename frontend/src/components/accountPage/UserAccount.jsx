@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { AccountSection } from './AccountSection';
-import { AccountSecuritySection } from './AccountSecuritySection';
 import { AccountManagementSection } from './AccountManagementSection';
 
 export default function UserAccount(props) {
@@ -13,7 +12,6 @@ export default function UserAccount(props) {
         </div>
         <div className="space-y-6">
           <AccountSection />
-          <AccountSecuritySection />
           <AccountManagementSection />
         </div>
       </div>

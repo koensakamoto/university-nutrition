@@ -42,6 +42,7 @@ export const AccountSecuritySection = () => {
       setIsEditing(false);
       setPasswordError('');
       setPasswordSuccess('Password updated successfully!');
+      setTimeout(() => setPasswordSuccess(''), 3000);
       setTempPassword('');
       setConfirmPassword('');
       setCurrentPassword('');
@@ -53,16 +54,16 @@ export const AccountSecuritySection = () => {
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
-          <h2 className="text-2xl font-bold text-gray-900">Account Security</h2>
+          <h2 className="text-xl font-semibold text-gray-800">Account Security</h2>
           <button
             type="button"
-            className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+            className="ml-2 text-gray-400 hover:text-gray-700 focus:outline-none"
             onClick={() => setShowTooltip(true)}
             aria-label="Show account security info"
           >
-            <Info size={18} />
+            <Info size={16} />
           </button>
         </div>
       </div>

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Download, CircleHelp, Info, LogOut, Trash2 } from 'lucide-react';
 import { useAuth, useFetchWithAuth } from '../../AuthProvider';
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { AccountInfoToolTip } from './AccountInfoToolTip';
 
 export const AccountManagementSection = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [showTooltip, setShowTooltip] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -41,6 +42,13 @@ export const AccountManagementSection = () => {
     setExportSelections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const handleLogout = async () => {
+    const success = await logout();
+    if (success) {
+      navigate('/login');
+    }
+  };
+
   const handleExport = async () => {
     setExportError("");
     try {
@@ -54,7 +62,7 @@ export const AccountManagementSection = () => {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         setExportError(err.error || 'Failed to export data.');
-        return;
+        return false;
       }
       if (format === 'json') {
         const blob = new Blob([JSON.stringify(await res.json(), null, 2)], { type: 'application/json' });
@@ -81,7 +89,7 @@ export const AccountManagementSection = () => {
         const blob = await res.blob();
         if (blob.type !== 'application/pdf') {
           setExportError('Failed to generate PDF.');
-          return;
+          return false;
         }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -92,20 +100,22 @@ export const AccountManagementSection = () => {
         a.remove();
         URL.revokeObjectURL(url);
       }
+      return true;
     } catch (err) {
       setExportError('Failed to export data.');
+      return false;
     }
   };
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8" style={{width: '100%', maxWidth: 'none'}}>
+        <div className="flex items-center justify-between mb-6 w-full max-w-2xl">
           <div className="flex items-center">
-            <h2 className="text-2xl font-bold text-gray-900">Account Management</h2>
+            <h2 className="text-xl font-semibold text-gray-800">Account Management</h2>
             <button
               type="button"
-              className="ml-3 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+              className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
               onClick={() => setShowTooltip(true)}
               aria-label="Show account management info"
             >
@@ -123,12 +133,10 @@ export const AccountManagementSection = () => {
         <div className="space-y-8">
           <div className="bg-gray-50 rounded-lg p-6">
             <h3 className="font-bold text-gray-900 mb-4">Session Management</h3>
-            <Link to="/login"  className="hover:text-red-200 flex items-center">
-            <button className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" onClick={logout}>
+            <button className="flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium" onClick={handleLogout}>
               <LogOut size={20} />
               <span>Log Out</span>
             </button>
-            </Link>
             <p className="text-sm text-gray-600 mt-3">
               Sign out from your current session on this device.
             </p>
@@ -231,8 +239,10 @@ export const AccountManagementSection = () => {
                 className={`px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 transition ${!canExport ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!canExport}
                 onClick={async () => {
-                  await handleExport();
-                  setShowExportModal(false);
+                  const success = await handleExport();
+                  if (success) {
+                    setShowExportModal(false);
+                  }
                 }}
               >
                 Export

@@ -1,17 +1,14 @@
-import React, { useEffect, useState, useCallback, useMemo} from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
 import AIAssistant from './AIAssistant'
 import CustomMealForm from './CustomMealForm'
 import LoadingSpinner from './LoadingSpinner'
-import { MessageCircleIcon, PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
+import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
 import { useFetchWithAuth, useAuth } from '../AuthProvider'
 
-const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, removeItem, clearItems, date, setDate, onSavePlate }) => {
-  const toggleAIAssistant = () => {
-    setShowAIAssistant(!showAIAssistant)
-  }
+const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, clearItems, date, setDate, onSavePlate }) => {
 
   // Helper function to safely parse nutrient values
   const parseNutrient = useCallback((value) => {
@@ -44,7 +41,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
       }
 
       const n = item.nutrients || {};
-      stationMap[station_id].items.push({
+      const transformedItem = {
         id: item.id || item._id,
         name: item.name,
         description: item.description,
@@ -52,6 +49,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         tags: item.labels || [],
         allergens: item.allergens || [],
         ingredients: item.ingredients,
+        trackable: item.trackable, // Preserve trackable field from backend
 
         // Use parseNutrient helper to handle null/undefined values properly
         calories: parseNutrient(n.calories),
@@ -71,7 +69,10 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
         vitaminA: n.vitamin_a || null,
         vitaminC: parseNutrient(n.vitamin_c),
         saturatedAndTransFat: parseNutrient(n.saturated_and_trans_fat)
-      });
+      };
+      
+      
+      stationMap[station_id].items.push(transformedItem);
     });
 
     return Object.values(stationMap);
@@ -94,14 +95,13 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
 
   const fetchWithAuth = useFetchWithAuth();
   const { user, isAuthenticated } = useAuth();
-  const [allStations, setAllStations] = useState([])
 
   // Auto-set today's date on mount if not set
   useEffect(() => {
     if (!date) {
       setDate(new Date());
     }
-  }, []); // Only run once on mount
+  }, [date, setDate]); // Include dependencies to prevent stale closures
 
   // Fetch food stations when all filters are selected
   useEffect(() => {
@@ -139,41 +139,9 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
       });
 
     return () => controller.abort();
-  }, [diningHall, date, mealType]);
+  }, [diningHall, date, mealType, transformFoodData]);
 
-  // Fetch all stations for the selected date and dining hall (for plate loading)
-  useEffect(() => {
-    if (!date) {
-      setAllStations([]);
-      return;
-    }
-
-    const controller = new AbortController();
-    const params = new URLSearchParams({
-      dining_hall: diningHall || '',
-      date: getLocalDateString(date),
-    });
-    
-    fetch(`/foods?${params}`, { signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) throw new Error('Network response was not ok');
-        return res.json();
-      })
-      .then((data) => {
-        const stations = transformFoodData(data);
-        setAllStations(stations);
-      })
-      .catch((err) => {
-        if (err.name !== 'AbortError') {
-          console.error('Failed to fetch foods:', err);
-          setAllStations([]);
-        }
-      });
-
-    return () => controller.abort();
-  }, [date, diningHall]);
-
-  // Load plate on date or allStations change
+  // Load plate on date change
   useEffect(() => {
     if (user && user.guest) {
       setTrackedItems([]);
@@ -186,7 +154,7 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
       setPlateLoading(true);
       try {
         const dateStr = getLocalDateString(date);
-        const { data, error } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
+        const { data } = await fetchWithAuth(`/api/plate?date=${dateStr}`);
         if (data && data.items && data.items.length > 0) {
           // Fetch all foods for this date (from all dining halls) to match saved items
           const allFoodsPromise = fetch(`/foods?date=${dateStr}`)
@@ -458,6 +426,19 @@ const Dashboard = ({ isLoggedIn, addToTracker, trackedItems, setTrackedItems, re
             </div>
           </div>
         </div>
+        
+        {/* Info banner for non-trackable foods */}
+        {!foodStationsLoading && foodStations.length > 0 && 
+         foodStations.some(station => station.items.some(item => item.trackable === false)) && (
+          <div className="bg-slate-50 border-l-2 border-slate-300 px-4 py-3 mb-6">
+            <div className="flex items-center space-x-2">
+              <div className="w-1 h-1 bg-slate-400 rounded-full"></div>
+              <p className="text-sm text-slate-600">
+                Some items have limited nutrition data. Use <span className="font-medium text-slate-800">"Add Custom Meal"</span> for manual tracking.
+              </p>
+            </div>
+          </div>
+        )}
         
         {/* Food Stations */}
         {foodStationsLoading ? (
