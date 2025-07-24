@@ -68,7 +68,6 @@ def main():
         "log_level": "info",
         "access_log": True,
         # Performance
-        "loop": "uvloop",  # Use uvloop for better performance (if available)
         "http": "httptools",  # Use httptools for better HTTP parsing
         # Process management
         "reload": False,  # Disable auto-reload in production
