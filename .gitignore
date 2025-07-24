@@ -41,3 +41,15 @@ CLAUDE.md
 /frontend/desktopImages/
 /frontend/mobileImages/
 
+# Documentation (local reference only)
+docs/
+
+# Testing files
+frontend/playwright.config.js
+frontend/tests/
+
+# Root package files (not needed for this project structure)
+package.json
+package-lock.json
+
+frontend/package.json

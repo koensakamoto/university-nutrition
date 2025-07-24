@@ -2,7 +2,6 @@ import React, { useState, useMemo } from 'react'
 import FoodItem from './FoodItem'
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from 'lucide-react'
 const FoodStations = ({ stations, addToTracker }) => {
-  console.log("stations", stations)
 
   const [expandedStations, setExpandedStations] = useState({})
   const [searchQuery, setSearchQuery] = useState('')

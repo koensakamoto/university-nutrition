@@ -14,11 +14,9 @@ export default function ProfileSettings(props) {
   const fetchWithAuth = useFetchWithAuth();
 
   const fetchEnergyTarget = useCallback(() => {
-    console.log('Fetching energy target...');
     fetchWithAuth('/api/profile/energy-target')
       .then(({ data, error }) => {
         if (!error && data) {
-          console.log('Energy target updated:', data.energy_target);
           setEnergyTarget(data.energy_target);
         } else {
           console.error('Error fetching energy target:', error);

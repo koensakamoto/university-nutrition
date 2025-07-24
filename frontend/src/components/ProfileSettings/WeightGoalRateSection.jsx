@@ -189,7 +189,6 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
       if (refreshEnergyTarget) {
-        console.log('Refreshing energy target after weight goal rate change');
         // Add a small delay to allow backend to recalculate
         setTimeout(() => {
           refreshEnergyTarget(); // Always fetch new energy target after save
