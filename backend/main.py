@@ -66,10 +66,11 @@ def setup_logging():
             handlers=[logging.StreamHandler(sys.stdout)]
         )
     
-    # Silence noisy third-party loggers in production
-    if is_production:
-        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-        logging.getLogger("pymongo").setLevel(logging.WARNING)
+    # Silence noisy third-party loggers
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("pymongo").setLevel(logging.WARNING)
+    logging.getLogger("pymongo.topology").setLevel(logging.WARNING)
+    logging.getLogger("pymongo.connection").setLevel(logging.WARNING)
     
     return logging.getLogger(__name__)
 
@@ -1452,7 +1453,10 @@ async def forgot_password(request: dict = Body(...)):
         
         # Send password reset email
         from email_util import send_password_reset_email
+        print(f"DEBUG: SMTP_USER = {os.getenv('SMTP_USER')}")
+        print(f"DEBUG: SMTP_PASSWORD = {'SET' if os.getenv('SMTP_PASSWORD') else 'NOT SET'}")
         email_sent = await send_password_reset_email(email, reset_token)
+        print(f"DEBUG: Email sent result = {email_sent}")
         
         # Also log for development (remove in production)
         reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
@@ -1512,7 +1516,10 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CacheControlMiddleware)
 
-# Serve static files with optimized settings
+# Serve static files with optimized settings - create directory if it doesn't exist
+import os
+if not os.path.exists("static"):
+    os.makedirs("static/profile_images", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # AI Agent endpoint - disabled for initial deployment
