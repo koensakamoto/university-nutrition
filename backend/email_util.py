@@ -18,7 +18,6 @@ async def send_email(to_email: str, subject: str, html_content: str, text_conten
     """Send an email using Gmail SMTP"""
     
     if not SMTP_USER or not SMTP_PASSWORD:
-        print("Email credentials not configured. Skipping email send.")
         return False
     
     try:
@@ -46,17 +45,16 @@ async def send_email(to_email: str, subject: str, html_content: str, text_conten
             password=SMTP_PASSWORD,
         )
         
-        print(f"Email sent successfully to {to_email}")
         return True
         
-    except Exception as e:
-        print(f"Failed to send email to {to_email}: {str(e)}")
+    except Exception:
         return False
 
 async def send_password_reset_email(to_email: str, reset_token: str):
     """Send password reset email"""
     
-    reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
     
     subject = "Reset Your CrimsonBites Password"
     

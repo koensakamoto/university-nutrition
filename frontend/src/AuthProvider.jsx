@@ -130,7 +130,7 @@ const refetchProfile = async () => {
   const res = await fetch("/api/profile", { credentials: "include" });
   if (res.ok) {
     const userData = await res.json();
-    console.log('User data received:', userData); 
+ 
     setUser(userData);
     setWasAuthenticated(true);
   } else {

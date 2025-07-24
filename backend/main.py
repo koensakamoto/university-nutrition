@@ -1,11 +1,16 @@
 from fastapi import FastAPI, Query, HTTPException, status, Response, Request, Depends, Body, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from typing import Optional, List
 from pymongo import MongoClient
 from bson import ObjectId
 import os
 from dotenv import load_dotenv
 import certifi
+import logging
+import sys
+from collections import defaultdict
+import asyncio
 from datetime import datetime, timedelta
 import shutil
 import uuid
@@ -35,34 +40,414 @@ from starlette.middleware.sessions import SessionMiddleware
 
 
 
+# Load environment variables first
+load_dotenv()
+
+# Configure logging based on environment
+def setup_logging():
+    """Configure logging for production and development"""
+    is_production = os.getenv("ENVIRONMENT", "development") == "production"
+    
+    if is_production:
+        # Production: JSON structured logging, INFO level
+        logging.basicConfig(
+            level=logging.INFO,
+            format='{"timestamp": "%(asctime)s", "level": "%(levelname)s", "module": "%(name)s", "message": "%(message)s"}',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('app.log', mode='a')
+            ]
+        )
+    else:
+        # Development: Human readable, DEBUG level
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[logging.StreamHandler(sys.stdout)]
+        )
+    
+    # Silence noisy third-party loggers in production
+    if is_production:
+        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+        logging.getLogger("pymongo").setLevel(logging.WARNING)
+    
+    return logging.getLogger(__name__)
+
+# Initialize logging
+logger = setup_logging()
+
 app = FastAPI()
 
+# Get environment variables
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
 # CORS middleware setup
+# Restrict headers to only what the app actually needs
+ALLOWED_HEADERS = [
+    "Content-Type",
+    "Authorization", 
+    "Accept",
+    "Origin",
+    "X-Requested-With",
+    "Cache-Control",
+    "Pragma"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"], 
+    allow_origins=[FRONTEND_URL], 
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=ALLOWED_HEADERS,
+    expose_headers=["Content-Length", "Content-Type"],  # Headers frontend can access
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
+
+# Determine if running in production
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 
 app.add_middleware(
     SessionMiddleware, 
     secret_key=os.getenv("SECRET_KEY", "dev-secret-key"),
     max_age=1800,  # 30 minutes
     same_site="lax",
-    https_only=False  # False for local development with HTTP
+    https_only=IS_PRODUCTION  # Enable HTTPS-only in production
 )
 
-# Load environment variables
-load_dotenv()
+# Security Headers Middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Security headers for production
+        if IS_PRODUCTION:
+            # Strict Transport Security - Force HTTPS
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            
+        # Content Security Policy - Prevent XSS attacks
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self'; "
+            "media-src 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'none';"
+        )
+        
+        # Prevent clickjacking
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # XSS Protection (legacy browsers)
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        
+        # Referrer Policy - Control referrer information
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        # Permissions Policy - Control browser features
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), "
+            "microphone=(), "
+            "camera=(), "
+            "payment=(), "
+            "usb=(), "
+            "magnetometer=(), "
+            "gyroscope=(), "
+            "speaker=(), "
+            "vibrate=(), "
+            "fullscreen=(self)"
+        )
+        
+        return response
 
-# MongoDB connection
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Rate Limiting Middleware
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, requests_per_minute: int = 60):
+        super().__init__(app)
+        self.requests_per_minute = requests_per_minute
+        self.requests = defaultdict(list)
+        
+    def get_client_ip(self, request: Request) -> str:
+        """Get client IP from request headers or connection"""
+        # Check for forwarded headers first (behind proxy)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip
+            
+        # Fallback to client host
+        return request.client.host if request.client else "unknown"
+    
+    async def dispatch(self, request: Request, call_next):
+        # Skip rate limiting in development
+        if not IS_PRODUCTION:
+            return await call_next(request)
+            
+        client_ip = self.get_client_ip(request)
+        current_time = datetime.now()
+        
+        # Clean old requests (older than 1 minute)
+        self.requests[client_ip] = [
+            req_time for req_time in self.requests[client_ip]
+            if current_time - req_time < timedelta(minutes=1)
+        ]
+        
+        # Check if rate limit exceeded
+        if len(self.requests[client_ip]) >= self.requests_per_minute:
+            logger.warning(f"Rate limit exceeded for IP: {client_ip}")
+            return Response(
+                content='{"detail": "Rate limit exceeded. Please try again later."}',
+                status_code=429,
+                headers={"Content-Type": "application/json", "Retry-After": "60"}
+            )
+        
+        # Add current request
+        self.requests[client_ip].append(current_time)
+        
+        return await call_next(request)
+
+# Apply rate limiting - more restrictive for auth endpoints
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+
+# Auth-specific Rate Limiting Middleware
+class AuthRateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, requests_per_period: int = 5, period_minutes: int = 5):
+        super().__init__(app)
+        self.requests_per_period = requests_per_period
+        self.period_minutes = period_minutes
+        self.requests = defaultdict(list)
+        
+    def get_client_ip(self, request: Request) -> str:
+        """Get client IP from request headers or connection"""
+        # Check for forwarded headers first (behind proxy)
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+        
+        real_ip = request.headers.get("X-Real-IP")
+        if real_ip:
+            return real_ip
+            
+        # Fallback to client host
+        return request.client.host if request.client else "unknown"
+    
+    async def dispatch(self, request: Request, call_next):
+        # Only apply to sensitive auth endpoints
+        auth_endpoints = [
+            "/auth/login",
+            "/auth/register", 
+            "/api/auth/forgot-password",
+            "/api/auth/reset-password",
+            "/api/account/change-password"
+        ]
+        
+        if not any(request.url.path == endpoint for endpoint in auth_endpoints):
+            return await call_next(request)
+        
+        # Skip rate limiting in development
+        if not IS_PRODUCTION:
+            return await call_next(request)
+            
+        client_ip = self.get_client_ip(request)
+        current_time = datetime.now()
+        
+        # Clean old requests (older than period)
+        self.requests[client_ip] = [
+            req_time for req_time in self.requests[client_ip]
+            if current_time - req_time < timedelta(minutes=self.period_minutes)
+        ]
+        
+        # Check if rate limit exceeded
+        if len(self.requests[client_ip]) >= self.requests_per_period:
+            logger.warning(f"Auth rate limit exceeded for IP: {client_ip} on endpoint: {request.url.path}")
+            return Response(
+                content='{"detail": "Too many authentication attempts. Please try again later."}',
+                status_code=429,
+                headers={
+                    "Content-Type": "application/json", 
+                    "Retry-After": str(self.period_minutes * 60)
+                }
+            )
+        
+        # Add current request
+        self.requests[client_ip].append(current_time)
+        
+        return await call_next(request)
+
+# Apply auth-specific rate limiting (5 attempts per 5 minutes)
+app.add_middleware(AuthRateLimitMiddleware, requests_per_period=5, period_minutes=5)
+
+# MongoDB connection with production optimizations
 MONGODB_URI = os.getenv("MONGODB_URI")
-client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where())
+
+# Production-optimized MongoDB client
+client = MongoClient(
+    MONGODB_URI,
+    tlsCAFile=certifi.where(),
+    # Connection pooling settings
+    maxPoolSize=20,  # Maximum connections in pool
+    minPoolSize=5,   # Minimum connections to maintain
+    maxIdleTimeMS=30000,  # Close connections after 30s idle
+    # Timeout settings
+    connectTimeoutMS=5000,    # 5s connection timeout
+    serverSelectionTimeoutMS=5000,  # 5s server selection timeout
+    socketTimeoutMS=10000,    # 10s socket timeout
+    # Retry settings
+    retryWrites=True,
+    retryReads=True,
+    # Monitoring
+    heartbeatFrequencyMS=10000,  # Check server health every 10s
+)
+
 db = client["nutritionapp"]
 foods_collection = db["foods"]
 users_collection = db["users"]
+
+# Database index optimization
+def ensure_database_indexes():
+    """Create database indexes for optimal query performance"""
+    try:
+        logger.info("Creating database indexes for performance optimization...")
+        
+        # Users collection indexes
+        users_collection.create_index("email", unique=True, background=True)
+        users_collection.create_index("reset_token", background=True, sparse=True)
+        
+        # Foods collection indexes - critical for menu browsing performance
+        foods_collection.create_index([
+            ("date", 1),
+            ("dining_hall", 1),
+            ("meal_name", 1)
+        ], background=True, name="date_hall_meal_idx")
+        
+        foods_collection.create_index([
+            ("name", "text"),
+            ("description", "text")
+        ], background=True, name="food_search_idx")
+        
+        foods_collection.create_index("labels", background=True)
+        foods_collection.create_index("dining_hall", background=True)
+        foods_collection.create_index("meal_name", background=True)
+        foods_collection.create_index("date", background=True)
+        
+        # Plates collection indexes - critical for nutrition tracking
+        db["plates"].create_index([
+            ("user_id", 1),
+            ("date", 1)
+        ], unique=True, background=True, name="user_date_idx")
+        
+        db["plates"].create_index("user_id", background=True)
+        db["plates"].create_index("date", background=True)
+        
+        # Weight log indexes
+        db["weight_log"].create_index([
+            ("user_id", 1),
+            ("date", 1)
+        ], unique=True, background=True, name="weight_user_date_idx")
+        
+        db["weight_log"].create_index("user_id", background=True)
+        db["weight_log"].create_index([
+            ("user_id", 1),
+            ("date", -1)  # Descending for latest entries first
+        ], background=True, name="weight_latest_idx")
+        
+        # Additional optimizations for past meal lookups
+        # Index for recent meal history (AI agent queries)
+        db["plates"].create_index([
+            ("user_id", 1),
+            ("date", -1)  # Recent meals first
+        ], background=True, name="recent_meals_idx")
+        
+        # Index for date range queries (nutrition history)
+        db["plates"].create_index([
+            ("user_id", 1),
+            ("date", 1),
+            ("items", 1)  # Include items for covered queries
+        ], background=True, name="meal_history_idx")
+        
+        logger.info("Database indexes created successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to create database indexes: {e}")
+        # Don't fail startup if indexes can't be created
+        pass
+
+# Initialize indexes on startup
+ensure_database_indexes()
+
+# In-memory cache for frequently accessed food items
+from functools import lru_cache
+import hashlib
+
+@lru_cache(maxsize=1000)  # Cache up to 1000 food items
+def get_cached_food_nutrients(food_id: str):
+    """Cache food nutrients to avoid repeated database lookups"""
+    try:
+        food = foods_collection.find_one(
+            {"_id": ObjectId(food_id)}, 
+            {"nutrients": 1, "name": 1, "_id": 0}
+        )
+        return food if food else None
+    except Exception:
+        # Handle string IDs
+        food = foods_collection.find_one(
+            {"_id": food_id}, 
+            {"nutrients": 1, "name": 1, "_id": 0}
+        )
+        return food if food else None
+
+def bulk_get_foods_optimized(food_ids: set):
+    """Optimized bulk food retrieval with caching"""
+    foods_map = {}
+    uncached_ids = []
+    
+    # First, try to get from cache
+    for food_id in food_ids:
+        cached_food = get_cached_food_nutrients(food_id)
+        if cached_food:
+            foods_map[food_id] = cached_food
+        else:
+            uncached_ids.append(food_id)
+    
+    # Bulk fetch uncached foods
+    if uncached_ids:
+        object_ids = []
+        str_ids = []
+        for fid in uncached_ids:
+            try:
+                object_ids.append(ObjectId(fid))
+            except Exception:
+                str_ids.append(fid)
+        
+        # Optimized projection - only fetch needed fields
+        projection = {"nutrients": 1, "name": 1}
+        
+        if object_ids:
+            for food in foods_collection.find({"_id": {"$in": object_ids}}, projection):
+                food_id = str(food["_id"])
+                foods_map[food_id] = food
+                # Cache the result
+                get_cached_food_nutrients(food_id)
+        
+        if str_ids:
+            for food in foods_collection.find({"_id": {"$in": str_ids}}, projection):
+                food_id = food["_id"]
+                foods_map[food_id] = food
+                # Cache the result
+                get_cached_food_nutrients(food_id)
+    
+    return foods_map
 
 # Google OAuth2 setup
 oauth = OAuth()
@@ -177,7 +562,6 @@ def read_root():
 
 @app.post("/auth/register")
 def register(user: UserCreate, response: Response):
-    print("register", user)
     if get_user_by_email(users_collection, user.email):
         raise HTTPException(status_code=400, detail="Email already registered")
     hashed_pw = hash_password(user.password)
@@ -320,10 +704,6 @@ def get_energy_target(request: Request):
     weight_goal_rate = profile.get("weight_goal_rate", 0)
     weight_goal_custom_rate = profile.get("weight_goal_custom_rate", 0)
     
-    # Debug logging
-    print(f"DEBUG: weight_goal_type = '{weight_goal_type}'")
-    print(f"DEBUG: weight_goal_rate = '{weight_goal_rate}'")
-    print(f"DEBUG: weight_goal_custom_rate = '{weight_goal_custom_rate}'")
 
     weight_kg = float(weight_lbs) * 0.453592
     height_cm = float(height_in) * 2.54
@@ -380,7 +760,6 @@ def get_energy_target(request: Request):
                     pass
     elif weight_goal_type == "maintain" or weight_goal_type == "maintaining":
         # For maintenance, don't adjust TDEE - return the calculated TDEE as-is
-        print(f"DEBUG: Maintenance case hit - no TDEE adjustment")
         pass
     elif weight_goal_type == "custom":
         try:
@@ -388,7 +767,6 @@ def get_energy_target(request: Request):
         except Exception:
             pass
 
-    print(f"DEBUG: Final TDEE = {round(tdee)}")
     return {"energy_target": round(tdee)}
 
 @app.post("/api/account/change-password")
@@ -418,7 +796,7 @@ def delete_account(request: Request):
                 if os.path.exists(full_path):
                     os.remove(full_path)
             except Exception as e:
-                print(f"Failed to delete profile image: {e}")
+                pass
     
     # Delete all user-related data from database
     users_collection.delete_one({"email": user["email"]})
@@ -430,13 +808,13 @@ def delete_account(request: Request):
 @app.get("/api/plate")
 def get_plate(request: Request, date: str):
     user = get_current_user(request, users_collection)
-    plate = db["plates"].find_one({"user_id": str(user["_id"]), "date": date})
+    # Optimized single plate lookup with projection
+    plate = db["plates"].find_one(
+        {"user_id": str(user["_id"]), "date": date},
+        {"items": 1, "date": 1, "_id": 0}  # Only return needed fields
+    )
     if not plate:
         return {"items": []}
-    # Convert ObjectId to string for user_id
-    plate["user_id"] = str(plate["user_id"])
-    plate["_id"] = str(plate["_id"])
-    print("plate", plate)
     return plate
 
 @app.post("/api/plate")
@@ -444,7 +822,6 @@ def save_plate(request: Request, plate: Plate = Body(...)):
     user = get_current_user(request, users_collection)
     items = []
     for item in plate.items:
-        print(item)
         d = item.dict()
         # If custom food, ensure custom_macros is present and valid
         if str(d.get("food_id", "")).startswith("custom-"):
@@ -465,11 +842,18 @@ def save_plate(request: Request, plate: Plate = Body(...)):
 def get_plate_summary(request: Request, start_date: str, end_date: str):
     user = get_current_user(request, users_collection)
     user_id = str(user["_id"])
-    # Query all plates for user in date range
-    plates = list(db["plates"].find({
-        "user_id": user_id,
-        "date": {"$gte": start_date, "$lte": end_date}
-    }))
+    # Optimized query with projection to only fetch needed fields
+    plates = list(db["plates"].find(
+        {
+            "user_id": user_id,
+            "date": {"$gte": start_date, "$lte": end_date}
+        },
+        {
+            "date": 1,
+            "items": 1,
+            "_id": 0  # Don't return _id to save bandwidth
+        }
+    ).hint("meal_history_idx"))  # Use our optimized index
     # Collect all unique food_ids (excluding custom foods)
     food_ids = set()
     for plate in plates:
@@ -477,22 +861,8 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             food_id = item.get("food_id")
             if food_id and not str(food_id).startswith("custom-"):
                 food_ids.add(food_id)
-    # Bulk fetch all foods
-    foods_map = {}
-    if food_ids:
-        object_ids = []
-        str_ids = []
-        for fid in food_ids:
-            try:
-                object_ids.append(ObjectId(fid))
-            except Exception:
-                str_ids.append(fid)
-        if object_ids:
-            for food in db["foods"].find({"_id": {"$in": object_ids}}):
-                foods_map[str(food["_id"])] = food
-        if str_ids:
-            for food in db["foods"].find({"_id": {"$in": str_ids}}):
-                foods_map[food["_id"]] = food
+    # Use optimized bulk food retrieval with caching
+    foods_map = bulk_get_foods_optimized(food_ids)
     # For each plate, sum up calories, protein, carbs
     total_calories = 0
     total_protein = 0
@@ -507,7 +877,6 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             if "custom_macros" in item:
                 n = item["custom_macros"]
                 if n is None:
-                    print(f"Warning: custom_macros is None for item: {item}")
                     continue
                 protein = float(n.get("protein", 0)) * quantity
                 fat = float(n.get("totalFat", n.get("total_fat", 0))) * quantity
@@ -523,11 +892,9 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             food_id = item.get("food_id")
             food = foods_map.get(str(food_id))
             if not food:
-                print(f"Warning: food_id {food_id} not found in foods collection for item: {item}")
                 continue
             n = food.get("nutrients", {})
             if n is None:
-                print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
                 continue
             protein = float(n.get("protein", 0)) * quantity
             fat = float(n.get("total_fat", 0)) * quantity
@@ -539,15 +906,11 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
             total_carbs += net_carbs
             # Calculate calories from macros
             total_calories += (protein * 4) + (net_carbs * 4) + (fat * 9)
-            print("item", item, "total_carbs", total_carbs)
     # Calculate averages
     start = datetime.strptime(start_date, "%Y-%m-%d")
     end = datetime.strptime(end_date, "%Y-%m-%d")
     num_days = (end - start).days + 1
-    print("days_tracked", len(days_tracked))
-    print("total_calories", total_calories)
     avg_calories = total_calories / len(days_tracked) if days_tracked else 0
-    print("avg_calories", avg_calories)
     avg_protein = total_protein / len(days_tracked) if days_tracked else 0
     avg_carbs = total_carbs / len(days_tracked) if days_tracked else 0
     return {
@@ -562,11 +925,18 @@ def get_plate_summary(request: Request, start_date: str, end_date: str):
 def get_food_macros(request: Request, start_date: str, end_date: str):
     user = get_current_user(request, users_collection)
     user_id = str(user["_id"])
-    # Find all plates for user in date range
-    plates = list(db["plates"].find({
-        "user_id": user_id,
-        "date": {"$gte": start_date, "$lte": end_date}
-    }))
+    # Optimized query with projection and index hint
+    plates = list(db["plates"].find(
+        {
+            "user_id": user_id,
+            "date": {"$gte": start_date, "$lte": end_date}
+        },
+        {
+            "date": 1,
+            "items": 1,
+            "_id": 0
+        }
+    ).hint("meal_history_idx").sort("date", 1))  # Sort by date ascending
     result = []
     for plate in plates:
         date = plate["date"]
@@ -575,7 +945,6 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
             if "custom_macros" in item:
                 n = item["custom_macros"]
                 if n is None:
-                    print(f"Warning: custom_macros is None for item: {item}")
                     continue
                 fiber = float(n.get("dietary_fiber", 0))
                 total_carbs = float(n.get("carbs", n.get("total_carbohydrates", 0)))
@@ -596,11 +965,9 @@ def get_food_macros(request: Request, start_date: str, end_date: str):
             except Exception:
                 food = db["foods"].find_one({"_id": food_id})
             if not food:
-                print(f"Warning: food_id {food_id} not found in foods collection for item: {item}")
                 continue
             n = food.get("nutrients", {})
             if n is None:
-                print(f"Warning: nutrients is None for food_id {food_id} (food: {food})")
                 continue
             fiber = float(n.get("dietary_fiber", 0))
             total_carbs = float(n.get("total_carbohydrates", 0))
@@ -968,41 +1335,30 @@ def export_data(request: Request, body: dict = Body(...)):
 @app.get('/auth/google/login')
 async def google_login(request: Request):
     # Use the exact same URI format as configured in Google Console
-    redirect_uri = "http://localhost:8000/auth/google/auth"
-    print(f"OAuth login initiated with redirect_uri: {redirect_uri}")
-    print(f"Session before OAuth redirect: {request.session}")
-    print(f"Session ID before OAuth: {getattr(request.session, 'session_id', 'No session ID')}")
+    redirect_uri = f"{BACKEND_URL}/auth/google/auth"
     
     response = await oauth.google.authorize_redirect(request, redirect_uri)
-    print(f"Session after OAuth redirect: {request.session}")
     return response
 
 @app.get('/auth/google/auth')
 async def google_auth(request: Request):
     try:
-        print(f"OAuth callback received. Query params: {request.query_params}")
-        print(f"Session data: {request.session}")
         
         # Try a different approach - manually handle the OAuth state
         state = request.query_params.get('state')
         code = request.query_params.get('code')
         
         if not state or not code:
-            print("Missing state or code parameters")
-            return RedirectResponse(url="http://localhost:5173/login?error=missing_params")
-        
-        print(f"Received state: {state}")
-        print(f"Received code: {code}")
+            return RedirectResponse(url=f"{FRONTEND_URL}/login?error=missing_params")
         
         # Manual token exchange to bypass session state issues
-        print(f"Using manual token exchange to bypass session issues")
         import httpx
         token_data = {
             'client_id': os.getenv("GOOGLE_CLIENT_ID"),
             'client_secret': os.getenv("GOOGLE_CLIENT_SECRET"),
             'code': code,
             'grant_type': 'authorization_code',
-            'redirect_uri': "http://localhost:8000/auth/google/auth"
+            'redirect_uri': f"{BACKEND_URL}/auth/google/auth"
         }
         
         async with httpx.AsyncClient() as client:
@@ -1011,11 +1367,9 @@ async def google_auth(request: Request):
                 data=token_data
             )
             if token_response.status_code != 200:
-                print(f"Token exchange failed: {token_response.text}")
-                return RedirectResponse(url="http://localhost:5173/login?error=token_exchange_failed")
+                return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed")
             
             token = token_response.json()
-            print(f"Token exchange successful: {token.keys()}")
             
         # Get user info manually
         async with httpx.AsyncClient() as client:
@@ -1024,56 +1378,42 @@ async def google_auth(request: Request):
                 headers={'Authorization': f"Bearer {token['access_token']}"}
             )
             if user_response.status_code != 200:
-                print(f"User info failed: {user_response.text}")
-                return RedirectResponse(url="http://localhost:5173/login?error=userinfo_failed")
+                return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed")
             
             user_info = user_response.json()
-            print(f"User info received: {user_info}")
     except Exception as e:
-        print(f"OAuth error: {str(e)}")
-        print(f"Error type: {type(e)}")
-        
+        logger.error(f"OAuth authentication failed: {type(e).__name__}")
         # Redirect to frontend with error
-        return RedirectResponse(url="http://localhost:5173/login?error=oauth_failed")
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=oauth_failed")
     
     # Continue with user processing
     try:
         email = user_info['email']
-        print(f"Processing user: {email}")
         
         db_user = get_user_by_email(users_collection, email)
-        print(f"Found existing user: {bool(db_user)}")
         
         if not db_user:
-            print("Creating new user...")
             users_collection.insert_one({
                 "email": email,
                 "hashed_password": None,
                 "profile": {"name": user_info.get("name", "")}
             })
             db_user = get_user_by_email(users_collection, email)
-            print(f"New user created: {bool(db_user)}")
+            logger.info(f"New OAuth user created successfully")
         
         # Issue JWT/cookie
-        print("Creating JWT token...")
         jwt_token = create_access_token({"sub": email})
-        print(f"Created JWT token for user: {email}")
-        print(f"User has password: {bool(db_user.get('hashed_password'))}")
         
         # Always redirect to dashboard for OAuth users - use same domain for cookie persistence
-        redirect_url = "http://localhost:5173/dashboard"
-        print(f"Redirecting OAuth user to dashboard: {redirect_url}")
+        redirect_url = f"{FRONTEND_URL}/dashboard"
         response = RedirectResponse(url=redirect_url)
         
-        print(f"Setting auth cookie with token: {jwt_token[:20]}...")
         set_auth_cookie(response, jwt_token)
-        print(f"Cookie set, returning response")
         return response
         
     except Exception as user_error:
-        print(f"Error processing user after OAuth: {str(user_error)}")
-        print(f"Error type: {type(user_error)}")
-        return RedirectResponse(url="http://localhost:5173/login?error=user_processing_failed")
+        logger.error(f"User processing after OAuth failed: {type(user_error).__name__}")
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=user_processing_failed")
 
 @app.post("/api/account/set-password")
 def set_password(request: Request, new_password: str = Body(...)):
@@ -1115,14 +1455,11 @@ async def forgot_password(request: dict = Body(...)):
         email_sent = await send_password_reset_email(email, reset_token)
         
         # Also log for development (remove in production)
-        reset_link = f"http://localhost:5173/reset-password?token={reset_token}"
-        print(f"Password reset link for {email}: {reset_link}")
-        print(f"Email sent: {email_sent}")
+        reset_link = f"{FRONTEND_URL}/reset-password?token={reset_token}"
         
         return {"message": "If the email exists in our system, a reset link has been sent."}
         
     except Exception as e:
-        print(f"Forgot password error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to process password reset request")
 
 @app.post("/api/auth/reset-password")
@@ -1158,10 +1495,24 @@ async def reset_password(token: str = Body(...), new_password: str = Body(...)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Reset password error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to reset password")
 
-# Serve static files (if not already present)
+# Production-optimized static file serving
+class CacheControlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Add caching headers for static assets
+        if request.url.path.startswith("/static/"):
+            # Cache static assets for 1 year (they have content hashes)
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            response.headers["Expires"] = (datetime.now() + timedelta(days=365)).strftime("%a, %d %b %Y %H:%M:%S GMT")
+        
+        return response
+
+app.add_middleware(CacheControlMiddleware)
+
+# Serve static files with optimized settings
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.post("/agent/chat")
@@ -1183,14 +1534,11 @@ def agent_chat(query: AgentQuery, request: Request):
 
 @app.get("/api/available-options")
 def get_available_options(date: str):
-    print("Received date param:", date)
     dining_halls = foods_collection.distinct("dining_hall", {"date": date})
     meal_types_by_hall = {}
     for hall in dining_halls:
         meal_types = foods_collection.distinct("meal_name", {"date": date, "dining_hall": hall})
         meal_types_by_hall[hall] = sorted(meal_types)
-    print("dining_halls", dining_halls)
-    print("meal_types_by_hall", meal_types_by_hall)
     return {
         "dining_halls": sorted(dining_halls),
         "meal_types_by_hall": meal_types_by_hall

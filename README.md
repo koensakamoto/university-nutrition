@@ -1,31 +1,46 @@
 # Campus Nutrition App
 
-The Campus Nutrition App is a web-based tool that helps students make informed food choices at their campus dining halls. It allows users to view daily menus, filter items by dietary preferences, and track nutritional intake through an interactive interface.
+Ever wondered what's actually in that dining hall food? This app helps college students make better food choices by showing real-time menus, tracking nutrition, and even getting personalized advice from an AI assistant.
 
-## Features
+I built this because navigating campus dining can be overwhelming - especially when you're trying to eat healthy or have dietary restrictions. Now you can see what's available, track your nutrition goals, and get recommendations all in one place.
 
-- Select dining hall location from a dropdown menu
-- Filter by date and meal type (breakfast, lunch, dinner, or everyday)
-- View menu items organized by food station (e.g., 500 Degrees, Carrots)
-- See portion sizes, calorie counts, and dietary tags (e.g., vegan, vegetarian, high-protein)
-- Expandable ingredient and allergen details
-- Nutrient tracker panel that shows running totals for calories, protein, carbs, and fat
-- Option to add or remove items from a virtual plate
-- Nutritional breakdown displayed in easy-to-read charts
-- User login to save meal history and preferences
+## What it does
 
-## Tech Stack
+**Browse menus easily** - See what's available at different dining halls today, filter by meal times, and check out food stations like the grill or salad bar.
 
+**Track your nutrition** - Add items to your virtual plate and watch your calories, protein, carbs, and fat add up in real-time with visual charts.
 
-- React 
-- Tailwind CSS 
-- Recharts 
-- MongoDB
-- Python
+**Get smart recommendations** - The AI assistant can suggest meals based on your dietary goals, analyze ingredients, and even recommend alternatives if something doesn't fit your needs.
 
-- React (frontend framework)
-- Tailwind CSS (styling)
-- Recharts (data visualization)
-- Database: MongoDB
+**Save your progress** - Create an account to track your eating habits over time, set preferences, and export your nutrition data.
+
+**Handle dietary needs** - Everything is tagged for common restrictions like vegan, vegetarian, gluten-free, and more.
+
+## How to run it
+
+**Backend:**
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Then open your browser and you're good to go!
+
+## Built with
+
+- **Frontend:** React, Tailwind CSS, and Recharts for the charts
+- **Backend:** Python with FastAPI and MongoDB for data storage
+- **AI:** Custom agents built with LangGraph for nutrition advice
+- **Auth:** Google login integration for easy sign-in
+
+The whole thing is designed to be fast and responsive, with optimizations for real-world usage.
 
 

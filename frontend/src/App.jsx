@@ -59,9 +59,7 @@ export default function App() {
   }
 
   const handleSavePlate = async () => {
-    console.log('handleSavePlate called');
     const plateItems = trackedItems.map(item => {
-      console.log('item', item);
 
       const foodId = item.id || item._id;
       const isCustom = String(foodId).startsWith('custom-');
@@ -80,7 +78,6 @@ export default function App() {
       }
       return base;
     });
-    console.log('plateItems', plateItems);
     const res = await fetch('/api/plate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -91,7 +88,7 @@ export default function App() {
       })
     });
     if (res.ok) {
-      console.log('Plate saved successfully');
+      // Plate saved successfully
     } else {
       console.error('Failed to save plate');
     }

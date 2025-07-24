@@ -189,7 +189,6 @@ export default function Register() {
   };
 
   const handleSubmit = async (e) => {
-    console.log("handleSubmit", formData.firstName, formData.lastName, formData.email, formData.password)
     e.preventDefault();
     setApiError('');
     if (validateForm()) {

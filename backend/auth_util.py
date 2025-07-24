@@ -2,6 +2,10 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status, Response, Request, Depends
 from pymongo.collection import Collection
 from jwt_util import create_access_token, decode_access_token
+import os
+
+# Determine if running in production
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development") == "production"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,7 +20,7 @@ def set_auth_cookie(response: Response, token: str):
         key="access_token",
         value=token,
         httponly=True,
-        secure=False,  # Set to True in production (HTTPS)
+        secure=IS_PRODUCTION,  # True in production (HTTPS), False in development
         samesite="lax",
         max_age=3600,
         path="/",
@@ -30,22 +34,14 @@ def get_user_by_email(users_collection: Collection, email: str):
     return users_collection.find_one({"email": email})
 
 def get_current_user(request: Request, users_collection: Collection):
-    print(f"Checking auth for: {request.url}")
-    print(f"All cookies: {dict(request.cookies)}")
     token = request.cookies.get("access_token")
-    print(f"Access token found: {bool(token)}")
     if not token:
-        print("No access token found in cookies")
         raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = decode_access_token(token)
-        print(f"Token decoded successfully for: {payload.get('sub')}")
-    except Exception as e:
-        print(f"Token decode error: {e}")
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
     user = users_collection.find_one({"email": payload["sub"]})
     if not user:
-        print(f"User not found for email: {payload.get('sub')}")
         raise HTTPException(status_code=401, detail="User not found")
-    print(f"User authenticated successfully: {payload.get('sub')}")
     return user
