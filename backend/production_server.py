@@ -72,7 +72,6 @@ def main():
         "http": "httptools",  # Use httptools for better HTTP parsing
         # Process management
         "reload": False,  # Disable auto-reload in production
-        "preload": True,  # Preload app before forking workers
     }
     
     # Add SSL configuration if certificates are provided

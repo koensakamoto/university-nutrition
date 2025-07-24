@@ -291,6 +291,11 @@ app.add_middleware(AuthRateLimitMiddleware, requests_per_period=5, period_minute
 
 # MongoDB connection with production optimizations
 MONGODB_URI = os.getenv("MONGODB_URI")
+if not MONGODB_URI:
+    logger.error("MONGODB_URI environment variable not set!")
+    raise RuntimeError("MONGODB_URI environment variable is required")
+else:
+    logger.info(f"MongoDB URI loaded: {MONGODB_URI[:50]}...")
 
 # Production-optimized MongoDB client
 client = MongoClient(
