@@ -76,6 +76,7 @@ def setup_logging():
 
 # Initialize logging
 logger = setup_logging()
+logger.info("FastAPI app initialization starting...")
 
 app = FastAPI()
 
@@ -561,6 +562,10 @@ def delete_food(food_id: str):
 @app.get("/")
 def read_root():
     return {"message": "Hello World"}
+
+@app.get("/test")
+def test_endpoint():
+    return {"message": "Test endpoint working", "routes_loaded": True}
 
 
 
