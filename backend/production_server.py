@@ -67,8 +67,7 @@ def main():
         # Logging
         "log_level": "info",
         "access_log": True,
-        # Performance
-        "http": "httptools",  # Use httptools for better HTTP parsing
+        # Performance settings removed due to missing dependencies on Railway
         # Process management
         "reload": False,  # Disable auto-reload in production
     }
