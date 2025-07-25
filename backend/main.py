@@ -98,7 +98,7 @@ ALLOWED_HEADERS = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL], 
+    allow_origins=[FRONTEND_URL, "https://crimsonbites-backend.railway.app"], 
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=ALLOWED_HEADERS,
