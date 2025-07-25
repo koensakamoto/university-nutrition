@@ -16,6 +16,7 @@ import Register from './components/Register'
 import ForgotPassword from './components/ForgotPassword'
 import ResetPassword from './components/ResetPassword'
 import AuthCallback from './components/AuthCallback'
+import PrivacyPolicy from './components/PrivacyPolicy'
 import { useAuth } from './AuthProvider'
 
 // Utility to get local date string in YYYY-MM-DD format
@@ -117,6 +118,10 @@ export default function App() {
       <Route 
         path="/auth/callback" 
         element={<AuthCallback />} 
+      />
+      <Route 
+        path="/privacy" 
+        element={<PrivacyPolicy />} 
       />
       
       {/* Main App Routes (with header layout) */}

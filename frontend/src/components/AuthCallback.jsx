@@ -41,10 +41,12 @@ const AuthCallback = () => {
           setStatus('Authentication successful! Redirecting...');
           // Check auth status to update context
           await checkAuth();
-          // Redirect to dashboard
-          navigate('/dashboard');
+          // Small delay to ensure auth context updates
+          setTimeout(() => navigate('/dashboard'), 500);
         } else {
-          throw new Error('Token exchange failed');
+          const errorData = await response.text();
+          console.error('Token exchange failed:', response.status, errorData);
+          throw new Error(`Token exchange failed: ${response.status}`);
         }
       } catch (error) {
         console.error('Token exchange error:', error);
