@@ -9,11 +9,26 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
-      '/auth': process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
-      '/foods': process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
-      '/agent': process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
-      '/static': process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+      '/api': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: true
+      },
+      '/auth': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: true
+      },
+      '/foods': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: true
+      },
+      '/static': {
+        target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: true
+      }
     }
   },
   // Production build optimizations
