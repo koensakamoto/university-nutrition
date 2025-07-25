@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthProvider';
 
@@ -6,7 +6,6 @@ const AuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { checkAuth } = useAuth();
-  const [status, setStatus] = useState('Processing...');
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -14,15 +13,12 @@ const AuthCallback = () => {
       const error = searchParams.get('error');
 
       if (error) {
-        console.error('OAuth error:', error);
-        setStatus('Authentication failed. Redirecting...');
-        setTimeout(() => navigate('/login'), 2000);
+        navigate('/login');
         return;
       }
 
       if (!token) {
-        setStatus('No authentication token found. Redirecting...');
-        setTimeout(() => navigate('/login'), 2000);
+        navigate('/login');
         return;
       }
 
@@ -38,20 +34,15 @@ const AuthCallback = () => {
         });
 
         if (response.ok) {
-          setStatus('Authentication successful! Redirecting...');
           // Check auth status to update context
           await checkAuth();
-          // Small delay to ensure auth context updates
-          setTimeout(() => navigate('/dashboard'), 500);
+          // Navigate to dashboard
+          navigate('/dashboard');
         } else {
-          const errorData = await response.text();
-          console.error('Token exchange failed:', response.status, errorData);
-          throw new Error(`Token exchange failed: ${response.status}`);
+          navigate('/login');
         }
       } catch (error) {
-        console.error('Token exchange error:', error);
-        setStatus('Authentication failed. Redirecting...');
-        setTimeout(() => navigate('/login'), 2000);
+        navigate('/login');
       }
     };
 
@@ -60,19 +51,7 @@ const AuthCallback = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Completing Sign In
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            {status}
-          </p>
-          <div className="mt-4">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
-          </div>
-        </div>
-      </div>
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
     </div>
   );
 };
