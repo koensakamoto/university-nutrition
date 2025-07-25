@@ -563,8 +563,16 @@ def delete_food(food_id: str):
 def read_root():
     return {"message": "Hello World"}
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response
+
 @app.get("/test")
 def test_endpoint():
+    logger.info("Test endpoint called!")
     return {"message": "Test endpoint working", "routes_loaded": True}
 
 # Log that routes have been registered
