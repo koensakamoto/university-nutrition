@@ -567,6 +567,9 @@ def read_root():
 def test_endpoint():
     return {"message": "Test endpoint working", "routes_loaded": True}
 
+# Log that routes have been registered
+logger.info("All routes registered successfully")
+
 
 
 
@@ -1528,9 +1531,14 @@ app.add_middleware(CacheControlMiddleware)
 
 # Serve static files with optimized settings - create directory if it doesn't exist
 import os
-if not os.path.exists("static"):
-    os.makedirs("static/profile_images", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+try:
+    if not os.path.exists("static"):
+        os.makedirs("static/profile_images", exist_ok=True)
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    logger.info("Static files mounted successfully")
+except Exception as e:
+    logger.error(f"Failed to mount static files: {e}")
+    # Continue without static files to prevent app crash
 
 # AI Agent endpoint - disabled for initial deployment
 # @app.post("/agent/chat")
