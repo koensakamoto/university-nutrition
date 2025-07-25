@@ -34,6 +34,8 @@ const AuthCallback = () => {
         });
 
         if (response.ok) {
+          // Small delay to ensure cookie is set before checking auth
+          await new Promise(resolve => setTimeout(resolve, 100));
           // Check auth status to update context
           await checkAuth();
           // Navigate to dashboard
