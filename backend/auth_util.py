@@ -24,7 +24,7 @@ def set_auth_cookie(response: Response, token: str):
         samesite="lax",
         max_age=3600,
         path="/",
-        domain=None  # Let browser set domain automatically for localhost/127.0.0.1 compatibility
+        domain=".crimsonbites.com" if IS_PRODUCTION else None  # Share cookies across subdomains in production
     )
 
 def clear_auth_cookie(response: Response):

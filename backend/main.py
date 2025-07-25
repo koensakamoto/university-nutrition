@@ -614,6 +614,34 @@ def logout(response: Response):
     clear_auth_cookie(response)
     return {"message": "Logged out"}
 
+@app.post("/auth/exchange-token")
+async def exchange_token(request: Request, response: Response):
+    """Exchange URL token for secure httpOnly cookie"""
+    try:
+        body = await request.json()
+        token = body.get('token')
+        
+        if not token:
+            raise HTTPException(status_code=400, detail="Token required")
+        
+        # Verify the token is valid
+        try:
+            payload = decode_access_token(token)
+            email = payload.get("sub")
+            if not email:
+                raise HTTPException(status_code=401, detail="Invalid token")
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Set the secure httpOnly cookie
+        set_auth_cookie(response, token)
+        
+        return {"message": "Token exchanged successfully"}
+        
+    except Exception as e:
+        logger.error(f"Token exchange failed: {e}")
+        raise HTTPException(status_code=400, detail="Token exchange failed")
+
 @app.get("/api/profile")
 def get_profile(request: Request):
     user = get_current_user(request, users_collection)
@@ -1426,10 +1454,11 @@ async def google_auth(request: Request):
         # Issue JWT/cookie
         jwt_token = create_access_token({"sub": email})
         
-        # Always redirect to dashboard for OAuth users - use same domain for cookie persistence
-        redirect_url = f"{FRONTEND_URL}/dashboard"
+        # Pass token via URL for cross-domain auth
+        redirect_url = f"{FRONTEND_URL}/auth/callback?token={jwt_token}"
         response = RedirectResponse(url=redirect_url)
         
+        # Still set cookie for same-domain requests
         set_auth_cookie(response, jwt_token)
         return response
         

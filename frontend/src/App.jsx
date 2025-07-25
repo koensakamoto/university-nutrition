@@ -15,6 +15,7 @@ import UserAccount from './components/accountPage/UserAccount'
 import Register from './components/Register'
 import ForgotPassword from './components/ForgotPassword'
 import ResetPassword from './components/ResetPassword'
+import AuthCallback from './components/AuthCallback'
 import { useAuth } from './AuthProvider'
 
 // Utility to get local date string in YYYY-MM-DD format
@@ -112,6 +113,10 @@ export default function App() {
       <Route 
         path="/reset-password" 
         element={user ? <Navigate to="/dashboard" /> : <ResetPassword />} 
+      />
+      <Route 
+        path="/auth/callback" 
+        element={<AuthCallback />} 
       />
       
       {/* Main App Routes (with header layout) */}
