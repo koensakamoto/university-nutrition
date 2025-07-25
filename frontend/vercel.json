@@ -5,8 +5,24 @@
       "destination": "https://backend-production-6458.up.railway.app/api/$1"
     },
     {
-      "source": "/auth/(.*)",
-      "destination": "https://backend-production-6458.up.railway.app/auth/$1"
+      "source": "/auth/login",
+      "destination": "https://backend-production-6458.up.railway.app/auth/login"
+    },
+    {
+      "source": "/auth/register",
+      "destination": "https://backend-production-6458.up.railway.app/auth/register"
+    },
+    {
+      "source": "/auth/logout",
+      "destination": "https://backend-production-6458.up.railway.app/auth/logout"
+    },
+    {
+      "source": "/auth/exchange-token",
+      "destination": "https://backend-production-6458.up.railway.app/auth/exchange-token"
+    },
+    {
+      "source": "/auth/google/(.*)",
+      "destination": "https://backend-production-6458.up.railway.app/auth/google/$1"
     },
     {
       "source": "/foods/(.*)",
