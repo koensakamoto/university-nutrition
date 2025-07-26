@@ -227,10 +227,6 @@ export const AccountSection = () => {
       setEditingName(false);
       setNameSuccess('Name updated!');
       createTimeout(() => setNameSuccess(''), 3000);
-      // Delay refetch to allow smooth UI transition first
-      createTimeout(() => {
-        refetchProfile();
-      }, 100);
     } catch (err) {
       console.error('Name update failed:', err);
       if (err.message?.includes('network') || err.message?.includes('fetch')) {
