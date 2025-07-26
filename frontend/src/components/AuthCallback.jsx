@@ -5,7 +5,7 @@ import { useAuth } from '../AuthProvider';
 const AuthCallback = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { checkAuth } = useAuth();
+  const { refetchProfile } = useAuth();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -37,7 +37,7 @@ const AuthCallback = () => {
           // Small delay to ensure cookie is set before checking auth
           await new Promise(resolve => setTimeout(resolve, 100));
           // Check auth status to update context
-          await checkAuth();
+          await refetchProfile();
           // Navigate to dashboard
           navigate('/dashboard');
         } else {
@@ -49,7 +49,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [searchParams, navigate, checkAuth]);
+  }, [searchParams, navigate, refetchProfile]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
