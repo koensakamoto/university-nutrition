@@ -5,7 +5,7 @@ import { AccountInfoToolTip } from './AccountInfoToolTip';
 import { useAuth, useFetchWithAuth } from '../../AuthProvider';
 
 export const AccountSection = () => {
-  const { user, logout, refetchProfile } = useAuth();
+  const { user, logout, refetchProfile, updateUserProfile, updateUserEmail } = useAuth();
   const fetchWithAuth = useFetchWithAuth();
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -181,6 +181,9 @@ export const AccountSection = () => {
       setImageSuccess('Profile image updated!');
       createTimeout(() => setImageSuccess(''), 3000);
       
+      // Update header profile image without full page refresh
+      updateUserProfile({ image: uploadedImageUrl });
+      
     } catch (err) {
       console.error('Image upload failed:', err);
       if (err.message?.includes('size')) {
@@ -227,6 +230,9 @@ export const AccountSection = () => {
       setEditingName(false);
       setNameSuccess('Name updated!');
       createTimeout(() => setNameSuccess(''), 3000);
+      
+      // Update header username without full page refresh
+      updateUserProfile({ name: tempName.trim() });
     } catch (err) {
       console.error('Name update failed:', err);
       if (err.message?.includes('network') || err.message?.includes('fetch')) {
@@ -268,6 +274,9 @@ export const AccountSection = () => {
       setEmail(tempEmail.trim());
       setEditingEmail(false);
       setEmailSuccess('Email updated! Redirecting to login...');
+      
+      // Update header email without full page refresh
+      updateUserEmail(tempEmail.trim());
       
       // Small delay to show success message before redirect
       createTimeout(async () => {

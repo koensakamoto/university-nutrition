@@ -140,8 +140,31 @@ const refetchProfile = async () => {
   setLoading(false);
 };
 
+// Add updateUserProfile function for targeted updates without loading state
+const updateUserProfile = (profileUpdates) => {
+  if (user) {
+    setUser({
+      ...user,
+      profile: {
+        ...user.profile,
+        ...profileUpdates
+      }
+    });
+  }
+};
+
+// Add updateUserEmail function for email updates
+const updateUserEmail = (newEmail) => {
+  if (user) {
+    setUser({
+      ...user,
+      email: newEmail
+    });
+  }
+};
+
 return (
-  <AuthContext.Provider value={{ user, login, logout, register, loading, error, clearError,  isAuthenticated: !!user, guestLogin, wasAuthenticated, refetchProfile }}>
+  <AuthContext.Provider value={{ user, login, logout, register, loading, error, clearError,  isAuthenticated: !!user, guestLogin, wasAuthenticated, refetchProfile, updateUserProfile, updateUserEmail }}>
     {children}
   </AuthContext.Provider>
 );
