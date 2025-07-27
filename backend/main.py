@@ -24,8 +24,6 @@ from authlib.integrations.starlette_client import OAuth
 from pydantic import BaseModel
 
 from models.food import Food
-# from models.agent import AgentQuery, AgentRequest
-# from agent.nutrition_agent import app as nutrition_agent_app
 
 from models.user import UserCreate, UserProfile, ChangePasswordRequest, UserLogin
 from models.plate import Plate, PlateItem
@@ -370,7 +368,7 @@ def ensure_database_indexes():
         ], background=True, name="weight_latest_idx")
         
         # Additional optimizations for past meal lookups
-        # Index for recent meal history (AI agent queries)
+        # Index for recent meal history
         db["plates"].create_index([
             ("user_id", 1),
             ("date", -1)  # Recent meals first
@@ -392,6 +390,29 @@ def ensure_database_indexes():
 
 # Initialize indexes on startup
 ensure_database_indexes()
+
+# Initialize AI Agent
+try:
+    from ai_agent.agent import NutritionAgent
+    from ai_agent.api import router as ai_router, set_agent
+    
+    # Get OpenAI API key
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    if OPENAI_API_KEY:
+        logger.info("Initializing AI nutrition agent...")
+        nutrition_agent = NutritionAgent(client, OPENAI_API_KEY)
+        set_agent(nutrition_agent)
+        
+        # Add AI agent routes
+        app.include_router(ai_router)
+        logger.info("AI agent initialized successfully")
+    else:
+        logger.warning("OPENAI_API_KEY not found - AI agent features disabled")
+        
+except ImportError as e:
+    logger.warning(f"AI agent dependencies not available: {e}")
+except Exception as e:
+    logger.error(f"Failed to initialize AI agent: {e}")
 
 # In-memory cache for frequently accessed food items
 from functools import lru_cache
@@ -1577,23 +1598,6 @@ except Exception as e:
     logger.error(f"Failed to mount static files: {e}")
     # Continue without static files to prevent app crash
 
-# AI Agent endpoint - disabled for initial deployment
-# @app.post("/agent/chat")
-# def agent_chat(query: AgentQuery, request: Request):
-#     user = get_current_user(request, users_collection)
-#     user_id = str(user["_id"])
-#     state = {
-#         "user_message": query.query,
-#         "dining_hall": query.dining_hall,
-#         "meal_type": query.meal_type,
-#         "date": query.date,
-#         "user_id": user_id
-#     }
-#     result = nutrition_agent_app.invoke(state)
-#     return {
-#         "role": "assistant",
-#         "content": result["response"]
-#     }
 
 @app.get("/api/available-options")
 def get_available_options(date: str):

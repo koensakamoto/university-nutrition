@@ -97,74 +97,76 @@ export default function App() {
   }
 
   return (
-    <Routes>
-      {/* Standalone Authentication Routes (no header) */}
-      <Route 
-        path="/login" 
-        element={user ? <Navigate to="/dashboard" /> : <Login />} 
-      />
-      <Route 
-        path="/register" 
-        element={user ? <Navigate to="/dashboard" /> : <Register />} 
-      />
-      <Route 
-        path="/forgot-password" 
-        element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} 
-      />
-      <Route 
-        path="/reset-password" 
-        element={user ? <Navigate to="/dashboard" /> : <ResetPassword />} 
-      />
-      <Route 
-        path="/auth/callback" 
-        element={<AuthCallback />} 
-      />
-      <Route 
-        path="/privacy" 
-        element={<PrivacyPolicy />} 
-      />
-      
-      {/* Main App Routes (with header layout) */}
-      <Route 
-        path="/" 
-        element={<HomeLayout isLoggedIn={!!user} onLogout={logout} />}
-      >
-        <Route index element={<Navigate to={user ? 'dashboard' : 'login'} />} />
-        <Route
-          path="dashboard"
-          element={
-            <div className="flex flex-col lg:flex-row w-full flex-grow p-2 sm:p-4 gap-2 sm:gap-4">
-              <Dashboard
-                addToTracker={addToTracker}
-                trackedItems={trackedItems}
-                setTrackedItems={setTrackedItems}
-                removeItem={removeFromTracker}
-                clearItems={clearTracker}
-                date={date}
-                setDate={setDate}
-                onSavePlate={handleSavePlate}
-              />
-              <div className="hidden lg:block lg:w-1/4">
-                <NutrientTracker
-                  trackedItems={trackedItems}
-                  removeItem={removeFromTracker}
-                  clearItems={clearTracker}
-                  selectedDate={getLocalDateString(date)}
-                  onSavePlate={handleSavePlate}
-                />
-              </div>
-            </div>
-          }
+    <>
+      <Routes>
+        {/* Standalone Authentication Routes (no header) */}
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to="/dashboard" /> : <Login />} 
+        />
+        <Route 
+          path="/register" 
+          element={user ? <Navigate to="/dashboard" /> : <Register />} 
+        />
+        <Route 
+          path="/forgot-password" 
+          element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} 
+        />
+        <Route 
+          path="/reset-password" 
+          element={user ? <Navigate to="/dashboard" /> : <ResetPassword />} 
+        />
+        <Route 
+          path="/auth/callback" 
+          element={<AuthCallback />} 
+        />
+        <Route 
+          path="/privacy" 
+          element={<PrivacyPolicy />} 
         />
         
-        <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
-        <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
-        <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
+        {/* Main App Routes (with header layout) */}
         <Route 
-          path="*"
-          element={<Navigate to="/" />}
-        />
-      </Route>
-    </Routes>
+          path="/" 
+          element={<HomeLayout isLoggedIn={!!user} onLogout={logout} />}
+        >
+          <Route index element={<Navigate to={user ? 'dashboard' : 'login'} />} />
+          <Route
+            path="dashboard"
+            element={
+              <div className="flex flex-col lg:flex-row w-full flex-grow p-2 sm:p-4 gap-2 sm:gap-4">
+                <Dashboard
+                  addToTracker={addToTracker}
+                  trackedItems={trackedItems}
+                  setTrackedItems={setTrackedItems}
+                  removeItem={removeFromTracker}
+                  clearItems={clearTracker}
+                  date={date}
+                  setDate={setDate}
+                  onSavePlate={handleSavePlate}
+                />
+                <div className="hidden lg:block lg:w-1/4">
+                  <NutrientTracker
+                    trackedItems={trackedItems}
+                    removeItem={removeFromTracker}
+                    clearItems={clearTracker}
+                    selectedDate={getLocalDateString(date)}
+                    onSavePlate={handleSavePlate}
+                  />
+                </div>
+              </div>
+            }
+          />
+          
+          <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
+          <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
+          <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
+          <Route 
+            path="*"
+            element={<Navigate to="/" />}
+          />
+        </Route>
+      </Routes>
+    </>
   )
 }

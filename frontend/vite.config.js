@@ -12,22 +12,22 @@ export default defineConfig({
       '/api': {
         target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
-        secure: true
+        secure: false
       },
       '/auth': {
         target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
-        secure: true
+        secure: false
       },
       '/foods': {
         target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
-        secure: true
+        secure: false
       },
       '/static': {
         target: process.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000',
         changeOrigin: true,
-        secure: true
+        secure: false
       }
     }
   },

@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
-import AIAssistant from './AIAssistant'
 import CustomMealForm from './CustomMealForm'
 import LoadingSpinner from './LoadingSpinner'
 import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
@@ -86,7 +85,6 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
   const [mealType, setMealType] = useState("")
   const [foodStations, setFoodStations] = useState([])
   const [foodStationsLoading, setFoodStationsLoading] = useState(false)
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [isCustomMealFormOpen, setIsCustomMealFormOpen] = useState(false)
   const [diningHalls, setDiningHalls] = useState([])
   const [mealTypesByHall, setMealTypesByHall] = useState({})
@@ -498,17 +496,6 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
         onAddItem={addToTracker}
       />
       
-      {/* Desktop AI Assistant Panel */}
-      {isAuthenticated && !user.guest && diningHall && mealType && (
-        <div className="hidden md:block mt-6">
-          <AIAssistant
-            addToTracker={addToTracker}
-            diningHall={diningHall}
-            mealType={mealType}
-            date={date}
-          />
-        </div>
-      )}
     </div>
   )
 }
