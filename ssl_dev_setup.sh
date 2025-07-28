@@ -4,7 +4,7 @@
 
 set -e
 
-echo "🔒 Setting up development SSL certificates for local testing"
+echo " Setting up development SSL certificates for local testing"
 
 # Create SSL directory
 SSL_DIR="./ssl"
@@ -46,7 +46,7 @@ IP.2 = ::1
 EOF
 
 # Generate self-signed certificate
-echo "📜 Generating self-signed certificate..."
+echo " Generating self-signed certificate..."
 openssl req -new -x509 -key "$SSL_DIR/localhost.key" -out "$SSL_DIR/localhost.crt" -days 365 -config "$SSL_DIR/localhost.conf" -extensions v3_req
 
 # Create development server configuration for HTTPS
@@ -66,9 +66,9 @@ def main():
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.load_cert_chain('./ssl/localhost.crt', './ssl/localhost.key')
     
-    print("🔒 Starting HTTPS development server...")
-    print("📍 https://localhost:8000")
-    print("⚠️  You'll see a security warning - click 'Advanced' → 'Proceed to localhost'")
+    print(" Starting HTTPS development server...")
+    print(" https://localhost:8000")
+    print("  You'll see a security warning - click 'Advanced' → 'Proceed to localhost'")
     
     uvicorn.run(
         "main:app",
@@ -86,7 +86,7 @@ EOF
 chmod +x https_dev_server.py
 
 # Update Vite config for HTTPS development
-echo "⚙️ Creating HTTPS Vite configuration..."
+echo " Creating HTTPS Vite configuration..."
 cat > "frontend/vite.config.https.js" << 'EOF'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -146,9 +146,9 @@ export default defineConfig({
 })
 EOF
 
-echo "✅ Development SSL setup complete!"
+echo " Development SSL setup complete!"
 echo ""
-echo "🚀 To test HTTPS locally:"
+echo " To test HTTPS locally:"
 echo ""
 echo "1. Start the HTTPS backend:"
 echo "   cd backend"
@@ -161,10 +161,10 @@ echo ""
 echo "3. Open https://localhost:5173 in your browser"
 echo "   (You'll see a security warning - click 'Advanced' → 'Proceed')"
 echo ""
-echo "📁 SSL files created in ./ssl/"
+echo " SSL files created in ./ssl/"
 echo "   - localhost.key (private key)"
 echo "   - localhost.crt (certificate)"
 echo "   - localhost.conf (certificate config)"
 echo ""
-echo "⚠️  Note: Self-signed certificates will show browser warnings"
+echo "   Note: Self-signed certificates will show browser warnings"
 echo "   This is normal for development - use Let's Encrypt for production"

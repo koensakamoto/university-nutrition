@@ -10,23 +10,23 @@ EMAIL=${2:-"admin@your-domain.com"}
 NGINX_CONFIG_DIR="/etc/nginx/sites-available"
 NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
 
-echo "🔒 Setting up SSL certificates for Campus Nutrition App"
+echo " Setting up SSL certificates for Campus Nutrition App"
 echo "Domain: $DOMAIN"
 echo "Email: $EMAIL"
 
 # Check if running as root
 if [[ $EUID -ne 0 ]]; then
-   echo "❌ This script must be run as root (use sudo)" 
+   echo " This script must be run as root (use sudo)" 
    exit 1
 fi
 
 # Update system packages
-echo "📦 Updating system packages..."
+echo " Updating system packages..."
 apt update
 
 # Install nginx if not present
 if ! command -v nginx &> /dev/null; then
-    echo "📦 Installing nginx..."
+    echo " Installing nginx..."
     apt install -y nginx
 fi
 
@@ -37,7 +37,7 @@ if ! command -v certbot &> /dev/null; then
 fi
 
 # Create nginx configuration for the app
-echo "⚙️ Creating nginx configuration..."
+echo " Creating nginx configuration..."
 cat > "$NGINX_CONFIG_DIR/campus-nutrition" << EOF
 # Campus Nutrition App - Nginx Configuration
 server {
@@ -127,33 +127,33 @@ echo "🧪 Testing nginx configuration..."
 nginx -t
 
 # Reload nginx
-echo "🔄 Reloading nginx..."
+echo " Reloading nginx..."
 systemctl reload nginx
 
 # Open firewall ports
-echo "🔥 Configuring firewall..."
+echo "Configuring firewall..."
 ufw allow 'Nginx Full'
 ufw --force enable
 
 # Obtain SSL certificate
-echo "🔒 Obtaining SSL certificate from Let's Encrypt..."
+echo " Obtaining SSL certificate from Let's Encrypt..."
 certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "$EMAIL" --redirect
 
 # Set up auto-renewal
-echo "⏰ Setting up automatic certificate renewal..."
+echo " Setting up automatic certificate renewal..."
 systemctl enable certbot.timer
 systemctl start certbot.timer
 
 # Test auto-renewal
-echo "🧪 Testing certificate auto-renewal..."
+echo " Testing certificate auto-renewal..."
 certbot renew --dry-run
 
-echo "✅ SSL setup complete!"
+echo " SSL setup complete!"
 echo ""
-echo "🎉 Your Campus Nutrition app is now available at:"
+echo " Your Campus Nutrition app is now available at:"
 echo "   https://$DOMAIN"
 echo ""
-echo "📋 Next steps:"
+echo " Next steps:"
 echo "1. Update your .env file with the new HTTPS URLs:"
 echo "   FRONTEND_URL=https://$DOMAIN"
 echo "   BACKEND_URL=https://$DOMAIN"
@@ -164,6 +164,6 @@ echo "3. Start your backend server:"
 echo "   cd /var/www/campus-nutrition/backend"
 echo "   python production_server.py"
 echo ""
-echo "📊 Certificate status:"
+echo " Certificate status:"
 certbot certificates
 EOF
