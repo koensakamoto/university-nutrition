@@ -315,7 +315,7 @@ class IncrementalMenuScraper:
                                 hall_data = {
                                     "name": dining_hall,
                                     "meals": [{
-                                        "name": meal,
+                                        "meal_name": meal,  # Fixed: use "meal_name" not "name"
                                         "stations": [{
                                             "name": "Main Menu",  # Default station name
                                             "items": menu_items
