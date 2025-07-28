@@ -38,7 +38,6 @@ Then open your browser and you're good to go!
 
 - **Frontend:** React, Tailwind CSS, and Recharts for the charts
 - **Backend:** Python with FastAPI and MongoDB for data storage
-- **AI:** Custom agents built with LangGraph for nutrition advice
 - **Auth:** Google login integration for easy sign-in
 
 The whole thing is designed to be fast and responsive, with optimizations for real-world usage.
