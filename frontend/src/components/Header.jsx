@@ -13,7 +13,7 @@
 
 // } from 'lucide-react'
 // import ProfileMenu from './ProfileMenu'
-// import ULogo from "../images/ULogo.png"
+// import ULogo from "../images/ULogo-32.png"
 // import { useAuth } from '../AuthProvider'
 
 // const Header = () => {
@@ -195,7 +195,7 @@ import {
   LayoutDashboard
 } from 'lucide-react'
 import ProfileMenu from './ProfileMenu'
-import ULogo from "../images/ULogo.png"
+import ULogo from "../images/ULogo-32.png"
 import { useAuth } from '../AuthProvider'
 
 // Helper function to handle image URLs
@@ -232,6 +232,8 @@ const Header = () => {
                 src={ULogo}
                 alt="University Logo"
                 className="w-8 h-8"
+                width="32"
+                height="32"
               />
             </div>
             <div>
@@ -343,6 +345,8 @@ const Header = () => {
           <button
             className="md:hidden p-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200"
             onClick={toggleMobileMenu}
+            aria-label={mobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <XIcon size={24} /> : <MenuIcon size={24} />}
           </button>
