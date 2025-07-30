@@ -43,4 +43,4 @@ ENV DISPLAY=:99
 RUN chmod +x railway_cron.py
 
 # Default command (will be overridden by Railway)
-CMD ["python", "railway_cron.py"]
+CMD ["python", "backend/railway_cron.py"]
