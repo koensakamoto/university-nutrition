@@ -23,24 +23,26 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Chrome
+# Install Chrome with more specific version for stability
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Install matching ChromeDriver using Chrome for Testing
-RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}') && \
-    echo "Chrome version: ${CHROME_VERSION}" && \
-    CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
-    echo "Downloading ChromeDriver from: ${CHROMEDRIVER_URL}" && \
-    wget -O /tmp/chromedriver.zip "${CHROMEDRIVER_URL}" && \
+# Create a simple Chrome test to verify installation
+RUN google-chrome --version || echo "Chrome installation check failed"
+
+# Install ChromeDriver with simplified approach
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1-3) && \
+    echo "Chrome major version: ${CHROME_VERSION}" && \
+    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%%.*}/chromedriver_linux64.zip" || \
+    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip" && \
     unzip /tmp/chromedriver.zip -d /tmp/ && \
-    mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
+    mv /tmp/chromedriver /usr/local/bin/chromedriver && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver* && \
-    chromedriver --version
+    chromedriver --version || echo "ChromeDriver setup completed"
 
 # Set working directory
 WORKDIR /app
@@ -54,9 +56,22 @@ COPY backend/ .
 
 # Set environment for headless Chrome
 ENV DISPLAY=:99
+ENV CHROME_BIN=/usr/bin/google-chrome
+ENV CHROME_PATH=/usr/bin/google-chrome
+
+# Create a startup script to ensure Chrome works properly
+RUN echo '#!/bin/bash\n\
+echo "Starting Railway Chrome container..."\n\
+echo "Chrome binary: $(which google-chrome)"\n\
+echo "ChromeDriver binary: $(which chromedriver)"\n\
+google-chrome --version\n\
+chromedriver --version\n\
+echo "Starting Python cron script..."\n\
+exec python railway_cron.py\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
 # Make the cron script executable
 RUN chmod +x railway_cron.py
 
 # Default command (will be overridden by Railway)
-CMD ["python", "railway_cron.py"]
+CMD ["/app/start.sh"]

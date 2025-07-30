@@ -175,14 +175,20 @@ class DiningHallScraper:
         options.add_argument('--disable-logging')
         options.add_argument('--disable-default-apps')
         options.add_argument('--aggressive-cache-discard')
-        # Additional stability flags for containerized environments
+        # Railway-specific stability flags - simplified approach  
         options.add_argument('--disable-background-timer-throttling')
         options.add_argument('--disable-backgrounding-occluded-windows')
         options.add_argument('--disable-renderer-backgrounding')
-        options.add_argument('--remote-debugging-port=9222')
-        options.add_argument('--single-process')
-        options.add_argument('--memory-pressure-off')
-        options.add_argument('--max_old_space_size=4096')
+        options.add_argument('--disable-hang-monitor')
+        options.add_argument('--disable-client-side-phishing-detection')
+        options.add_argument('--disable-popup-blocking')
+        options.add_argument('--disable-prompt-on-repost')
+        options.add_argument('--disable-sync')
+        options.add_argument('--disable-translate')
+        options.add_argument('--disable-windows10-custom-titlebar')
+        options.add_argument('--metrics-recording-only')
+        options.add_argument('--no-first-run')
+        options.add_argument('--no-default-browser-check')
         
         # Additional headless-specific options
         if self.headless:
@@ -218,25 +224,30 @@ class DiningHallScraper:
         user_agent = ua.random
         
         options = uc.ChromeOptions()
-        options.add_argument('--disable-blink-features=AutomationControlled')
-        options.add_argument(f'--user-agent={user_agent}')
+        
+        # Essential flags for Railway containerized environment
         options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
-        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--disable-dev-shm-usage')  
         options.add_argument('--disable-gpu')
-        options.add_argument('--disable-web-security')
-        options.add_argument('--disable-features=VizDisplayCompositor')
-        # Additional stability flags for containerized environments
-        options.add_argument('--disable-background-timer-throttling')
-        options.add_argument('--disable-backgrounding-occluded-windows')
-        options.add_argument('--disable-renderer-backgrounding')
         options.add_argument('--disable-extensions')
         options.add_argument('--disable-plugins')
-        options.add_argument('--disable-ipc-flooding-protection')
-        options.add_argument('--remote-debugging-port=9222')
-        options.add_argument('--single-process')
-        options.add_argument('--memory-pressure-off')
-        options.add_argument('--max_old_space_size=4096')
+        options.add_argument('--disable-images')
+        options.add_argument('--window-size=1280,720')
+        
+        # User agent
+        options.add_argument(f'--user-agent={user_agent}')
+        
+        # Additional minimal flags for stability
+        options.add_argument('--disable-background-timer-throttling')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--disable-backgrounding-occluded-windows')
+        options.add_argument('--disable-hang-monitor')
+        options.add_argument('--disable-prompt-on-repost')
+        options.add_argument('--no-first-run')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--disable-popup-blocking')
+        options.add_argument('--disable-translate')
+        options.add_argument('--disable-sync')
         
         # Add headless mode if needed
         if self.headless:

@@ -47,10 +47,12 @@ def run_main_scraper():
             logger.error("MONGODB_URI not found in environment variables")
             return False
             
+        # Try with more conservative settings for Railway
         scraper = DiningHallScraper(
             target_url=target_url,
             mongodb_uri=mongodb_uri,
-            headless=True  # Always headless on Railway
+            headless=True,  # Always headless on Railway
+            max_retries=1   # Reduce retries to fail fast
         )
         
         scraped_data = scraper.scrape_all_dining_halls()
