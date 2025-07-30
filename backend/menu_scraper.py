@@ -131,8 +131,11 @@ class DiningHallScraper:
             try:
                 self.logger.info(f"Setting up driver (attempt {attempt + 1}, headless={self.headless})")
                 
-                if self.headless:
-                    # Use standard Chrome driver for headless mode
+                if self.headless and UC_AVAILABLE:
+                    # Use undetected Chrome for headless mode (better for anti-bot detection)
+                    return self._setup_undetected_chrome()
+                elif self.headless:
+                    # Fallback to standard Chrome if undetected not available
                     return self._setup_standard_chrome()
                 else:
                     # Use undetected Chrome for non-headless mode
@@ -172,10 +175,17 @@ class DiningHallScraper:
         options.add_argument('--disable-logging')
         options.add_argument('--disable-default-apps')
         options.add_argument('--aggressive-cache-discard')
+        # Additional stability flags for containerized environments
+        options.add_argument('--disable-background-timer-throttling')
+        options.add_argument('--disable-backgrounding-occluded-windows')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--remote-debugging-port=9222')
+        options.add_argument('--single-process')
+        options.add_argument('--memory-pressure-off')
+        options.add_argument('--max_old_space_size=4096')
         
         # Additional headless-specific options
         if self.headless:
-            options.add_argument('--disable-background-timer-throttling')
             options.add_argument('--disable-backgrounding-occluded-windows')
             options.add_argument('--disable-renderer-backgrounding')
             options.add_argument('--disable-background-networking')
@@ -199,7 +209,7 @@ class DiningHallScraper:
         return driver
     
     def _setup_undetected_chrome(self) -> webdriver.Chrome:
-        """Set up undetected Chrome driver for non-headless mode."""
+        """Set up undetected Chrome driver for headless and non-headless mode."""
         if not UC_AVAILABLE:
             self.logger.warning("undetected-chromedriver not available, falling back to standard Chrome")
             return self._setup_standard_chrome()
@@ -216,6 +226,22 @@ class DiningHallScraper:
         options.add_argument('--disable-gpu')
         options.add_argument('--disable-web-security')
         options.add_argument('--disable-features=VizDisplayCompositor')
+        # Additional stability flags for containerized environments
+        options.add_argument('--disable-background-timer-throttling')
+        options.add_argument('--disable-backgrounding-occluded-windows')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--disable-extensions')
+        options.add_argument('--disable-plugins')
+        options.add_argument('--disable-ipc-flooding-protection')
+        options.add_argument('--remote-debugging-port=9222')
+        options.add_argument('--single-process')
+        options.add_argument('--memory-pressure-off')
+        options.add_argument('--max_old_space_size=4096')
+        
+        # Add headless mode if needed
+        if self.headless:
+            options.add_argument('--headless=new')
+            self.logger.info("Setting up undetected Chrome in headless mode")
         
         driver = uc.Chrome(options=options)
         driver.set_window_size(1920, 1080)
