@@ -1,4 +1,3 @@
-
 import time
 import datetime
 import random
@@ -76,11 +75,11 @@ class DiningHallScraper:
             "calories_from_fat": "calories_from_fat",
         }
         
-        # Timeouts and delays
-        self.DEFAULT_TIMEOUT = 8 if headless else 6
-        self.MODAL_TIMEOUT = 4 if headless else 3
-        self.MIN_WAIT = 0.2 if headless else 0.1
-        self.MAX_WAIT = 0.8 if headless else 0.5
+        # Timeouts and delays - further optimized
+        self.DEFAULT_TIMEOUT = 6 if headless else 5
+        self.MODAL_TIMEOUT = 2 if headless else 1.5  # Reduced timeout for faster operation
+        self.MIN_WAIT = 0.1 if headless else 0.05
+        self.MAX_WAIT = 0.5 if headless else 0.3
         
         # Track failed items to avoid infinite loops
         self.failed_items = set()
@@ -170,6 +169,11 @@ class DiningHallScraper:
         options.add_argument('--disable-extensions')
         options.add_argument('--disable-plugins')
         options.add_argument('--disable-images')  # Speed up loading
+        options.add_argument('--disable-javascript-harmony-shipping')
+        options.add_argument('--disable-ipc-flooding-protection')
+        options.add_argument('--disable-logging')
+        options.add_argument('--disable-default-apps')
+        options.add_argument('--aggressive-cache-discard')
         
         # Additional headless-specific options
         if self.headless:
@@ -177,6 +181,8 @@ class DiningHallScraper:
             options.add_argument('--disable-backgrounding-occluded-windows')
             options.add_argument('--disable-renderer-backgrounding')
             options.add_argument('--disable-background-networking')
+            options.add_argument('--disable-component-update')
+            options.add_argument('--disable-sync')
         
         # Experimental options
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
@@ -184,9 +190,9 @@ class DiningHallScraper:
         
         driver = webdriver.Chrome(options=options)
         
-        # Set timeouts - reduced for speed
-        driver.implicitly_wait(5)
-        driver.set_page_load_timeout(60)
+        # Set timeouts - further reduced for speed
+        driver.implicitly_wait(3)
+        driver.set_page_load_timeout(45)
         
         # Apply stealth features if not headless
         if not self.headless:
@@ -215,7 +221,7 @@ class DiningHallScraper:
         
         driver = uc.Chrome(options=options)
         driver.set_window_size(1920, 1080)
-        driver.implicitly_wait(5)
+        driver.implicitly_wait(3)
         
         # Apply stealth features
         self._apply_stealth_features(driver)
@@ -430,7 +436,7 @@ class DiningHallScraper:
             
             button = buttons[0]
             self.driver.execute_script("arguments[0].scrollIntoView({behavior: 'instant', block: 'center'})", button)
-            self.human_wait(0.5, 1.0)
+            self.human_wait(0.1, 0.2)  # Faster scroll wait
             
             # Use modal context manager
             with self.modal_context(item_name):
@@ -449,7 +455,7 @@ class DiningHallScraper:
                     raise Exception(f"Modal did not open for {item_name}")
                 
                 nutrition_details = self._extract_modal_data()
-                self.human_wait(0.3, 0.7)
+                self.human_wait(0.05, 0.1)  # Minimal modal close wait
             
             return nutrition_details
             
@@ -590,7 +596,8 @@ class DiningHallScraper:
                         item_data = self._extract_item_from_row(row)
                         if item_data:
                             items_in_station.append(item_data)
-                            self.human_wait(0.8, 1.5)  # Reasonable wait time
+                            # Reduced wait time for incremental scraper speed
+                            self.human_wait(0.1, 0.2)
                     
                     except Exception as e:
                         self.logger.error(f"Error processing row {row_idx} in {station_name}: {e}")
@@ -742,7 +749,7 @@ class DiningHallScraper:
                 raise RuntimeError("Driver failed to initialize properly")
             
             self.driver.get(self.target_url)
-            self.human_wait(5, 8)
+            self.human_wait(2, 4)
             
             if not self.is_driver_alive():
                 raise RuntimeError("Driver died after loading page")
@@ -890,7 +897,7 @@ class DiningHallScraper:
                 return meals_data
             
             # Wait for meal tabs to load
-            WebDriverWait(self.driver, 20).until(
+            WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".nav.nav-tabs"))
             )
             
@@ -946,7 +953,7 @@ class DiningHallScraper:
             if not self.safe_click(target_button, f"dining hall button for {dining_hall_name}"):
                 return False
             
-            self.human_wait(3, 4)
+            self.human_wait(1, 2)
             
             # Verify menu tables are present
             WebDriverWait(self.driver, self.DEFAULT_TIMEOUT).until(
@@ -979,7 +986,7 @@ class DiningHallScraper:
     def _select_meal_tab(self, meal_name: str) -> bool:
         """Select a specific meal tab."""
         try:
-            tab_button = WebDriverWait(self.driver, 20).until(
+            tab_button = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, f"//ul[contains(@class, 'nav-tabs')]/li/a[normalize-space()='{meal_name}']"))
             )
             
@@ -987,7 +994,7 @@ class DiningHallScraper:
                 return False
             
             # Wait for content to load
-            WebDriverWait(self.driver, 15).until(
+            WebDriverWait(self.driver, 8).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "table.menu-items tbody tr"))
             )
             
