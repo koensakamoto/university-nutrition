@@ -273,10 +273,11 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
             {diningHalls.map(hall => {
               const availableMeals = mealTypesByHall[hall] || [];
               return (
-                <div 
+                <button 
                   key={hall} 
-                  className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 cursor-pointer hover:border-blue-300 hover:shadow-lg transition-all duration-300 group shadow-sm touch-manipulation"
+                  className="bg-white border border-gray-200 rounded-xl p-6 sm:p-8 cursor-pointer hover:border-blue-300 hover:shadow-lg transition-all duration-300 group shadow-sm touch-manipulation w-full text-left"
                   onClick={() => setDiningHall(hall)}
+                  aria-label={`Select ${hall} dining hall`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -304,7 +305,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
                     </div>
                     <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -353,14 +354,15 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
               }
               
               return (
-                <div 
+                <button 
                   key={meal}
-                  className={`bg-white border rounded-xl p-6 sm:p-8 cursor-pointer transition-all duration-300 group shadow-sm touch-manipulation ${
+                  className={`bg-white border rounded-xl p-6 sm:p-8 cursor-pointer transition-all duration-300 group shadow-sm touch-manipulation w-full text-left ${
                     isCurrentMeal 
                       ? 'border-blue-300 bg-blue-50 hover:bg-blue-100 hover:shadow-lg' 
                       : 'border-gray-200 hover:border-gray-300 hover:shadow-lg'
                   }`}
                   onClick={() => setMealType(meal)}
+                  aria-label={`Select ${meal} meal type`}
                 >
                   <div className="text-center">
                     <UtensilsIcon className={`mx-auto h-8 w-8 mb-3 ${
@@ -385,7 +387,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
                       Click to view menu →
                     </p>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -449,7 +451,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
   };
 
   return (
-    <div className="flex flex-col flex-grow w-full p-2 sm:p-4 lg:p-6 bg-gray-50 rounded-lg">
+    <main className="flex flex-col flex-grow w-full p-2 sm:p-4 lg:p-6 bg-gray-50 rounded-lg" role="main">
       {/* Filter Section with Card Design */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
         <Filter
@@ -496,7 +498,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
         onAddItem={addToTracker}
       />
       
-    </div>
+    </main>
   )
 }
 

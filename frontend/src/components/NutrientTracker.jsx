@@ -116,7 +116,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                 <button
                     onClick={clearItems}
                     className="p-1 rounded-full text-gray-500 hover:bg-gray-100"
-                    title="Clear plate"
+                    aria-label="Clear all items from plate"
                 >
                     <TrashIcon size={18} />
                 </button>
@@ -244,6 +244,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                                     <button
                                         onClick={() => removeItem(item.uniqueId)}
                                         className="text-gray-400 hover:text-gray-600 touch-manipulation p-1 -m-1"
+                                        aria-label={`Remove ${item.name} from plate`}
                                     >
                                         <XIcon size={16} />
                                     </button>

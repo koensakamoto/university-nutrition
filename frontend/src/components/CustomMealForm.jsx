@@ -60,11 +60,20 @@ const CustomMealForm = ({ isOpen, onClose, onAddItem }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Add Custom Meal</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h2 id="modal-title" className="text-xl font-semibold text-gray-800">Add Custom Meal</h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Close modal"
+          >
             <XIcon size={24} />
           </button>
         </div>

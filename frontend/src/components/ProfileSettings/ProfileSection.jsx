@@ -435,41 +435,48 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
       {validationErrors.general && <div className="text-red-600 mb-4">{validationErrors.general}</div>}
       <div className="space-y-6">
         <div className="overflow-visible">
-          <label className="block text-gray-700 font-medium mb-2">Sex</label>
-          <div className="flex space-x-8">
-            <label className="flex items-center cursor-pointer">
-              <div className="relative">
-                <input 
-                  type="radio" 
-                  name="sex" 
-                  value="male" 
-                  className="sr-only" 
-                  checked={sex === 'male'} 
-                  onChange={handleSexChange} 
-                />
-                <div className={`w-4 h-4 rounded-full border-2 ${sex === 'male' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
-                  {sex === 'male' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+          <fieldset>
+            <legend className="block text-gray-700 font-medium mb-2">Sex</legend>
+            <div className="flex space-x-8">
+              <label className="flex items-center cursor-pointer" htmlFor="sex-male">
+                <div className="relative">
+                  <input 
+                    type="radio" 
+                    name="sex" 
+                    value="male" 
+                    className="sr-only" 
+                    checked={sex === 'male'} 
+                    onChange={handleSexChange} 
+                    id="sex-male"
+                    aria-describedby="sex-description"
+                  />
+                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'male' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                    {sex === 'male' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+                  </div>
                 </div>
-              </div>
-              <span className="text-gray-700">Male</span>
-            </label>
-            <label className="flex items-center cursor-pointer">
-              <div className="relative">
-                <input 
-                  type="radio" 
-                  name="sex" 
-                  value="female" 
-                  className="sr-only" 
-                  checked={sex === 'female'} 
-                  onChange={handleSexChange} 
-                />
-                <div className={`w-4 h-4 rounded-full border-2 ${sex === 'female' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
-                  {sex === 'female' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+                <span className="text-gray-700">Male</span>
+              </label>
+              <label className="flex items-center cursor-pointer" htmlFor="sex-female">
+                <div className="relative">
+                  <input 
+                    type="radio" 
+                    name="sex" 
+                    value="female" 
+                    className="sr-only" 
+                    checked={sex === 'female'} 
+                    onChange={handleSexChange} 
+                    id="sex-female"
+                    aria-describedby="sex-description"
+                  />
+                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'female' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                    {sex === 'female' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
+                  </div>
                 </div>
-              </div>
-              <span className="text-gray-700">Female</span>
-            </label>
-          </div>
+                <span className="text-gray-700">Female</span>
+              </label>
+            </div>
+            <div id="sex-description" className="sr-only">Required for calculating daily nutritional needs</div>
+          </fieldset>
         </div>
         <div>
           <label className="block text-gray-700 font-medium mb-2">Birthday</label>

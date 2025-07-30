@@ -9,7 +9,7 @@ import {
   Settings,
   LayoutDashboard
 } from 'lucide-react'
-import ULogo from "../images/ULogo-32.png"
+import ULogo from "../images/ULogo.png"
 import { useAuth } from '../AuthProvider'
 
 // Helper function to handle image URLs

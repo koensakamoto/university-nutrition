@@ -19,11 +19,20 @@ const GoogleIcon = () => (
 function TermsOfServiceModal({ isOpen, onClose }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="terms-modal-title"
+    >
       <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Terms of Service</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 id="terms-modal-title" className="text-xl font-bold text-gray-900">Terms of Service</h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-500 hover:text-gray-700"
+            aria-label="Close Terms of Service modal"
+          >
             <X size={24} />
           </button>
         </div>
@@ -80,11 +89,20 @@ function TermsOfServiceModal({ isOpen, onClose }) {
 function PrivacyPolicyModal({ isOpen, onClose }) {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="privacy-modal-title"
+    >
       <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[80vh] flex flex-col">
         <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-bold text-gray-900">Privacy Policy</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+          <h2 id="privacy-modal-title" className="text-xl font-bold text-gray-900">Privacy Policy</h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-500 hover:text-gray-700"
+            aria-label="Close Privacy Policy modal"
+          >
             <X size={24} />
           </button>
         </div>

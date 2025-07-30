@@ -9,8 +9,13 @@ export const LoadingSpinner = ({ size = 'md', message, className = '' }) => {
 
   return (
     <div className={`flex flex-col items-center justify-center py-8 ${className}`}>
-      <div className={`animate-spin rounded-full border-b-2 border-red-600 ${sizeClasses[size]}`}></div>
-      {message && <p className="mt-2 text-sm text-gray-500">{message}</p>}
+      <div 
+        className={`animate-spin rounded-full border-b-2 border-red-600 ${sizeClasses[size]}`}
+        role="status"
+        aria-live="polite"
+        aria-label="Loading"
+      ></div>
+      {message && <p className="mt-2 text-sm text-gray-500" aria-live="polite">{message}</p>}
     </div>
   );
 };
