@@ -55,13 +55,24 @@ def run_main_scraper():
         
         scraped_data = scraper.scrape_all_dining_halls()
         
-        if scraped_data.get("dining_halls"):
+        if scraped_data and scraped_data.get("dining_halls"):
             # Save to JSON
             foods = scraper.save_to_json(scraped_data)
             
             # Upload to MongoDB
             if foods:
-                scraper.upload_to_mongodb(foods)
+                success = scraper.upload_to_mongodb(foods)
+                if success:
+                    logger.info(f"Successfully uploaded {len(foods)} foods to MongoDB")
+                else:
+                    logger.error("Failed to upload foods to MongoDB")
+                    return False
+            else:
+                logger.error("No foods data to upload")
+                return False
+        else:
+            logger.error("No dining halls data scraped - this could indicate anti-bot detection or website changes")
+            return False
         
         logger.info("Main menu scraper completed successfully")
         return True

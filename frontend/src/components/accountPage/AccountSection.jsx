@@ -400,7 +400,7 @@ export const AccountSection = () => {
       try {
         const urlObj = new URL(url);
         // Add your trusted domains here
-        const trustedDomains = ['imgur.com', 'gravatar.com', 'amazonaws.com'];
+        const trustedDomains = ['imgur.com', 'gravatar.com', 'amazonaws.com', 'cloudinary.com'];
         const isTrusted = trustedDomains.some(domain => 
           urlObj.hostname === domain || urlObj.hostname.endsWith('.' + domain)
         );
