@@ -170,10 +170,6 @@ return (
 );
 
 }
-//const logout = async(email, pass)
-
-
-
 
 // Custom hook for consuming the context
 export function useAuth() {
