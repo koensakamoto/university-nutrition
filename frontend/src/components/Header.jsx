@@ -15,8 +15,12 @@ import { useAuth } from '../AuthProvider'
 // Helper function to handle image URLs
 const getImageUrl = (url) => {
   if (!url) return null;
+  // Cloudinary URLs are complete URLs, local static files need proxy routing
+  if (url.startsWith('http')) {
+    return url; // Cloudinary or other external URLs
+  }
   if (url.startsWith('/static/')) {
-    return url; // Proxy will handle the routing
+    return url; // Local static files (legacy)
   }
   return url;
 };
