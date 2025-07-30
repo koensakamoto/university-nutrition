@@ -22,6 +22,8 @@ import csv
 import json
 from authlib.integrations.starlette_client import OAuth
 from pydantic import BaseModel
+import cloudinary
+import cloudinary.uploader
 
 from models.food import Food
 
@@ -40,6 +42,14 @@ from starlette.middleware.sessions import SessionMiddleware
 
 # Load environment variables first
 load_dotenv()
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+    secure=True
+)
 
 # Configure logging based on environment
 def setup_logging():
@@ -733,19 +743,32 @@ async def upload_profile_image(request: Request, image: UploadFile = File(...)):
     if not file_is_valid:
         raise HTTPException(status_code=400, detail="Invalid image file. File content doesn't match expected image format.")
     
-    # Generate a secure filename
-    filename = f"{uuid.uuid4().hex}{ext}"
-    save_dir = "static/profile_images"
-    os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, filename)
-    
-    # Write file content
-    with open(save_path, "wb") as buffer:
-        buffer.write(content)
-    
-    # Construct the URL
-    url = f"/static/profile_images/{filename}"
-    return {"url": url}
+    try:
+        # Upload to Cloudinary
+        result = cloudinary.uploader.upload(
+            content,
+            folder="profile_images",
+            public_id=f"user_{user['_id']}",
+            overwrite=True,
+            transformation=[
+                {"width": 200, "height": 200, "crop": "fill", "gravity": "face"},
+                {"quality": "auto", "fetch_format": "auto"}
+            ]
+        )
+        
+        # Save the Cloudinary URL to user's profile
+        image_url = result['secure_url']
+        users_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"profile.image": image_url}}
+        )
+        
+        # Return the Cloudinary URL
+        return {"url": image_url}
+        
+    except Exception as e:
+        logger.error(f"Cloudinary upload failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to upload image. Please try again.")
 
 def calculate_bmr(sex, weight_kg, height_cm, age):
     if sex == 'male':
@@ -857,17 +880,23 @@ def delete_account(request: Request):
     user = get_current_user(request, users_collection)
     user_id = str(user["_id"])
     
-    # Delete profile image file if it exists
+    # Delete profile image if it exists
     if user.get("profile", {}).get("image"):
         image_url = user["profile"]["image"]
-        if image_url.startswith("/static/profile_images/"):
-            image_path = image_url[1:]  # Remove leading slash
-            full_path = os.path.join(os.getcwd(), image_path)
-            try:
+        try:
+            if image_url.startswith("/static/profile_images/"):
+                # Legacy local file deletion
+                image_path = image_url[1:]  # Remove leading slash
+                full_path = os.path.join(os.getcwd(), image_path)
                 if os.path.exists(full_path):
                     os.remove(full_path)
-            except Exception as e:
-                pass
+            else:
+                # Cloudinary image deletion
+                public_id = f"profile_images/user_{user['_id']}"
+                cloudinary.uploader.destroy(public_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete profile image: {e}")
+            pass
     
     # Delete all user-related data from database
     users_collection.delete_one({"email": user["email"]})
@@ -1587,16 +1616,7 @@ class CacheControlMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CacheControlMiddleware)
 
-# Serve static files with optimized settings - create directory if it doesn't exist
-import os
-try:
-    if not os.path.exists("static"):
-        os.makedirs("static/profile_images", exist_ok=True)
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-    logger.info("Static files mounted successfully")
-except Exception as e:
-    logger.error(f"Failed to mount static files: {e}")
-    # Continue without static files to prevent app crash
+# Static files removed - using Cloudinary for profile images
 
 
 @app.get("/api/available-options")
