@@ -17,14 +17,17 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ChromeDriver
-RUN CHROMEDRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE` && \
-    mkdir -p /opt/chromedriver-$CHROMEDRIVER_VERSION && \
-    curl -sS -o /tmp/chromedriver_linux64.zip http://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
-    unzip -qq /tmp/chromedriver_linux64.zip -d /opt/chromedriver-$CHROMEDRIVER_VERSION && \
-    rm /tmp/chromedriver_linux64.zip && \
-    chmod +x /opt/chromedriver-$CHROMEDRIVER_VERSION/chromedriver && \
-    ln -fs /opt/chromedriver-$CHROMEDRIVER_VERSION/chromedriver /usr/local/bin/chromedriver
+# Install matching ChromeDriver using Chrome for Testing
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}') && \
+    echo "Chrome version: ${CHROME_VERSION}" && \
+    CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
+    echo "Downloading ChromeDriver from: ${CHROMEDRIVER_URL}" && \
+    wget -O /tmp/chromedriver.zip "${CHROMEDRIVER_URL}" && \
+    unzip /tmp/chromedriver.zip -d /tmp/ && \
+    mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver && \
+    chmod +x /usr/local/bin/chromedriver && \
+    rm -rf /tmp/chromedriver* && \
+    chromedriver --version
 
 # Set working directory
 WORKDIR /app
