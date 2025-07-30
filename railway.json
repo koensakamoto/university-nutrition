@@ -12,21 +12,21 @@
   "cron": [
     {
       "schedule": "0 13 * * *",
-      "command": "python backend/railway_cron.py",
+      "command": "python railway_cron.py",
       "env": {
         "CRON_TASK": "main"
       }
     },
     {
       "schedule": "0 17 * * *", 
-      "command": "python backend/railway_cron.py",
+      "command": "python railway_cron.py",
       "env": {
         "CRON_TASK": "incremental"
       }
     },
     {
       "schedule": "0 21 * * *",
-      "command": "python backend/railway_cron.py", 
+      "command": "python railway_cron.py", 
       "env": {
         "CRON_TASK": "incremental"
       }
