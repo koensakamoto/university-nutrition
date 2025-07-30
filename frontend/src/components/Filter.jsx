@@ -169,13 +169,14 @@ const Filter = ({
                 {/* Date Picker */}
                 <div>
                     <label
-                        htmlFor="date"
+                        htmlFor="date-picker"
                         className="block text-xs font-medium text-gray-700 mb-1"
                     >
                         Date
                     </label>
                     <div className="relative">
                         <DatePicker
+                            id="date-picker"
                             selected={date}
                             onChange={(date) => setDate(date)}
                             className="block w-full pl-3 pr-8 py-2.5 sm:py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md touch-manipulation"
