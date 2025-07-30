@@ -148,7 +148,8 @@ class IncrementalMenuScraper:
                 self.scraper = DiningHallScraper(
                     target_url=self.target_url,
                     mongodb_uri=self.mongodb_uri,
-                    headless=self.headless
+                    headless=self.headless,
+                    max_retries=1  # Reduce retries for faster operation
                 )
             
             # Setup driver and navigate to the site
@@ -157,7 +158,7 @@ class IncrementalMenuScraper:
                 raise RuntimeError("Failed to initialize driver")
             
             self.scraper.driver.get(self.target_url)
-            self.scraper.human_wait(3, 5)
+            self.scraper.human_wait(1, 2)
             
             # Get all dining hall names
             dining_hall_names = self.scraper._get_dining_hall_names()
@@ -269,7 +270,8 @@ class IncrementalMenuScraper:
             self.scraper = DiningHallScraper(
                 target_url=self.target_url,
                 mongodb_uri=self.mongodb_uri,
-                headless=self.headless
+                headless=self.headless,
+                max_retries=1  # Reduce retries for faster operation
             )
             
             # Setup driver
@@ -278,7 +280,7 @@ class IncrementalMenuScraper:
                 raise RuntimeError("Failed to initialize driver")
             
             self.scraper.driver.get(self.target_url)
-            self.scraper.human_wait(3, 5)
+            self.scraper.human_wait(0.5, 1)  # Reduced initial wait
             
             # Group missing meals by dining hall for efficiency
             meals_by_hall = defaultdict(list)
@@ -288,9 +290,14 @@ class IncrementalMenuScraper:
             # Scrape each dining hall's missing meals
             all_new_foods = []
             
-            for dining_hall, meals_to_scrape in meals_by_hall.items():
+            for i, (dining_hall, meals_to_scrape) in enumerate(meals_by_hall.items()):
                 try:
                     self.logger.info(f"Processing {dining_hall}: {', '.join(meals_to_scrape)}")
+                    
+                    # Only navigate back to main page if not the first dining hall
+                    if i > 0:
+                        self.scraper.driver.get(self.target_url)
+                        self.scraper.human_wait(0.3, 0.7)  # Faster navigation wait
                     
                     # Select dining hall
                     if not self.scraper._select_dining_hall(dining_hall):
