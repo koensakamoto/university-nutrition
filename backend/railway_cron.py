@@ -19,7 +19,7 @@ load_dotenv()
 # Import your scrapers
 try:
     from menu_scraper import DiningHallScraper
-    from incremental_scraper import IncrementalScraper
+    from incremental_scraper import IncrementalMenuScraper
     SCRAPERS_AVAILABLE = True
 except ImportError as e:
     logger = logging.getLogger(__name__)
@@ -53,7 +53,16 @@ def run_main_scraper():
             headless=True  # Always headless on Railway
         )
         
-        scraper.scrape()
+        scraped_data = scraper.scrape_all_dining_halls()
+        
+        if scraped_data.get("dining_halls"):
+            # Save to JSON
+            foods = scraper.save_to_json(scraped_data)
+            
+            # Upload to MongoDB
+            if foods:
+                scraper.upload_to_mongodb(foods)
+        
         logger.info("Main menu scraper completed successfully")
         return True
         
@@ -73,13 +82,13 @@ def run_incremental_scraper():
             logger.error("MONGODB_URI not found in environment variables")
             return False
             
-        scraper = IncrementalScraper(
+        scraper = IncrementalMenuScraper(
             target_url=target_url,
             mongodb_uri=mongodb_uri,
             headless=True  # Always headless on Railway
         )
         
-        scraper.scrape()
+        scraper.run()
         logger.info("Incremental scraper completed successfully")
         return True
         
