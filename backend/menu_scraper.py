@@ -39,7 +39,6 @@ import certifi
 from dotenv import load_dotenv
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-from sentence_transformers import SentenceTransformer
 from fake_useragent import UserAgent
 
 
@@ -51,7 +50,6 @@ class DiningHallScraper:
         self.mongodb_uri = mongodb_uri or os.getenv("MONGODB_URI")
         self.max_retries = max_retries
         self.headless = headless
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
         
         # Ensure directories exist
         os.makedirs("debug_screenshots", exist_ok=True)
@@ -1004,33 +1002,9 @@ class DiningHallScraper:
             self.logger.error(f"Error selecting meal tab {meal_name}: {e}")
             return False
     
-    def generate_embedding_text(self, food: Dict[str, Any]) -> str:
-        """Generate text for semantic embedding with null-aware handling."""
-        name = food.get("name", "")
-        portion = food.get("portion_size", "")
-        labels = ", ".join(food.get("labels", []))
-        ingredients = ", ".join(food.get("ingredients", []))
-        meal = food.get("meal_name", "")
-        station = food.get("station", "")
-        hall = food.get("dining_hall", "")
-        
-        nutrients = food.get("nutrients", {})
-        # Handle null values in embedding text
-        calories = nutrients.get("calories") or ""
-        protein = nutrients.get("protein") or ""
-        carbs = nutrients.get("total_carbohydrates") or ""
-        fat = nutrients.get("total_fat") or ""
-        
-        return (
-            f"{name}, {portion}. "
-            f"Labels: {labels}. "
-            f"Ingredients: {ingredients}. "
-            f"Meal: {meal}, Station: {station}, Dining Hall: {hall}. "
-            f"Nutrition: {calories} calories, {protein}g protein, {carbs}g carbs, {fat}g fat."
-        )
     
     def save_to_json(self, data: Dict[str, Any], filename: str = "foods.json") -> List[Dict[str, Any]]:
-        """Save scraped data to JSON with embeddings."""
+        """Save scraped data to JSON."""
         foods = []
         date = data.get("date")
         
@@ -1052,9 +1026,6 @@ class DiningHallScraper:
                             "date": date
                         })
                         
-                        # Generate embedding
-                        embedding_text = self.generate_embedding_text(food_doc)
-                        food_doc["embedding"] = self.model.encode(embedding_text).tolist()
                         
                         foods.append(food_doc)
         
@@ -1125,7 +1096,7 @@ def main():
         scraped_data = scraper.scrape_all_dining_halls()
         
         if scraped_data.get("dining_halls"):
-            # Save to JSON with embeddings
+            # Save to JSON
             foods = scraper.save_to_json(scraped_data)
             
             # Upload to MongoDB
