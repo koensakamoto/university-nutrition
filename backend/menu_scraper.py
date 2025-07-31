@@ -131,11 +131,8 @@ class DiningHallScraper:
             try:
                 self.logger.info(f"Setting up driver (attempt {attempt + 1}, headless={self.headless})")
                 
-                if self.headless and UC_AVAILABLE:
-                    # Use undetected Chrome for headless mode (better for anti-bot detection)
-                    return self._setup_undetected_chrome()
-                elif self.headless:
-                    # Fallback to standard Chrome if undetected not available
+                if self.headless:
+                    # Use standard Chrome driver for headless mode
                     return self._setup_standard_chrome()
                 else:
                     # Use undetected Chrome for non-headless mode
@@ -175,23 +172,10 @@ class DiningHallScraper:
         options.add_argument('--disable-logging')
         options.add_argument('--disable-default-apps')
         options.add_argument('--aggressive-cache-discard')
-        # Railway-specific stability flags - simplified approach  
-        options.add_argument('--disable-background-timer-throttling')
-        options.add_argument('--disable-backgrounding-occluded-windows')
-        options.add_argument('--disable-renderer-backgrounding')
-        options.add_argument('--disable-hang-monitor')
-        options.add_argument('--disable-client-side-phishing-detection')
-        options.add_argument('--disable-popup-blocking')
-        options.add_argument('--disable-prompt-on-repost')
-        options.add_argument('--disable-sync')
-        options.add_argument('--disable-translate')
-        options.add_argument('--disable-windows10-custom-titlebar')
-        options.add_argument('--metrics-recording-only')
-        options.add_argument('--no-first-run')
-        options.add_argument('--no-default-browser-check')
         
         # Additional headless-specific options
         if self.headless:
+            options.add_argument('--disable-background-timer-throttling')
             options.add_argument('--disable-backgrounding-occluded-windows')
             options.add_argument('--disable-renderer-backgrounding')
             options.add_argument('--disable-background-networking')
@@ -215,7 +199,7 @@ class DiningHallScraper:
         return driver
     
     def _setup_undetected_chrome(self) -> webdriver.Chrome:
-        """Set up undetected Chrome driver for headless and non-headless mode."""
+        """Set up undetected Chrome driver for non-headless mode."""
         if not UC_AVAILABLE:
             self.logger.warning("undetected-chromedriver not available, falling back to standard Chrome")
             return self._setup_standard_chrome()
@@ -224,35 +208,14 @@ class DiningHallScraper:
         user_agent = ua.random
         
         options = uc.ChromeOptions()
-        
-        # Essential flags for Railway containerized environment
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')  
-        options.add_argument('--disable-gpu')
-        options.add_argument('--disable-extensions')
-        options.add_argument('--disable-plugins')
-        options.add_argument('--disable-images')
-        options.add_argument('--window-size=1280,720')
-        
-        # User agent
+        options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_argument(f'--user-agent={user_agent}')
-        
-        # Additional minimal flags for stability
-        options.add_argument('--disable-background-timer-throttling')
-        options.add_argument('--disable-renderer-backgrounding')
-        options.add_argument('--disable-backgrounding-occluded-windows')
-        options.add_argument('--disable-hang-monitor')
-        options.add_argument('--disable-prompt-on-repost')
-        options.add_argument('--no-first-run')
-        options.add_argument('--disable-default-apps')
-        options.add_argument('--disable-popup-blocking')
-        options.add_argument('--disable-translate')
-        options.add_argument('--disable-sync')
-        
-        # Add headless mode if needed
-        if self.headless:
-            options.add_argument('--headless=new')
-            self.logger.info("Setting up undetected Chrome in headless mode")
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--disable-web-security')
+        options.add_argument('--disable-features=VizDisplayCompositor')
         
         driver = uc.Chrome(options=options)
         driver.set_window_size(1920, 1080)
