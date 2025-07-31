@@ -33,16 +33,25 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | apt-key add
 # Create a simple Chrome test to verify installation
 RUN google-chrome --version || echo "Chrome installation check failed"
 
-# Install ChromeDriver with simplified approach
-RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1-3) && \
-    echo "Chrome major version: ${CHROME_VERSION}" && \
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION%%.*}/chromedriver_linux64.zip" || \
-    wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_linux64.zip" && \
-    unzip /tmp/chromedriver.zip -d /tmp/ && \
-    mv /tmp/chromedriver /usr/local/bin/chromedriver && \
+# Install matching ChromeDriver using Chrome for Testing (current method)
+RUN CHROME_VERSION=$(google-chrome --version | awk '{print $3}') && \
+    echo "Full Chrome version: ${CHROME_VERSION}" && \
+    CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" && \
+    echo "Downloading ChromeDriver from: ${CHROMEDRIVER_URL}" && \
+    (wget -O /tmp/chromedriver.zip "${CHROMEDRIVER_URL}" && \
+     unzip /tmp/chromedriver.zip -d /tmp/ && \
+     mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver) || \
+    (echo "Exact version not found, trying major version..." && \
+     MAJOR_VERSION=$(echo ${CHROME_VERSION} | cut -d'.' -f1) && \
+     CHROMEDRIVER_URL_MAJOR="https://storage.googleapis.com/chrome-for-testing-public/${MAJOR_VERSION}.0.0.0/linux64/chromedriver-linux64.zip" && \
+     echo "Trying major version URL: ${CHROMEDRIVER_URL_MAJOR}" && \
+     wget -O /tmp/chromedriver.zip "${CHROMEDRIVER_URL_MAJOR}" && \
+     unzip /tmp/chromedriver.zip -d /tmp/ && \
+     mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver) && \
     chmod +x /usr/local/bin/chromedriver && \
     rm -rf /tmp/chromedriver* && \
-    chromedriver --version || echo "ChromeDriver setup completed"
+    chromedriver --version && \
+    echo "ChromeDriver installation completed successfully"
 
 # Set working directory
 WORKDIR /app
@@ -61,12 +70,21 @@ ENV CHROME_PATH=/usr/bin/google-chrome
 
 # Create a startup script to ensure Chrome works properly
 RUN echo '#!/bin/bash\n\
-echo "Starting Railway Chrome container..."\n\
+echo "=== Railway Chrome Container Starting ==="\n\
 echo "Chrome binary: $(which google-chrome)"\n\
 echo "ChromeDriver binary: $(which chromedriver)"\n\
-google-chrome --version\n\
-chromedriver --version\n\
-echo "Starting Python cron script..."\n\
+echo "Chrome version: $(google-chrome --version)"\n\
+echo "ChromeDriver version: $(chromedriver --version)"\n\
+CHROME_VERSION=$(google-chrome --version | awk "{print \\$3}" | cut -d. -f1)\n\
+CHROMEDRIVER_VERSION=$(chromedriver --version | awk "{print \\$2}" | cut -d. -f1)\n\
+echo "Chrome major version: ${CHROME_VERSION}"\n\
+echo "ChromeDriver major version: ${CHROMEDRIVER_VERSION}"\n\
+if [ "${CHROME_VERSION}" = "${CHROMEDRIVER_VERSION}" ]; then\n\
+    echo "✓ Version compatibility: GOOD"\n\
+else\n\
+    echo "⚠ Version compatibility: MISMATCH (may cause issues)"\n\
+fi\n\
+echo "=== Starting Python cron script ==="\n\
 exec python railway_cron.py\n\
 ' > /app/start.sh && chmod +x /app/start.sh
 
