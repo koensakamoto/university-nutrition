@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Incremental Menu Scraper - Smart gap-filling scraper
+Incremental Scraper for Campus Nutrition App
 
-This script checks what dining hall meals have already been scraped for today
-and only scrapes the missing ones. Ideal for running later in the day to
-catch any meals that weren't available during the initial scrape.
+This scraper analyzes what data already exists in MongoDB for today's date
+and only scrapes missing meal combinations. It uses the exact same robust
+scraping logic as the main scraper but targets only missing data.
+
+Key Features:
+- Smart detection of missing meals per dining hall
+- Same crash recovery mechanisms as main scraper
+- Proper data formatting (individual items, not stations)
+- 3-tier retry logic with driver restart
+- Comprehensive logging and error handling
 
 Usage:
-    python incremental_scraper.py [--dry-run] [--force-rescrape]
-    
-Options:
-    --dry-run: Show what would be scraped without actually scraping
-    --force-rescrape: Re-scrape all meals even if they already exist
+    python incremental_scraper.py                    # Normal run
+    python incremental_scraper.py --dry-run         # Show what would be scraped
+    python incremental_scraper.py --force-rescrape  # Rescrape everything
 """
 
 import os
@@ -19,245 +24,230 @@ import sys
 import datetime
 import logging
 import argparse
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Any
 from collections import defaultdict
 
 # Import the existing scraper components
 from menu_scraper import DiningHallScraper
 
-# Try to import required packages with fallback
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    def load_dotenv():
-        pass
+# MongoDB imports
+from pymongo import MongoClient
+from pymongo.server_api import ServerApi
+import certifi
 
-try:
-    from pymongo.mongo_client import MongoClient
-    from pymongo.server_api import ServerApi
-    import certifi
-    MONGODB_AVAILABLE = True
-except ImportError:
-    print("Warning: MongoDB packages not available. Install with: pip install pymongo certifi")
-    MONGODB_AVAILABLE = False
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
 
+# Configuration
+TARGET_URL = "https://dining.utah.edu/menus/"
+MONGODB_URI = os.getenv('MONGODB_URI')
+MAX_RETRIES = 3
+HEADLESS = True
 
-class IncrementalMenuScraper:
-    """Smart scraper that only fills gaps in today's menu data."""
+class IncrementalScraper:
+    """
+    Scraper that only targets missing meal combinations for today.
+    Uses the exact same extraction logic as the main scraper.
+    """
     
-    def __init__(self, mongodb_uri: str, target_url: str, headless: bool = True, dry_run: bool = False):
-        if not MONGODB_AVAILABLE:
-            raise RuntimeError("MongoDB packages not available. Please install pymongo and certifi.")
-            
-        self.mongodb_uri = mongodb_uri
+    def __init__(self, target_url: str, mongodb_uri: str, headless: bool = True, dry_run: bool = False):
         self.target_url = target_url
+        self.mongodb_uri = mongodb_uri
         self.headless = headless
         self.dry_run = dry_run
         self.today = datetime.date.today().isoformat()
         
         # Setup logging
-        self._setup_logging()
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
         
-        # MongoDB connection
-        self.client = MongoClient(mongodb_uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
-        self.db = self.client["nutritionapp"]
-        self.foods_collection = self.db["foods"]
-        
-        # Initialize the base scraper (will be created when needed)
-        self.scraper = None
-        
-    def _setup_logging(self):
-        """Configure logging for incremental scraper."""
-        log_format = "%(asctime)s [%(levelname)s] %(message)s"
-        
-        # Create logs directory if it doesn't exist
-        os.makedirs("logs", exist_ok=True)
-        
-        # Setup file handler
-        file_handler = logging.FileHandler(f"logs/incremental_scraper_{self.today}.log", mode="a")
-        file_handler.setFormatter(logging.Formatter(log_format))
-        
-        # Setup console handler
-        console_handler = logging.StreamHandler()
-        console_handler.setFormatter(logging.Formatter(log_format))
-        
-        # Configure logger
-        self.logger = logging.getLogger("incremental_scraper")
+        self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
+        
+        # Clear any existing handlers
+        self.logger.handlers.clear()
+        
+        # Create formatters
+        formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+        
+        # File handler
+        file_handler = logging.FileHandler(f"{log_dir}/incremental_scraper_{self.today}.log")
+        file_handler.setFormatter(formatter)
         self.logger.addHandler(file_handler)
+        
+        # Console handler
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
         
         # Prevent duplicate logs
         self.logger.propagate = False
-    
-    def get_existing_meals(self) -> Dict[str, Set[str]]:
-        """
-        Get what dining hall meals already exist in the database for today.
         
-        Returns:
-            Dict mapping dining_hall -> set of meal_names that exist
+        # MongoDB connection
+        self.client = None
+        self.db = None
+        self.foods_collection = None
+        self.scraper = None
+        
+        # Connect to MongoDB
+        if self.mongodb_uri:
+            self.client = MongoClient(self.mongodb_uri, server_api=ServerApi('1'), tlsCAFile=certifi.where())
+            self.db = self.client["nutritionapp"]
+            self.foods_collection = self.db["foods"]
+    
+    def get_existing_data_for_today(self) -> Dict[str, Set[str]]:
         """
+        Get existing meal combinations from MongoDB for today.
+        Returns: {dining_hall: {meal1, meal2, ...}}
+        """
+        existing_combinations = defaultdict(set)
+        
+        if not self.foods_collection:
+            return existing_combinations
+        
         try:
-            # Query for distinct combinations of dining_hall and meal_name for today
-            pipeline = [
-                {"$match": {"date": self.today}},
-                {"$group": {
-                    "_id": {
-                        "dining_hall": "$dining_hall",
-                        "meal_name": "$meal_name"
-                    },
-                    "count": {"$sum": 1}
-                }},
-                {"$group": {
-                    "_id": "$_id.dining_hall",
-                    "meals": {"$addToSet": "$_id.meal_name"},
-                    "total_items": {"$sum": "$count"}
-                }}
-            ]
+            # Query for today's data
+            cursor = self.foods_collection.find({"date": self.today})
             
-            existing_data = defaultdict(set)
-            total_items = 0
-            
-            for result in self.foods_collection.aggregate(pipeline):
-                dining_hall = result["_id"]
-                meals = set(result["meals"])
-                items = result["total_items"]
+            for doc in cursor:
+                dining_hall = doc.get("dining_hall")
+                meal_name = doc.get("meal_name")
                 
-                existing_data[dining_hall] = meals
-                total_items += items
-                
-                self.logger.info(f"Found existing data: {dining_hall} - {len(meals)} meals, {items} items")
+                if dining_hall and meal_name:
+                    existing_combinations[dining_hall].add(meal_name)
             
-            self.logger.info(f"Total existing data: {len(existing_data)} dining halls, {total_items} items")
-            return dict(existing_data)
+            # Log what we found
+            total_halls = len(existing_combinations)
+            total_items = sum(len(meals) for meals in existing_combinations.values())
+            
+            if existing_combinations:
+                for hall, meals in existing_combinations.items():
+                    self.logger.info(f"Found existing data: {hall} - {len(meals)} meals, {self._count_items_for_hall_today(hall)} items")
+            
+            self.logger.info(f"Total existing data: {total_halls} dining halls, {self._count_total_items_today()} items")
             
         except Exception as e:
-            self.logger.error(f"Error querying existing meals: {e}")
-            return {}
+            self.logger.error(f"Error querying existing data: {e}")
+        
+        return existing_combinations
+    
+    def _count_items_for_hall_today(self, dining_hall: str) -> int:
+        """Count total items for a specific dining hall today."""
+        try:
+            return self.foods_collection.count_documents({
+                "date": self.today,
+                "dining_hall": dining_hall
+            })
+        except:
+            return 0
+    
+    def _count_total_items_today(self) -> int:
+        """Count total items for today."""
+        try:
+            return self.foods_collection.count_documents({"date": self.today})
+        except:
+            return 0
     
     def get_available_dining_halls_and_meals(self) -> Dict[str, List[str]]:
         """
         Get all available dining halls and their meals from the website.
-        
-        Returns:
-            Dict mapping dining_hall -> list of available meal_names
+        Returns: {dining_hall: [meal1, meal2, ...]}
         """
+        available_meals = {}
+        
         try:
-            # Initialize scraper if not already done
-            if not self.scraper:
-                self.scraper = DiningHallScraper(
-                    target_url=self.target_url,
-                    mongodb_uri=self.mongodb_uri,
-                    headless=self.headless,
-                    max_retries=1  # Reduce retries for faster operation
-                )
+            # Initialize temporary scraper just for discovery
+            temp_scraper = DiningHallScraper(self.target_url, None, 1, headless=self.headless)
+            temp_scraper.driver = temp_scraper.setup_driver()
             
-            # Setup driver and navigate to the site
-            self.scraper.driver = self.scraper.setup_driver()
-            if not self.scraper.is_driver_alive():
-                raise RuntimeError("Failed to initialize driver")
+            if not temp_scraper.is_driver_alive():
+                self.logger.error("Failed to initialize driver for discovery")
+                return available_meals
             
-            self.scraper.driver.get(self.target_url)
-            self.scraper.human_wait(1, 2)
+            temp_scraper.driver.get(self.target_url)
+            temp_scraper.human_wait(2, 4)
             
-            # Get all dining hall names
-            dining_hall_names = self.scraper._get_dining_hall_names()
-            if not dining_hall_names:
-                raise RuntimeError("No dining halls found on website")
-            
-            available_data = {}
+            # Get dining hall names
+            dining_hall_names = temp_scraper._get_dining_hall_names()
+            self.logger.info(f"Found {len(dining_hall_names)} dining halls")
             
             # Check each dining hall for available meals
             for dining_hall in dining_hall_names:
                 try:
                     self.logger.info(f"Checking available meals for: {dining_hall}")
                     
-                    # Select the dining hall
-                    if not self.scraper._select_dining_hall(dining_hall):
-                        self.logger.warning(f"Could not select dining hall: {dining_hall}")
-                        continue
+                    # Navigate back to main page
+                    temp_scraper.driver.get(self.target_url)
+                    temp_scraper.human_wait(1, 2)
                     
-                    # Get meal tabs
-                    meal_tabs = self.scraper._get_meal_tabs()
-                    if meal_tabs:
-                        available_data[dining_hall] = meal_tabs
-                        self.logger.info(f"  Available meals: {', '.join(meal_tabs)}")
+                    # Select dining hall
+                    if temp_scraper._select_dining_hall(dining_hall):
+                        # Get meal tabs
+                        meal_tabs = temp_scraper._get_meal_tabs()
+                        if meal_tabs:
+                            available_meals[dining_hall] = meal_tabs
+                            self.logger.info(f"  Available meals: {', '.join(meal_tabs)}")
+                        else:
+                            self.logger.warning(f"  No meal tabs found for {dining_hall}")
                     else:
-                        self.logger.warning(f"  No meals found for {dining_hall}")
-                        available_data[dining_hall] = []
+                        self.logger.warning(f"Could not select dining hall: {dining_hall}")
                         
                 except Exception as e:
-                    self.logger.warning(f"Error checking {dining_hall}: {e}")
-                    available_data[dining_hall] = []
+                    self.logger.error(f"Error selecting dining hall {dining_hall}: {e}")
                     continue
             
-            return available_data
-            
+            # Clean up
+            if temp_scraper.driver:
+                temp_scraper.driver.quit()
+                
         except Exception as e:
-            self.logger.error(f"Error getting available dining halls and meals: {e}")
-            return {}
-        finally:
-            # Clean up driver
-            if self.scraper and self.scraper.driver:
-                try:
-                    self.scraper.driver.quit()
-                except:
-                    pass
-                self.scraper.driver = None
+            self.logger.error(f"Error getting available meals: {e}")
+        
+        return available_meals
     
     def find_missing_meals(self) -> List[Tuple[str, str]]:
         """
-        Find which dining hall/meal combinations are missing from the database.
-        
-        Returns:
-            List of (dining_hall, meal_name) tuples that need to be scraped
+        Find missing meal combinations by comparing available vs existing.
+        Returns: [(dining_hall, meal), ...]
         """
         self.logger.info("=== ANALYZING MISSING MEALS ===")
         
-        # Get what's already in the database
-        existing_meals = self.get_existing_meals()
+        # Get existing data
+        existing_combinations = self.get_existing_data_for_today()
         
-        # Get what's available on the website
+        # Get available meals from website
         available_meals = self.get_available_dining_halls_and_meals()
         
-        # Find the gaps
-        missing_meals = []
+        # Find missing combinations
+        missing_combinations = []
         
-        for dining_hall, available_meal_list in available_meals.items():
-            existing_meal_set = existing_meals.get(dining_hall, set())
+        for dining_hall, meals in available_meals.items():
+            existing_meals = existing_combinations.get(dining_hall, set())
             
-            for meal in available_meal_list:
-                if meal not in existing_meal_set:
-                    missing_meals.append((dining_hall, meal))
+            for meal in meals:
+                if meal not in existing_meals:
+                    missing_combinations.append((dining_hall, meal))
                     self.logger.info(f"MISSING: {dining_hall} - {meal}")
-                else:
-                    self.logger.debug(f"EXISTS: {dining_hall} - {meal}")
         
-        self.logger.info(f"=== SUMMARY ===")
+        # Summary
+        self.logger.info("=== SUMMARY ===")
         self.logger.info(f"Total dining halls checked: {len(available_meals)}")
-        self.logger.info(f"Dining halls with existing data: {len(existing_meals)}")
-        self.logger.info(f"Missing meal combinations: {len(missing_meals)}")
+        self.logger.info(f"Dining halls with existing data: {len(existing_combinations)}")
+        self.logger.info(f"Missing meal combinations: {len(missing_combinations)}")
         
-        return missing_meals
+        return missing_combinations
     
-    def scrape_missing_meals(self, missing_meals: List[Tuple[str, str]], force_rescrape: bool = False) -> bool:
+    def scrape_missing_meals(self, missing_meals: List[Tuple[str, str]]) -> bool:
         """
-        Scrape only the missing dining hall/meal combinations.
-        
-        Args:
-            missing_meals: List of (dining_hall, meal_name) tuples to scrape
-            force_rescrape: If True, scrape even if meals already exist
-            
-        Returns:
-            True if scraping was successful, False otherwise
+        Scrape only the missing meal combinations using main scraper's logic.
         """
-        if not missing_meals and not force_rescrape:
-            self.logger.info("✓ No missing meals found - all data is up to date!")
+        if not missing_meals:
+            self.logger.info("No missing meals to scrape")
             return True
         
         if self.dry_run:
-            self.logger.info("=== DRY RUN MODE ===")
-            self.logger.info("Would scrape the following meals:")
+            self.logger.info("DRY RUN MODE - Would scrape the following meals:")
             for dining_hall, meal in missing_meals:
                 self.logger.info(f"  - {dining_hall}: {meal}")
             return True
@@ -266,124 +256,203 @@ class IncrementalMenuScraper:
         self.logger.info(f"Scraping {len(missing_meals)} missing meal combinations")
         
         try:
-            # Initialize the scraper
+            # Initialize the scraper (same as main scraper)
             self.scraper = DiningHallScraper(
                 target_url=self.target_url,
                 mongodb_uri=self.mongodb_uri,
                 headless=self.headless,
-                max_retries=1  # Reduce retries for faster operation
+                max_retries=3  # Use same retries as main scraper
             )
-            
-            # Setup driver
-            self.scraper.driver = self.scraper.setup_driver()
-            if not self.scraper.is_driver_alive():
-                raise RuntimeError("Failed to initialize driver")
-            
-            self.scraper.driver.get(self.target_url)
-            self.scraper.human_wait(0.5, 1)  # Reduced initial wait
             
             # Group missing meals by dining hall for efficiency
             meals_by_hall = defaultdict(list)
             for dining_hall, meal in missing_meals:
                 meals_by_hall[dining_hall].append(meal)
             
-            # Scrape each dining hall's missing meals
+            # Setup driver with same logic as main scraper
+            self.scraper.driver = self.scraper.setup_driver()
+            if not self.scraper.is_driver_alive():
+                raise RuntimeError("Driver failed to initialize properly")
+            
+            self.scraper.driver.get(self.target_url)
+            self.scraper.human_wait(2, 4)  # Same wait as main scraper
+            
+            if not self.scraper.is_driver_alive():
+                raise RuntimeError("Driver died after loading page")
+            
             all_new_foods = []
             
-            for i, (dining_hall, meals_to_scrape) in enumerate(meals_by_hall.items()):
+            # Process each dining hall with recovery (same pattern as main scraper)
+            for idx, (dining_hall, meals_to_scrape) in enumerate(meals_by_hall.items()):
                 try:
-                    self.logger.info(f"Processing {dining_hall}: {', '.join(meals_to_scrape)}")
+                    self.logger.info(f"Processing dining hall {idx + 1}/{len(meals_by_hall)}: {dining_hall}")
                     
-                    # Only navigate back to main page if not the first dining hall
-                    if i > 0:
-                        self.scraper.driver.get(self.target_url)
-                        self.scraper.human_wait(0.3, 0.7)  # Faster navigation wait
+                    # Clear failed items for each dining hall
+                    self.scraper.failed_items.clear()
                     
-                    # Select dining hall
-                    if not self.scraper._select_dining_hall(dining_hall):
-                        self.logger.error(f"Could not select dining hall: {dining_hall}")
-                        continue
+                    # Use recovery version (same as main scraper)
+                    meals_data = self._process_dining_hall_with_recovery(dining_hall, meals_to_scrape)
                     
-                    # Scrape each missing meal for this dining hall
-                    for meal in meals_to_scrape:
-                        try:
-                            self.logger.info(f"  Scraping {meal}...")
-                            
-                            # Select the meal tab
-                            if not self.scraper._select_meal_tab(meal):
-                                self.logger.warning(f"  Could not select meal tab: {meal}")
-                                continue
-                            
-                            # Extract menu data for this specific meal
-                            menu_items = self.scraper.extract_menu_data(dining_hall, meal)
-                            
-                            if menu_items:
-                                # Convert to the format expected by save_to_json
-                                hall_data = {
-                                    "name": dining_hall,
-                                    "meals": [{
-                                        "meal_name": meal,  # Fixed: use "meal_name" not "name"
-                                        "stations": [{
-                                            "name": "Main Menu",  # Default station name
-                                            "items": menu_items
-                                        }]
-                                    }]
-                                }
-                                
-                                # Convert to foods format and add to collection
-                                foods_data = {
-                                    "date": self.today,
-                                    "dining_halls": [hall_data]
-                                }
-                                
-                                new_foods = self.scraper.save_to_json(foods_data, filename=None)
-                                all_new_foods.extend(new_foods)
-                                
-                                self.logger.info(f"  ✓ Scraped {len(menu_items)} items from {dining_hall} - {meal}")
-                            else:
-                                self.logger.warning(f"  ✗ No items found for {dining_hall} - {meal}")
-                                
-                        except Exception as e:
-                            self.logger.error(f"  ✗ Error scraping {dining_hall} - {meal}: {e}")
-                            continue
+                    if meals_data:
+                        # Convert to the format expected by save_to_json
+                        hall_data = {
+                            "name": dining_hall,
+                            "meals": meals_data
+                        }
+                        
+                        # Convert to foods format and add to collection
+                        foods_data = {
+                            "date": self.today,
+                            "dining_halls": [hall_data]
+                        }
+                        
+                        new_foods = self.scraper.save_to_json(foods_data, filename=f"incremental_foods_{self.today}.json")
+                        all_new_foods.extend(new_foods)
+                        
+                        self.logger.info(f"✓ Successfully processed {dining_hall}")
+                    else:
+                        self.logger.warning(f"✗ No meals found for {dining_hall}")
                     
                 except Exception as e:
-                    self.logger.error(f"Error processing dining hall {dining_hall}: {e}")
+                    self.logger.error(f"✗ Failed to process {dining_hall}: {e}")
+                    
+                    # If it's a crash, try to restart for next dining hall (same as main scraper)
+                    if self.scraper.is_crash_related_error(str(e)):
+                        self.logger.info("Crash detected, restarting for next dining hall...")
+                        if not self.scraper.restart_driver():
+                            self.logger.error("Could not restart driver, stopping scrape")
+                            break
+                    
+                    # Take screenshot if driver is alive (same as main scraper)
+                    if self.scraper.is_driver_alive():
+                        self.scraper.take_screenshot(f"error_{dining_hall.replace(' ', '_')}")
+                    
                     continue
             
-            # Upload all new foods to MongoDB
+            # Upload all new foods to MongoDB (same as main scraper)
             if all_new_foods:
                 self.logger.info(f"Uploading {len(all_new_foods)} new food items to MongoDB...")
                 
-                # Insert in batches to avoid memory issues
-                batch_size = 100
-                success_count = 0
+                # Use the main scraper's upload method instead of custom logic
+                success = self.scraper.upload_to_mongodb(all_new_foods)
                 
-                for i in range(0, len(all_new_foods), batch_size):
-                    batch = all_new_foods[i:i + batch_size]
-                    try:
-                        result = self.foods_collection.insert_many(batch, ordered=False)
-                        success_count += len(result.inserted_ids)
-                        self.logger.debug(f"Inserted batch {i//batch_size + 1}: {len(result.inserted_ids)} items")
-                    except Exception as e:
-                        self.logger.error(f"Error inserting batch {i//batch_size + 1}: {e}")
-                
-                self.logger.info(f"✓ Successfully uploaded {success_count}/{len(all_new_foods)} food items")
-                return success_count > 0
+                if success:
+                    self.logger.info(f"✓ Successfully uploaded {len(all_new_foods)} food items")
+                    return True
+                else:
+                    self.logger.error("Failed to upload food items to MongoDB")
+                    return False
             else:
                 self.logger.warning("No new food items were scraped")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Scraping failed: {e}")
+            self.logger.error(f"Incremental scraping failed: {e}")
+            # Take screenshot if driver is alive (same as main scraper)
+            if self.scraper and self.scraper.is_driver_alive():
+                self.scraper.take_screenshot("incremental_critical_error")
             return False
         finally:
-            # Clean up
+            # Clean shutdown (same as main scraper)
             if self.scraper and self.scraper.driver:
                 try:
                     self.scraper.driver.quit()
                 except:
                     pass
+                self.logger.info("Driver session closed")
+    
+    def _process_dining_hall_with_recovery(self, dining_hall_name: str, meals_to_scrape: List[str]) -> List[Dict[str, Any]]:
+        """Process dining hall with crash recovery (adapted from main scraper)."""
+        max_attempts = 3
+        
+        for attempt in range(max_attempts):
+            try:
+                self.logger.info(f"Processing {dining_hall_name} (attempt {attempt + 1})")
+                
+                # Check driver health before starting
+                if not self.scraper.is_driver_alive():
+                    self.logger.warning("Driver not alive, restarting...")
+                    if not self.scraper.restart_driver():
+                        self.logger.error("Could not restart driver")
+                        continue  # Try next attempt
+                
+                # Process the dining hall for specific meals
+                return self._process_specific_meals(dining_hall_name, meals_to_scrape)
+                
+            except Exception as e:
+                self.logger.error(f"Attempt {attempt + 1} failed for {dining_hall_name}: {e}")
+                
+                # If this is a crash-related error, restart driver
+                if self.scraper.is_crash_related_error(str(e)):
+                    self.logger.info(f"Browser crash detected for {dining_hall_name}, restarting...")
+                    if attempt < max_attempts - 1:  # Not the last attempt
+                        if self.scraper.restart_driver():
+                            self.logger.info("Driver restarted successfully, retrying...")
+                            continue
+                        else:
+                            self.logger.error("Failed to restart driver")
+                            break
+                else:
+                    # Non-crash error, wait a bit and retry
+                    if attempt < max_attempts - 1:
+                        self.logger.info(f"Non-crash error, waiting before retry...")
+                        self.scraper.human_wait(2, 4)
+                        continue
+        
+        self.logger.error(f"All attempts failed for {dining_hall_name}")
+        return []
+    
+    def _process_specific_meals(self, dining_hall_name: str, meals_to_scrape: List[str]) -> List[Dict[str, Any]]:
+        """Process specific meals for a dining hall using EXACT same logic as main scraper's _process_dining_hall."""
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.common.by import By
+        
+        meals_data = []
+        
+        try:
+            # Select dining hall (same as main scraper)
+            if not self.scraper._select_dining_hall(dining_hall_name):
+                return meals_data
+            
+            # Wait for meal tabs to load (same as main scraper)
+            WebDriverWait(self.scraper.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".nav.nav-tabs"))
+            )
+            
+            # Process each specific meal (instead of all meals like main scraper)
+            for meal_name in meals_to_scrape:
+                try:
+                    if not self.scraper.is_driver_alive():
+                        self.logger.error("Driver died during meal processing")
+                        break
+                    
+                    self.logger.info(f"  Scraping {meal_name}...")
+                    
+                    # Select meal tab and extract stations data (EXACT same as main scraper)
+                    if self.scraper._select_meal_tab(meal_name):
+                        stations_data = self.scraper.extract_menu_data(dining_hall_name, meal_name)
+                        
+                        if stations_data:
+                            meals_data.append({
+                                "meal_name": meal_name,
+                                "stations": stations_data  # This is the correct structure
+                            })
+                            
+                            # Count total items across all stations
+                            total_items = sum(len(station.get('items', [])) for station in stations_data)
+                            self.logger.info(f"  ✓ Scraped {total_items} items from {dining_hall_name} - {meal_name}")
+                        else:
+                            self.logger.warning(f"  ✗ No stations found for {dining_hall_name} - {meal_name}")
+            
+                except Exception as e:
+                    self.logger.error(f"  ✗ Error scraping {dining_hall_name} - {meal_name}: {e}")
+                    continue
+        
+        except Exception as e:
+            self.logger.error(f"Error processing dining hall {dining_hall_name}: {e}")
+        
+        return meals_data
     
     def run(self, force_rescrape: bool = False) -> bool:
         """
@@ -412,94 +481,54 @@ class IncrementalMenuScraper:
                 for dining_hall, meal_list in available_meals.items():
                     for meal in meal_list:
                         missing_meals.append((dining_hall, meal))
-                        
+                
                 self.logger.info(f"Force rescrape: treating all {len(missing_meals)} meals as missing")
             else:
-                # Find actually missing meals
+                # Normal incremental logic
                 missing_meals = self.find_missing_meals()
             
-            # Scrape the missing meals
-            success = self.scrape_missing_meals(missing_meals, force_rescrape)
+            # Scrape missing meals
+            success = self.scrape_missing_meals(missing_meals)
             
             if success:
                 self.logger.info("=== INCREMENTAL SCRAPER COMPLETED SUCCESSFULLY ===")
+                return True
             else:
                 self.logger.error("=== INCREMENTAL SCRAPER COMPLETED WITH ERRORS ===")
+                return False
                 
-            return success
-            
         except Exception as e:
-            self.logger.error(f"Incremental scraper failed: {e}")
+            self.logger.error(f"Incremental scraper run failed: {e}")
             return False
-        finally:
-            # Close MongoDB connection
-            if hasattr(self, 'client'):
-                self.client.close()
 
 
 def main():
-    """Main execution with command line argument parsing."""
-    parser = argparse.ArgumentParser(
-        description="Incremental menu scraper - only scrapes missing dining hall meals",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-    python incremental_scraper.py                    # Normal incremental scrape
-    python incremental_scraper.py --dry-run         # Show what would be scraped
-    python incremental_scraper.py --force-rescrape  # Re-scrape everything
-        """
-    )
-    
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Show what would be scraped without actually scraping"
-    )
-    
-    parser.add_argument(
-        "--force-rescrape",
-        action="store_true", 
-        help="Re-scrape all meals even if they already exist"
-    )
-    
-    parser.add_argument(
-        "--headless",
-        action="store_true",
-        default=True,
-        help="Run browser in headless mode (default: True)"
-    )
+    """Main entry point."""
+    parser = argparse.ArgumentParser(description="Incremental Campus Nutrition Scraper")
+    parser.add_argument("--dry-run", action="store_true", 
+                       help="Show what would be scraped without actually scraping")
+    parser.add_argument("--force-rescrape", action="store_true",
+                       help="Re-scrape all meals even if they already exist")
+    parser.add_argument("--headless", action="store_true", default=True,
+                       help="Run in headless mode (default: True)")
+    parser.add_argument("--no-headless", action="store_false", dest="headless",
+                       help="Run in non-headless mode for debugging")
     
     args = parser.parse_args()
     
-    # Load environment variables
-    load_dotenv()
-    
-    # Configuration
-    TARGET_URL = "https://dineoncampus.com/utah/whats-on-the-menu"
-    MONGODB_URI = os.getenv("MONGODB_URI")
-    
-    if not MONGODB_URI:
-        print("Error: MONGODB_URI environment variable not set")
-        sys.exit(1)
-    
-    # Initialize and run the incremental scraper
-    scraper = IncrementalMenuScraper(
-        mongodb_uri=MONGODB_URI,
+    # Initialize scraper
+    scraper = IncrementalScraper(
         target_url=TARGET_URL,
+        mongodb_uri=MONGODB_URI,
         headless=args.headless,
         dry_run=args.dry_run
     )
     
-    try:
-        success = scraper.run(force_rescrape=args.force_rescrape)
-        sys.exit(0 if success else 1)
-        
-    except KeyboardInterrupt:
-        print("\nScraping interrupted by user")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Fatal error: {e}")
-        sys.exit(1)
+    # Run scraper
+    success = scraper.run(force_rescrape=args.force_rescrape)
+    
+    # Exit with appropriate code
+    sys.exit(0 if success else 1)
 
 
 if __name__ == "__main__":

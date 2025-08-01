@@ -444,13 +444,26 @@ class DiningHallScraper:
                 
                 self.logger.debug(f"Clicked nutrition button for: {item_name}")
                 
-                # Wait for modal
-                try:
-                    WebDriverWait(self.driver, self.MODAL_TIMEOUT).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-body ul"))
-                    )
-                except TimeoutException:
-                    raise Exception(f"Modal did not open for {item_name}")
+                # Wait for modal with retry logic
+                modal_opened = False
+                max_modal_retries = 2
+                
+                for retry in range(max_modal_retries):
+                    try:
+                        WebDriverWait(self.driver, self.MODAL_TIMEOUT).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, ".modal-body ul"))
+                        )
+                        modal_opened = True
+                        break
+                    except TimeoutException:
+                        if retry < max_modal_retries - 1:
+                            self.logger.debug(f"Modal timeout for {item_name}, retry {retry + 1}/{max_modal_retries}")
+                            self.human_wait(0.5, 1.0)  # Wait before retry
+                            # Try clicking the button again
+                            if not self.safe_click(button, f"nutrition button retry for {item_name}"):
+                                break
+                        else:
+                            raise Exception(f"Modal did not open for {item_name} after {max_modal_retries} attempts")
                 
                 nutrition_details = self._extract_modal_data()
                 self.human_wait(0.05, 0.1)  # Minimal modal close wait
@@ -1086,11 +1099,25 @@ def main():
     scraper = DiningHallScraper(TARGET_URL, MONGODB_URI, MAX_RETRIES, headless=HEADLESS)
     
     try:
-        # Test MongoDB connection
+        # Test MongoDB connection with retry logic
         if MONGODB_URI:
-            client = MongoClient(MONGODB_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where())
-            client.admin.command('ping')
-            scraper.logger.info("MongoDB connection successful")
+            max_retries = 3
+            retry_delay = 5
+            
+            for attempt in range(max_retries):
+                try:
+                    client = MongoClient(MONGODB_URI, server_api=ServerApi('1'), tlsCAFile=certifi.where(), serverSelectionTimeoutMS=10000)
+                    client.admin.command('ping')
+                    scraper.logger.info("MongoDB connection successful")
+                    break
+                except Exception as conn_error:
+                    if attempt < max_retries - 1:
+                        scraper.logger.warning(f"MongoDB connection attempt {attempt + 1} failed: {conn_error}. Retrying in {retry_delay} seconds...")
+                        time.sleep(retry_delay)
+                    else:
+                        scraper.logger.error(f"MongoDB connection failed after {max_retries} attempts: {conn_error}")
+                        scraper.logger.info("Continuing with JSON-only output...")
+                        MONGODB_URI = None
         
         # Scrape data
         scraped_data = scraper.scrape_all_dining_halls()
