@@ -40,7 +40,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-TARGET_URL = "https://dining.utah.edu/menus/"
+TARGET_URL = "https://dineoncampus.com/utah/whats-on-the-menu"
 MONGODB_URI = os.getenv('MONGODB_URI')
 MAX_RETRIES = 3
 HEADLESS = True
@@ -103,7 +103,7 @@ class IncrementalScraper:
         """
         existing_combinations = defaultdict(set)
         
-        if not self.foods_collection:
+        if self.foods_collection is None:
             return existing_combinations
         
         try:
@@ -206,54 +206,92 @@ class IncrementalScraper:
         
         return available_meals
     
-    def find_missing_meals(self) -> List[Tuple[str, str]]:
+    def get_available_dining_halls(self) -> List[str]:
         """
-        Find missing meal combinations by comparing available vs existing.
-        Returns: [(dining_hall, meal), ...]
+        Get all available dining halls (same logic as main scraper).
+        Returns: [dining_hall_name, ...]
+        """
+        available_dining_halls = []
+        
+        try:
+            # Initialize temporary scraper just for discovery (same as main scraper)
+            temp_scraper = DiningHallScraper(self.target_url, None, 1, headless=self.headless)
+            temp_scraper.driver = temp_scraper.setup_driver()
+            
+            if not temp_scraper.is_driver_alive():
+                self.logger.error("Failed to initialize driver for discovery")
+                return available_dining_halls
+            
+            temp_scraper.driver.get(self.target_url)
+            temp_scraper.human_wait(2, 4)
+            
+            # Get dining hall names (EXACT same as main scraper)
+            available_dining_halls = temp_scraper._get_dining_hall_names()
+            self.logger.info(f"Found {len(available_dining_halls)} dining halls")
+            
+            # Clean up
+            if temp_scraper.driver:
+                temp_scraper.driver.quit()
+                
+        except Exception as e:
+            self.logger.error(f"Error getting available dining halls: {e}")
+        
+        return available_dining_halls
+    
+    def find_missing_dining_halls(self) -> List[str]:
+        """
+        Find dining halls that need to be processed (same logic as main scraper).
+        Returns: [dining_hall_name, ...]
         """
         self.logger.info("=== ANALYZING MISSING MEALS ===")
         
-        # Get existing data
+        # Get existing data per dining hall
         existing_combinations = self.get_existing_data_for_today()
         
-        # Get available meals from website
-        available_meals = self.get_available_dining_halls_and_meals()
+        # Get all available dining halls (same as main scraper)
+        available_dining_halls = self.get_available_dining_halls()
         
-        # Find missing combinations
-        missing_combinations = []
+        # For each dining hall, we need to check if we need to process it
+        # We'll determine missing meals dynamically when processing each dining hall
+        dining_halls_to_process = []
         
-        for dining_hall, meals in available_meals.items():
+        for dining_hall in available_dining_halls:
             existing_meals = existing_combinations.get(dining_hall, set())
             
-            for meal in meals:
-                if meal not in existing_meals:
-                    missing_combinations.append((dining_hall, meal))
-                    self.logger.info(f"MISSING: {dining_hall} - {meal}")
+            if not existing_meals:
+                # No existing data for this dining hall, need to process it
+                dining_halls_to_process.append(dining_hall)
+                self.logger.info(f"MISSING: {dining_hall} - no existing data")
+            else:
+                # Has existing data, but we need to check if there are missing meals
+                # We'll check this dynamically during processing
+                dining_halls_to_process.append(dining_hall)
+                self.logger.info(f"PARTIAL: {dining_hall} - has {len(existing_meals)} existing meals, will check for missing")
         
         # Summary
         self.logger.info("=== SUMMARY ===")
-        self.logger.info(f"Total dining halls checked: {len(available_meals)}")
+        self.logger.info(f"Total dining halls available: {len(available_dining_halls)}")
         self.logger.info(f"Dining halls with existing data: {len(existing_combinations)}")
-        self.logger.info(f"Missing meal combinations: {len(missing_combinations)}")
+        self.logger.info(f"Dining halls to process: {len(dining_halls_to_process)}")
         
-        return missing_combinations
+        return dining_halls_to_process
     
-    def scrape_missing_meals(self, missing_meals: List[Tuple[str, str]]) -> bool:
+    def scrape_missing_dining_halls(self, dining_halls_to_process: List[str]) -> bool:
         """
-        Scrape only the missing meal combinations using main scraper's logic.
+        Scrape only missing meals from dining halls using main scraper's logic.
         """
-        if not missing_meals:
-            self.logger.info("No missing meals to scrape")
+        if not dining_halls_to_process:
+            self.logger.info("No dining halls to process")
             return True
         
         if self.dry_run:
-            self.logger.info("DRY RUN MODE - Would scrape the following meals:")
-            for dining_hall, meal in missing_meals:
-                self.logger.info(f"  - {dining_hall}: {meal}")
+            self.logger.info("DRY RUN MODE - Would process the following dining halls:")
+            for dining_hall in dining_halls_to_process:
+                self.logger.info(f"  - {dining_hall}")
             return True
         
         self.logger.info(f"=== STARTING INCREMENTAL SCRAPE ===")
-        self.logger.info(f"Scraping {len(missing_meals)} missing meal combinations")
+        self.logger.info(f"Processing {len(dining_halls_to_process)} dining halls")
         
         try:
             # Initialize the scraper (same as main scraper)
@@ -263,11 +301,6 @@ class IncrementalScraper:
                 headless=self.headless,
                 max_retries=3  # Use same retries as main scraper
             )
-            
-            # Group missing meals by dining hall for efficiency
-            meals_by_hall = defaultdict(list)
-            for dining_hall, meal in missing_meals:
-                meals_by_hall[dining_hall].append(meal)
             
             # Setup driver with same logic as main scraper
             self.scraper.driver = self.scraper.setup_driver()
@@ -282,16 +315,16 @@ class IncrementalScraper:
             
             all_new_foods = []
             
-            # Process each dining hall with recovery (same pattern as main scraper)
-            for idx, (dining_hall, meals_to_scrape) in enumerate(meals_by_hall.items()):
+            # Process each dining hall with recovery (EXACT same pattern as main scraper)
+            for idx, dining_hall in enumerate(dining_halls_to_process):
                 try:
-                    self.logger.info(f"Processing dining hall {idx + 1}/{len(meals_by_hall)}: {dining_hall}")
+                    self.logger.info(f"Processing dining hall {idx + 1}/{len(dining_halls_to_process)}: {dining_hall}")
                     
                     # Clear failed items for each dining hall
                     self.scraper.failed_items.clear()
                     
                     # Use recovery version (same as main scraper)
-                    meals_data = self._process_dining_hall_with_recovery(dining_hall, meals_to_scrape)
+                    meals_data = self._process_dining_hall_with_recovery_incremental(dining_hall)
                     
                     if meals_data:
                         # Convert to the format expected by save_to_json
@@ -311,7 +344,7 @@ class IncrementalScraper:
                         
                         self.logger.info(f"✓ Successfully processed {dining_hall}")
                     else:
-                        self.logger.warning(f"✗ No meals found for {dining_hall}")
+                        self.logger.warning(f"✗ No new meals found for {dining_hall}")
                     
                 except Exception as e:
                     self.logger.error(f"✗ Failed to process {dining_hall}: {e}")
@@ -361,8 +394,8 @@ class IncrementalScraper:
                     pass
                 self.logger.info("Driver session closed")
     
-    def _process_dining_hall_with_recovery(self, dining_hall_name: str, meals_to_scrape: List[str]) -> List[Dict[str, Any]]:
-        """Process dining hall with crash recovery (adapted from main scraper)."""
+    def _process_dining_hall_with_recovery_incremental(self, dining_hall_name: str) -> List[Dict[str, Any]]:
+        """Process dining hall with crash recovery (EXACT same as main scraper but only missing meals)."""
         max_attempts = 3
         
         for attempt in range(max_attempts):
@@ -376,8 +409,8 @@ class IncrementalScraper:
                         self.logger.error("Could not restart driver")
                         continue  # Try next attempt
                 
-                # Process the dining hall for specific meals
-                return self._process_specific_meals(dining_hall_name, meals_to_scrape)
+                # Process the dining hall (same as main scraper logic but skip existing meals)
+                return self._process_dining_hall_incremental(dining_hall_name)
                 
             except Exception as e:
                 self.logger.error(f"Attempt {attempt + 1} failed for {dining_hall_name}: {e}")
@@ -402,6 +435,72 @@ class IncrementalScraper:
         self.logger.error(f"All attempts failed for {dining_hall_name}")
         return []
     
+    def _process_dining_hall_incremental(self, dining_hall_name: str) -> List[Dict[str, Any]]:
+        """Process a dining hall with EXACT same logic as main scraper but skip existing meals."""
+        from selenium.webdriver.support.ui import WebDriverWait
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.common.by import By
+        
+        meals_data = []
+        
+        try:
+            # Select dining hall (EXACT same as main scraper)
+            if not self.scraper._select_dining_hall(dining_hall_name):
+                return meals_data
+            
+            # Wait for meal tabs to load (EXACT same as main scraper)
+            WebDriverWait(self.scraper.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, ".nav.nav-tabs"))
+            )
+            
+            # Get meal tab names (EXACT same as main scraper)
+            meal_tabs = self.scraper._get_meal_tabs()
+            
+            # Get existing meals for this dining hall
+            existing_combinations = self.get_existing_data_for_today()
+            existing_meals = existing_combinations.get(dining_hall_name, set())
+            
+            # Process each meal (EXACT same logic as main scraper)
+            for meal_name in meal_tabs:
+                try:
+                    # Skip if this meal already exists (INCREMENTAL LOGIC)
+                    if meal_name in existing_meals:
+                        self.logger.info(f"  Skipping {meal_name} - already exists")
+                        continue
+                    
+                    if not self.scraper.is_driver_alive():
+                        self.logger.error("Driver died during meal processing")
+                        break
+                    
+                    self.logger.info(f"  Scraping {meal_name}...")
+                    
+                    # Select meal tab and extract data (EXACT same as main scraper)
+                    if self.scraper._select_meal_tab(meal_name):
+                        stations_data = self.scraper.extract_menu_data(dining_hall_name, meal_name)
+                        
+                        if stations_data:
+                            meals_data.append({
+                                "meal_name": meal_name,
+                                "stations": stations_data
+                            })
+                            
+                            # Count total items across all stations
+                            total_items = sum(len(station.get('items', [])) for station in stations_data)
+                            self.logger.info(f"  ✓ Scraped {total_items} items from {dining_hall_name} - {meal_name}")
+                        else:
+                            self.logger.warning(f"  ✗ No stations found for {dining_hall_name} - {meal_name}")
+                    else:
+                        self.logger.error(f"  ✗ Could not select meal tab: {meal_name}")
+                
+                except Exception as e:
+                    self.logger.error(f"  ✗ Error scraping {dining_hall_name} - {meal_name}: {e}")
+                    continue
+        
+        except Exception as e:
+            self.logger.error(f"Error processing dining hall {dining_hall_name}: {e}")
+        
+        return meals_data
+    
     def _process_specific_meals(self, dining_hall_name: str, meals_to_scrape: List[str]) -> List[Dict[str, Any]]:
         """Process specific meals for a dining hall using EXACT same logic as main scraper's _process_dining_hall."""
         from selenium.webdriver.support.ui import WebDriverWait
@@ -420,8 +519,21 @@ class IncrementalScraper:
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".nav.nav-tabs"))
             )
             
-            # Process each specific meal (instead of all meals like main scraper)
-            for meal_name in meals_to_scrape:
+            # Get actual meal tabs dynamically (SAME as main scraper)
+            actual_meal_tabs = self.scraper._get_meal_tabs()
+            
+            # Only process meals that both exist on the page AND are in our missing list
+            meals_to_process = []
+            for meal_name in actual_meal_tabs:
+                if meal_name in meals_to_scrape:
+                    meals_to_process.append(meal_name)
+            
+            if not meals_to_process:
+                self.logger.warning(f"No matching meals found for {dining_hall_name}. Available: {actual_meal_tabs}, Requested: {meals_to_scrape}")
+                return meals_data
+                
+            # Process each meal that actually exists (EXACT same logic as main scraper)
+            for meal_name in meals_to_process:
                 try:
                     if not self.scraper.is_driver_alive():
                         self.logger.error("Driver died during meal processing")
@@ -475,20 +587,16 @@ class IncrementalScraper:
             self.logger.info("✓ MongoDB connection successful")
             
             if force_rescrape:
-                # Get all available meals and treat them as "missing"
-                available_meals = self.get_available_dining_halls_and_meals()
-                missing_meals = []
-                for dining_hall, meal_list in available_meals.items():
-                    for meal in meal_list:
-                        missing_meals.append((dining_hall, meal))
-                
-                self.logger.info(f"Force rescrape: treating all {len(missing_meals)} meals as missing")
+                # Get all available dining halls and treat them as needing processing
+                available_dining_halls = self.get_available_dining_halls()
+                dining_halls_to_process = available_dining_halls
+                self.logger.info(f"Force rescrape: processing all {len(dining_halls_to_process)} dining halls")
             else:
                 # Normal incremental logic
-                missing_meals = self.find_missing_meals()
+                dining_halls_to_process = self.find_missing_dining_halls()
             
-            # Scrape missing meals
-            success = self.scrape_missing_meals(missing_meals)
+            # Scrape missing dining halls
+            success = self.scrape_missing_dining_halls(dining_halls_to_process)
             
             if success:
                 self.logger.info("=== INCREMENTAL SCRAPER COMPLETED SUCCESSFULLY ===")
