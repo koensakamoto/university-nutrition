@@ -91,9 +91,9 @@ const FoodStations = ({ stations, addToTracker }) => {
                 <h3 className="text-xl font-semibold text-gray-800">
                   {station.name}
                 </h3>
-                <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                {/* <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                   {station.items.length} item{station.items.length !== 1 ? 's' : ''}
-                </span>
+                </span> */}
               </div>
               {station.description && (
                 <p className="text-sm text-gray-600 mt-1">{station.description}</p>
