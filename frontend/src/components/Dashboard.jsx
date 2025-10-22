@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
 import CustomMealForm from './CustomMealForm'
 import LoadingSpinner from './LoadingSpinner'
-import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
+import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon, Sparkles } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
 import { useFetchWithAuth, useAuth } from '../AuthProvider'
 
@@ -93,6 +94,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
 
   const fetchWithAuth = useFetchWithAuth();
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
 
   // Auto-set today's date on mount if not set
   useEffect(() => {
@@ -199,33 +201,6 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
   const handleSavePlate = async () => {
     setPlateSaving(true);
     try {
-      const plateItems = trackedItems.map(item => {
-        const foodId = item.id || item._id;
-        const isCustom = String(foodId).startsWith('custom-');
-        const base = {
-          food_id: foodId,
-          quantity: item.quantity || 1
-        };
-        if (isCustom) {
-          if (!item.custom_macros || typeof item.custom_macros !== 'object') {
-            return null;
-          }
-          base.custom_macros = {
-            calories: item.custom_macros.calories,
-            protein: item.custom_macros.protein,
-            carbs: item.custom_macros.carbs,
-            fat: item.custom_macros.fat
-          };
-          base.name = item.name || 'Custom Food';
-        }
-        return base;
-      }).filter(Boolean);
-      
-      if (plateItems.some(i => i === null)) {
-        alert('One or more custom foods are missing valid macros. Please fix before saving.');
-        return;
-      }
-
       // Call the save plate function passed from parent
       if (onSavePlate) {
         await onSavePlate();
@@ -260,15 +235,15 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
     
     if (!diningHall) {
       return (
-        <div className="py-8">
-          <div className="text-center mb-8">
+        <div className="py-4">
+          <div className="text-center mb-6">
             <BuildingIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-lg font-medium text-gray-900">Choose a dining hall</h3>
             <p className="mt-1 text-sm text-gray-500">
               Select a dining hall to see today's menu options
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {diningHalls.map(hall => {
               const availableMeals = mealTypesByHall[hall] || [];
@@ -315,17 +290,17 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
     
     if (!mealType) {
       const availableMeals = mealTypesByHall[diningHall] || [];
-      
+
       return (
-        <div className="py-8">
-          <div className="text-center mb-8">
+        <div className="py-4">
+          <div className="text-center mb-6">
             <ClockIcon className="mx-auto h-12 w-12 text-gray-400" />
             <h3 className="mt-2 text-lg font-medium text-gray-900">Select a meal</h3>
             <p className="mt-1 text-sm text-gray-500">
               Choose which meal period you'd like to view at {diningHall}
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto">
             {availableMeals.map(meal => {
               const currentHour = new Date().getHours();
@@ -465,7 +440,30 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
           onDataUpdate={handleDataUpdate}
         />
       </div>
-      
+
+      {/* AI Meal Planner Button */}
+      <div className="mb-4 sm:mb-6">
+        <button
+          onClick={() => navigate('/ai-meal-planner')}
+          className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Sparkles className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-semibold text-lg text-gray-900">AI Meal Planner</h3>
+                <p className="text-sm text-gray-600">
+                  Generate a personalized nutrition plan
+                </p>
+              </div>
+            </div>
+            <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+          </div>
+        </button>
+      </div>
+
       {/* Mobile Nutrient Tracker with Card Design */}
       <div className="lg:hidden mb-4 sm:mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">

@@ -17,6 +17,7 @@ import ForgotPassword from './components/ForgotPassword'
 import ResetPassword from './components/ResetPassword'
 import AuthCallback from './components/AuthCallback'
 import PrivacyPolicy from './components/PrivacyPolicy'
+import AIMealPlanner from './components/AIMealPlanner'
 import { useAuth } from './AuthProvider'
 
 // Utility to get local date string in YYYY-MM-DD format
@@ -120,11 +121,11 @@ export default function App() {
           path="/auth/callback" 
           element={<AuthCallback />} 
         />
-        <Route 
-          path="/privacy" 
-          element={<PrivacyPolicy />} 
+        <Route
+          path="/privacy"
+          element={<PrivacyPolicy />}
         />
-        
+
         {/* Main App Routes (with header layout) */}
         <Route 
           path="/" 
@@ -161,7 +162,8 @@ export default function App() {
           <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
           <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
           <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
-          <Route 
+          <Route path="ai-meal-planner" element={<AIMealPlanner />} />
+          <Route
             path="*"
             element={<Navigate to="/" />}
           />
