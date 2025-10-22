@@ -14,7 +14,6 @@ class Food(BaseModel):
     date: Optional[str] = None
     station: Optional[str] = None
     station_id: Optional[str] = None
-    item_id: Optional[str] = None
     portion_size: Optional[str] = None
     trackable: Optional[bool] = None  # Whether food can be tracked (has complete macros)
 
@@ -34,7 +33,6 @@ class Food(BaseModel):
                 "date": "2024-05-30",
                 "station": "500 Degrees",
                 "station_id": "uuid-station",
-                "item_id": "uuid-item",
                 "portion_size": "1 tbsp"
             }
         }

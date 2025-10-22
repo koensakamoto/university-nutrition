@@ -8,31 +8,30 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
 
-
 class UserProfile(BaseModel):
-    sex: str
-    birthday: date
-    height: float
-    weight: float
-    body_fat_percent: Optional[float]
-    bmi: Optional[float]
-    weight_goal: float
-    weight_goal_rate: str
-    weight_goal_type: str
-    weight_goal_custom_rate: float
-    activity_level: str
-    protein_target: str
-    carb_target: str
-    fat_target: str
-    diet_type: str
-    meal_preference: List[str]
-    cultural_preference: str
-    allergens: List[str]
-    foode_sensitivities: List[str]
-    allergen_notes: str
-    protein_ratio: int
-    carb_ratio: int
-    fat_ratio: int
+    sex: Optional[str] = None
+    birthday: Optional[date] = None
+    height: Optional[float] = None
+    weight: Optional[float] = None
+    body_fat_percent: Optional[float] = None
+    bmi: Optional[float] = None
+    weight_goal: Optional[float] = None
+    weight_goal_rate: Optional[str] = None
+    weight_goal_type: Optional[str] = None
+    weight_goal_custom_rate: Optional[float] = None
+    activity_level: Optional[str] = None
+    protein_target: Optional[str] = None
+    carb_target: Optional[str] = None
+    fat_target: Optional[str] = None
+    diet_type: Optional[str] = None
+    meal_preference: Optional[List[str]] = None
+    cultural_preference: Optional[str] = None
+    allergens: Optional[List[str]] = None
+    foode_sensitivities: Optional[List[str]] = None
+    allergen_notes: Optional[str] = None
+    protein_ratio: Optional[int] = None
+    carb_ratio: Optional[int] = None
+    fat_ratio: Optional[int] = None
     image: Optional[str] = None
 
 class User(BaseModel):

@@ -1,7 +1,7 @@
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Response, Request, Depends
 from pymongo.collection import Collection
-from jwt_util import create_access_token, decode_access_token
+from jwt_util import decode_access_token
 import os
 
 # Determine if running in production
@@ -24,7 +24,7 @@ def set_auth_cookie(response: Response, token: str):
         samesite="lax",
         max_age=3600,
         path="/",
-        domain=".crimsonbites.com" if IS_PRODUCTION else None  # Share cookies across subdomains in production
+        domain=None  # No custom domain - works with Railway deployments
     )
 
 def clear_auth_cookie(response: Response):
