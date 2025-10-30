@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Sparkles, Utensils } from 'lucide-react'
+import { ChevronLeft, Sparkles, Utensils, User, Settings, Activity, Target, Shield, Heart } from 'lucide-react'
 import LoadingSpinner from './LoadingSpinner'
+
+// Format date for API (defined outside component to avoid hoisting issues)
+const getLocalDateString = (date) => {
+  return date.getFullYear() + '-' +
+         String(date.getMonth() + 1).padStart(2, '0') + '-' +
+         String(date.getDate()).padStart(2, '0')
+}
 
 const AIMealPlanner = () => {
   const navigate = useNavigate()
@@ -12,15 +19,22 @@ const AIMealPlanner = () => {
   const [lunchHall, setLunchHall] = useState('')
   const [dinnerHall, setDinnerHall] = useState('')
 
+  // Date selection
+  const [selectedDate, setSelectedDate] = useState(getLocalDateString(new Date()))
+
   // Nutrition target mode: 'account' or 'custom'
   const [targetMode, setTargetMode] = useState('account')
 
-  // Custom nutrition targets
+  // User profile data
+  const [userProfile, setUserProfile] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  // Custom nutrition targets (percentages)
   const [customTargets, setCustomTargets] = useState({
     calories: '',
-    protein: '',
-    carbs: '',
-    fat: ''
+    proteinPercent: '30',
+    carbsPercent: '40',
+    fatPercent: '30'
   })
 
   // Track which dining halls are available for each meal type
@@ -30,19 +44,31 @@ const AIMealPlanner = () => {
     Dinner: []
   })
 
-  // Format date for API
-  const getLocalDateString = (date) => {
-    return date.getFullYear() + '-' +
-           String(date.getMonth() + 1).padStart(2, '0') + '-' +
-           String(date.getDate()).padStart(2, '0')
-  }
+  // Fetch user profile on mount
+  useEffect(() => {
+    setProfileLoading(true)
+    fetch('/api/profile', {
+      credentials: 'include'
+    })
+      .then(res => res.json())
+      .then(data => {
+        // Backend returns {email, profile: {...}, hasPassword}
+        setUserProfile(data.profile || {})
+      })
+      .catch((error) => {
+        console.error('Error fetching profile:', error)
+        setUserProfile(null)
+      })
+      .finally(() => {
+        setProfileLoading(false)
+      })
+  }, [])
 
-  // Fetch available dining halls on mount (using today's date)
+  // Fetch available dining halls when date changes
   useEffect(() => {
     setIsLoading(true)
-    const formattedDate = getLocalDateString(new Date())
 
-    fetch(`/api/available-options?date=${formattedDate}`)
+    fetch(`/api/available-options?date=${selectedDate}`)
       .then(res => res.json())
       .then(data => {
         const halls = data.dining_halls || []
@@ -71,7 +97,7 @@ const AIMealPlanner = () => {
       .finally(() => {
         setIsLoading(false)
       })
-  }, [])
+  }, [selectedDate])
 
   const handleGeneratePlan = () => {
     // TODO: Integration with AI meal planning system will be added later
@@ -87,19 +113,44 @@ const AIMealPlanner = () => {
     alert('AI meal plan generation will be implemented soon!')
   }
 
-  const canGenerate = breakfastHall || lunchHall || dinnerHall
+  // Check if macros sum to 100%
+  const macroSum = parseFloat(customTargets.proteinPercent || 0) +
+                   parseFloat(customTargets.carbsPercent || 0) +
+                   parseFloat(customTargets.fatPercent || 0)
+  const macrosValid = Math.abs(macroSum - 100) < 0.1
 
-  // Calculate calories from macros (protein: 4 cal/g, carbs: 4 cal/g, fat: 9 cal/g)
-  const calculateCaloriesFromMacros = () => {
-    const protein = parseFloat(customTargets.protein) || 0
-    const carbs = parseFloat(customTargets.carbs) || 0
-    const fat = parseFloat(customTargets.fat) || 0
-    return (protein * 4) + (carbs * 4) + (fat * 9)
+  // Validation for custom mode
+  const customModeValid = targetMode === 'custom'
+    ? (customTargets.calories && parseFloat(customTargets.calories) >= 1000 && macrosValid)
+    : true
+
+  // Can generate if at least one meal is selected and custom mode validation passes
+  const canGenerate = (breakfastHall || lunchHall || dinnerHall) && customModeValid
+
+  // Macro preset options
+  const macroPresets = [
+    { name: 'Balanced', protein: 30, carbs: 40, fat: 30 },
+    { name: 'High Protein', protein: 40, carbs: 30, fat: 30 },
+    { name: 'Low Carb', protein: 35, carbs: 20, fat: 45 },
+    { name: 'High Carb', protein: 25, carbs: 50, fat: 25 }
+  ]
+
+  const applyPreset = (preset) => {
+    setCustomTargets({
+      ...customTargets,
+      proteinPercent: preset.protein.toString(),
+      carbsPercent: preset.carbs.toString(),
+      fatPercent: preset.fat.toString()
+    })
   }
 
-  const calculatedCalories = calculateCaloriesFromMacros()
-  const hasCustomCalories = customTargets.calories !== ''
-  const hasCustomMacros = customTargets.protein || customTargets.carbs || customTargets.fat
+  // Calculate grams from percentages (for display)
+  const calculateGramsFromPercent = (percent, calories, isFat = false) => {
+    if (!calories || !percent) return 0
+    const caloriesFromMacro = (calories * percent) / 100
+    // Protein and carbs: 4 cal/g, Fat: 9 cal/g
+    return Math.round(caloriesFromMacro / (isFat ? 9 : 4))
+  }
 
   return (
     <div className="flex flex-col flex-grow w-full p-2 sm:p-4 lg:p-6 bg-gray-50 rounded-lg">
@@ -128,126 +179,311 @@ const AIMealPlanner = () => {
           <>
             {/* Nutrition Target Selection */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 mb-4 sm:mb-6">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-4">
                 Nutrition Targets
               </h3>
 
-              {/* Radio Options */}
-              <div className="space-y-3 mb-4">
-                <label className="flex items-start cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="targetMode"
-                    value="account"
-                    checked={targetMode === 'account'}
-                    onChange={(e) => setTargetMode(e.target.value)}
-                    className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
-                  />
-                  <div className="ml-3">
-                    <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                      Use my dietary preferences and nutrition goals
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      AI will use your saved dietary restrictions, allergens, and macro targets
-                    </p>
+              {/* Card-based selection */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                {/* Use Profile Option */}
+                <div
+                  onClick={() => setTargetMode('account')}
+                  className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                    targetMode === 'account'
+                      ? 'border-blue-500 bg-blue-50 shadow-sm'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      targetMode === 'account' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      <User className={`h-5 w-5 ${
+                        targetMode === 'account' ? 'text-blue-600' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className={`text-sm font-semibold ${
+                          targetMode === 'account' ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          My Profile
+                        </h4>
+                        {targetMode === 'account' && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Use saved preferences and goals
+                      </p>
+                    </div>
                   </div>
-                </label>
+                </div>
 
-                <label className="flex items-start cursor-pointer group">
-                  <input
-                    type="radio"
-                    name="targetMode"
-                    value="custom"
-                    checked={targetMode === 'custom'}
-                    onChange={(e) => setTargetMode(e.target.value)}
-                    className="mt-0.5 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 cursor-pointer"
-                  />
-                  <div className="ml-3">
-                    <span className="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
-                      Set custom nutrition targets
-                    </span>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Manually specify calories and macros for this meal plan
-                    </p>
+                {/* Custom Option */}
+                <div
+                  onClick={() => setTargetMode('custom')}
+                  className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                    targetMode === 'custom'
+                      ? 'border-blue-500 bg-blue-50 shadow-sm'
+                      : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2 rounded-lg ${
+                      targetMode === 'custom' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      <Settings className={`h-5 w-5 ${
+                        targetMode === 'custom' ? 'text-blue-600' : 'text-gray-600'
+                      }`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className={`text-sm font-semibold ${
+                          targetMode === 'custom' ? 'text-blue-900' : 'text-gray-900'
+                        }`}>
+                          Custom Targets
+                        </h4>
+                        {targetMode === 'custom' && (
+                          <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Set specific calories and macros
+                      </p>
+                    </div>
                   </div>
-                </label>
+                </div>
               </div>
+
+              {/* Profile Preview - Enhanced */}
+              {targetMode === 'account' && userProfile && (
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-4 w-4 text-blue-600" />
+                    <p className="text-xs font-semibold text-blue-900">Your Profile Summary</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Body Stats */}
+                    {userProfile.weight && userProfile.height && (
+                      <div className="flex items-start gap-2">
+                        <Activity className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Body Stats</p>
+                          <p className="text-xs text-blue-700">
+                            {userProfile.weight} lbs, {userProfile.height} in
+                            {userProfile.activity_level && (
+                              <span className="block text-blue-600">{userProfile.activity_level}</span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Macro Targets */}
+                    {(userProfile.protein_ratio || userProfile.carb_ratio || userProfile.fat_ratio) && (
+                      <div className="flex items-start gap-2">
+                        <Target className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Macro Targets</p>
+                          <p className="text-xs text-blue-700">
+                            P: {userProfile.protein_ratio || 0}% / C: {userProfile.carb_ratio || 0}% / F: {userProfile.fat_ratio || 0}%
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Diet Type */}
+                    {userProfile.diet_type && (
+                      <div className="flex items-start gap-2">
+                        <Heart className="h-4 w-4 text-blue-600 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Diet Type</p>
+                          <p className="text-xs text-blue-700">{userProfile.diet_type}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Allergens */}
+                    {userProfile.allergens && userProfile.allergens.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <Shield className="h-4 w-4 text-red-500 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Avoiding</p>
+                          <p className="text-xs text-blue-700">{userProfile.allergens.join(', ')}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Meal Preferences */}
+                    {userProfile.meal_preference && userProfile.meal_preference.length > 0 && (
+                      <div className="flex items-start gap-2 sm:col-span-2">
+                        <Heart className="h-4 w-4 text-green-500 mt-0.5" />
+                        <div>
+                          <p className="text-xs font-medium text-blue-900">Preferences</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {userProfile.meal_preference.map((pref, idx) => (
+                              <span key={idx} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                                {pref}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {targetMode === 'account' && profileLoading && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-2">
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  <p className="text-xs text-gray-600">Loading your profile data...</p>
+                </div>
+              )}
+
+              {targetMode === 'account' && !profileLoading && userProfile && Object.keys(userProfile).length === 0 && (
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 flex items-start gap-2">
+                  <Shield className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <p className="text-xs text-amber-800">
+                    <strong>Note:</strong> Complete your profile in settings to use personalized nutrition targets.
+                  </p>
+                </div>
+              )}
 
               {/* Custom Targets Inputs - Only show when custom mode is selected */}
               {targetMode === 'custom' && (
                 <>
                   <div className="pt-3 border-t border-gray-200">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Calories
-                        </label>
-                        <input
-                          type="number"
-                          value={customTargets.calories}
-                          onChange={(e) => setCustomTargets({...customTargets, calories: e.target.value})}
-                          placeholder="2000"
-                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Protein (g)
-                        </label>
-                        <input
-                          type="number"
-                          value={customTargets.protein}
-                          onChange={(e) => setCustomTargets({...customTargets, protein: e.target.value})}
-                          placeholder="150"
-                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Carbs (g)
-                        </label>
-                        <input
-                          type="number"
-                          value={customTargets.carbs}
-                          onChange={(e) => setCustomTargets({...customTargets, carbs: e.target.value})}
-                          placeholder="200"
-                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Fat (g)
-                        </label>
-                        <input
-                          type="number"
-                          value={customTargets.fat}
-                          onChange={(e) => setCustomTargets({...customTargets, fat: e.target.value})}
-                          placeholder="65"
-                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        />
+                    {/* Macro Presets */}
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Quick Presets
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {macroPresets.map((preset) => (
+                          <button
+                            key={preset.name}
+                            onClick={() => applyPreset(preset)}
+                            className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-blue-300 transition-colors"
+                          >
+                            {preset.name}
+                            <span className="ml-1 text-gray-500">
+                              ({preset.protein}/{preset.carbs}/{preset.fat})
+                            </span>
+                          </button>
+                        ))}
                       </div>
                     </div>
 
-                    {/* Macro-Calorie Relationship Indicator */}
-                    {hasCustomMacros && (
-                      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-gray-700">
-                              Calories from macros: <span className="font-semibold text-gray-900">{Math.round(calculatedCalories)}</span>
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              Protein & Carbs: 4 cal/g • Fat: 9 cal/g
-                            </p>
-                          </div>
-                          {hasCustomCalories && Math.abs(parseFloat(customTargets.calories) - calculatedCalories) > 50 && (
-                            <div className="text-xs text-amber-600 font-medium">
-                              ⚠ Macros don't match calories
-                            </div>
-                          )}
-                        </div>
+                    {/* Calorie Target */}
+                    <div className="mb-4">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Daily Calorie Target
+                      </label>
+                      <input
+                        type="number"
+                        value={customTargets.calories}
+                        onChange={(e) => setCustomTargets({...customTargets, calories: e.target.value})}
+                        placeholder="2000"
+                        min="1000"
+                        max="5000"
+                        className="block w-full sm:w-48 px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                      />
+                    </div>
+
+                    {/* Macro Percentages */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Protein %
+                        </label>
+                        <input
+                          type="number"
+                          value={customTargets.proteinPercent}
+                          onChange={(e) => setCustomTargets({...customTargets, proteinPercent: e.target.value})}
+                          placeholder="30"
+                          min="10"
+                          max="50"
+                          step="1"
+                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        />
+                        {customTargets.calories && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            ≈ {calculateGramsFromPercent(parseFloat(customTargets.proteinPercent), parseFloat(customTargets.calories), false)}g
+                          </p>
+                        )}
                       </div>
-                    )}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Carbs %
+                        </label>
+                        <input
+                          type="number"
+                          value={customTargets.carbsPercent}
+                          onChange={(e) => setCustomTargets({...customTargets, carbsPercent: e.target.value})}
+                          placeholder="40"
+                          min="10"
+                          max="70"
+                          step="1"
+                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        />
+                        {customTargets.calories && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            ≈ {calculateGramsFromPercent(parseFloat(customTargets.carbsPercent), parseFloat(customTargets.calories), false)}g
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Fat %
+                        </label>
+                        <input
+                          type="number"
+                          value={customTargets.fatPercent}
+                          onChange={(e) => setCustomTargets({...customTargets, fatPercent: e.target.value})}
+                          placeholder="30"
+                          min="15"
+                          max="50"
+                          step="1"
+                          className="block w-full px-3 py-2 text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        />
+                        {customTargets.calories && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            ≈ {calculateGramsFromPercent(parseFloat(customTargets.fatPercent), parseFloat(customTargets.calories), true)}g
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Validation Indicator */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-medium text-gray-700">
+                            Total: <span className={`font-semibold ${macrosValid ? 'text-green-600' : 'text-amber-600'}`}>
+                              {macroSum.toFixed(1)}%
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {macrosValid ? '✓ Macros sum to 100%' : '⚠ Macros must sum to 100%'}
+                          </p>
+                        </div>
+                        {!macrosValid && (
+                          <button
+                            onClick={() => applyPreset(macroPresets[0])}
+                            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Auto-fix
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
@@ -283,14 +519,23 @@ const AIMealPlanner = () => {
             {/* Generate Button */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="text-center sm:text-left">
+                <div className="text-center sm:text-left flex-1">
                   <h3 className="text-lg font-semibold text-gray-900 mb-1">
                     Ready to generate your meal plan?
                   </h3>
                   <p className="text-sm text-gray-600">
-                    {canGenerate
-                      ? 'AI will create a personalized nutrition plan based on your selections'
-                      : 'Select at least one dining hall to get started'}
+                    {canGenerate ? (
+                      'AI will create a personalized nutrition plan based on your selections'
+                    ) : (
+                      <>
+                        {!(breakfastHall || lunchHall || dinnerHall) && 'Select at least one dining hall to get started'}
+                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && !customTargets.calories && 'Enter your daily calorie target'}
+                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) < 1000 && 'Calorie target must be at least 1000'}
+                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) >= 1000 && !macrosValid && (
+                          <span className="text-amber-600">⚠ Macros must sum to 100% (currently {macroSum.toFixed(1)}%)</span>
+                        )}
+                      </>
+                    )}
                   </p>
                 </div>
                 <button
