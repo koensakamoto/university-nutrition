@@ -97,14 +97,18 @@ def check_sufficient_foods_per_meal(
     Check if each meal has enough food options
     """
     for meal in dining_hall_meals:
+        # Handle both dict and object access
+        meal_type = meal["meal_type"] if isinstance(meal, dict) else meal.meal_type
+        dining_hall = meal["dining_hall"] if isinstance(meal, dict) else meal.dining_hall
+
         meal_foods = [
             f for f in foods
-            if f["dining_hall"] == meal.dining_hall
-            and f["meal_name"] == meal.meal_type
+            if f["dining_hall"] == dining_hall
+            and f["meal_name"] == meal_type
         ]
         if len(meal_foods) < min_required:
             logger.warning(
-                f"Insufficient foods for {meal.meal_type} at {meal.dining_hall}: "
+                f"Insufficient foods for {meal_type} at {dining_hall}: "
                 f"{len(meal_foods)} < {min_required}"
             )
             return False
@@ -133,12 +137,14 @@ def get_filtered_foods_for_meal_plan(
     user_profile: Dict,
     foods_collection,
     date: str
-) -> Tuple[List[Dict], List[str]]:
+) -> Dict:
     """
     Main function to fetch and filter foods based on dietary preferences
 
     Returns:
-        Tuple of (filtered_foods, dietary_labels_used)
+        Dict with keys:
+            - foods_by_meal: Dict[str, List[Dict]]
+            - dietary_labels: List[str]
     """
     # Build base query for available foods
     base_query = {
@@ -149,20 +155,27 @@ def get_filtered_foods_for_meal_plan(
     # Add dining hall/meal combinations
     # Handle case-insensitive meal names and "Every Day" meals
     for meal in request.dining_hall_meals:
-        # Handle both enum and string values
-        meal_type = meal.meal_type.value if hasattr(meal.meal_type, 'value') else meal.meal_type
+        # Handle both dict and object access
+        if isinstance(meal, dict):
+            meal_type = meal["meal_type"]
+            dining_hall = meal["dining_hall"]
+        else:
+            # Handle both enum and string values
+            meal_type = meal.meal_type.value if hasattr(meal.meal_type, 'value') else meal.meal_type
+            dining_hall = meal.dining_hall
+
         meal_type_lower = meal_type.lower()
 
         # Create OR conditions for this dining hall
         meal_conditions = [
             # Direct match (case-insensitive)
             {
-                "dining_hall": meal.dining_hall,
+                "dining_hall": dining_hall,
                 "meal_name": {"$regex": f"^{meal_type}$", "$options": "i"}
             },
             # "Every Day" meals that can be used for any meal
             {
-                "dining_hall": meal.dining_hall,
+                "dining_hall": dining_hall,
                 "meal_name": {"$regex": "^every ?day$", "$options": "i"}
             }
         ]
@@ -207,7 +220,13 @@ def get_filtered_foods_for_meal_plan(
 
         logger.info(f"Fallback filtering yielded {len(trackable_foods)} foods")
 
-    return trackable_foods, dietary_labels
+    # Organize foods by meal type
+    foods_by_meal = organize_foods_by_meal(trackable_foods, request.dining_hall_meals)
+
+    return {
+        "foods_by_meal": foods_by_meal,
+        "dietary_labels": dietary_labels
+    }
 
 def organize_foods_by_meal(
     foods: List[Dict],
@@ -219,9 +238,14 @@ def organize_foods_by_meal(
     foods_by_meal = {}
 
     for meal in dining_hall_meals:
-        # Handle both enum and string values
-        meal_type = meal.meal_type.value if hasattr(meal.meal_type, 'value') else meal.meal_type
-        dining_hall = meal.dining_hall
+        # Handle both dict and object access
+        if isinstance(meal, dict):
+            meal_type = meal["meal_type"]
+            dining_hall = meal["dining_hall"]
+        else:
+            # Handle both enum and string values
+            meal_type = meal.meal_type.value if hasattr(meal.meal_type, 'value') else meal.meal_type
+            dining_hall = meal.dining_hall
 
         # Get foods for this specific meal/hall combo
         # Handle case-insensitive matching and "Every Day" meals

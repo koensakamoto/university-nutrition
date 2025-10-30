@@ -192,7 +192,10 @@ def enhance_meal_plan_response(
     # Create dining hall mapping
     hall_mapping = {}
     for meal in dining_hall_meals:
-        hall_mapping[meal.meal_type] = meal.dining_hall
+        # Handle both dict and object access
+        meal_type = meal["meal_type"] if isinstance(meal, dict) else meal.meal_type
+        dining_hall = meal["dining_hall"] if isinstance(meal, dict) else meal.dining_hall
+        hall_mapping[meal_type] = dining_hall
 
     planned_meals = []
     total_calories = 0.0

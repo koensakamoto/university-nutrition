@@ -29,12 +29,18 @@ from models.food import Food
 
 from models.user import UserCreate, UserProfile, ChangePasswordRequest, UserLogin
 from models.plate import Plate, PlateItem
+from models.meal_plan import MealPlanRequest, MealPlanResponse
 
 from auth_util import (
     hash_password, verify_password, set_auth_cookie, clear_auth_cookie,
     get_user_by_email, get_current_user
 )
 from jwt_util import create_access_token, decode_access_token
+
+from meal_planning.ai_integration import MealPlannerAI
+from meal_planning.food_filtering import get_filtered_foods_for_meal_plan
+from meal_planning.target_calculation import get_user_targets, calculate_meal_targets
+from meal_planning.meal_validation import enhance_meal_plan_response
 
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -1630,3 +1636,74 @@ def get_available_options(date: str):
         "dining_halls": sorted(dining_halls),
         "meal_types_by_hall": meal_types_by_hall
     }
+
+@app.post("/api/meal-plan", response_model=MealPlanResponse)
+def generate_meal_plan(request_body: MealPlanRequest, req: Request):
+    try:
+        # Get current user
+        user = get_current_user(req, users_collection)
+        user_profile = users_collection.find_one({"_id": ObjectId(user["_id"])})
+
+        # Calculate nutrition targets
+        target_calories, target_macros = get_user_targets(request_body, user_profile)
+        meal_targets = calculate_meal_targets(target_calories, target_macros)
+
+        # Convert Pydantic models to dicts for meal planning functions
+        dining_hall_meals_dicts = [
+            {
+                "meal_type": meal.meal_type.value if hasattr(meal.meal_type, 'value') else meal.meal_type,
+                "dining_hall": meal.dining_hall
+            }
+            for meal in request_body.dining_hall_meals
+        ]
+
+        # Get and filter foods by date/hall/dietary preferences
+        filtered_result = get_filtered_foods_for_meal_plan(
+            request_body, user_profile, foods_collection, request_body.date
+        )
+        foods_by_meal = filtered_result["foods_by_meal"]
+        dietary_labels = filtered_result["dietary_labels"]
+
+        # Check if we have foods available
+        if not any(foods_by_meal.values()):
+            raise HTTPException(
+                status_code=404,
+                detail="No food data available for the selected date and dining halls"
+            )
+
+        # Initialize AI and generate plan
+        openai_key = os.getenv("OPENAI_API_KEY")
+        if not openai_key:
+            raise HTTPException(
+                status_code=503,
+                detail="AI meal planning temporarily unavailable. Please contact support."
+            )
+
+        ai_planner = MealPlannerAI(openai_key)
+        ai_meal_plan = ai_planner.generate_meal_plan(
+            foods_by_meal, meal_targets, dietary_labels, dining_hall_meals_dicts
+        )
+
+        # Check if AI generation was successful
+        if ai_meal_plan is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate meal plan. The AI couldn't create a suitable meal plan with the available foods. Please try different dining halls or dates."
+            )
+
+        # Enhance and validate response
+        response = enhance_meal_plan_response(
+            ai_meal_plan, foods_by_meal, dining_hall_meals_dicts,
+            target_calories, target_macros, request_body.date
+        )
+
+        return response
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Meal plan generation error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate meal plan: {str(e)}"
+        )

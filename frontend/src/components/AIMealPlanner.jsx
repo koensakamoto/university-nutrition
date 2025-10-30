@@ -44,6 +44,11 @@ const AIMealPlanner = () => {
     Dinner: []
   })
 
+  // Meal plan generation state
+  const [generating, setGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState(null)
+  const [mealPlan, setMealPlan] = useState(null)
+
   // Fetch user profile on mount
   useEffect(() => {
     setProfileLoading(true)
@@ -99,18 +104,78 @@ const AIMealPlanner = () => {
       })
   }, [selectedDate])
 
-  const handleGeneratePlan = () => {
-    // TODO: Integration with AI meal planning system will be added later
-    console.log('Generate meal plan:', {
-      breakfast: breakfastHall,
-      lunch: lunchHall,
-      dinner: dinnerHall,
-      targetMode: targetMode,
-      customTargets: targetMode === 'custom' ? customTargets : null
-    })
+  const handleGeneratePlan = async () => {
+    // Build the request
+    const dining_hall_meals = []
+    if (breakfastHall) dining_hall_meals.push({ meal_type: 'breakfast', dining_hall: breakfastHall })
+    if (lunchHall) dining_hall_meals.push({ meal_type: 'lunch', dining_hall: lunchHall })
+    if (dinnerHall) dining_hall_meals.push({ meal_type: 'dinner', dining_hall: dinnerHall })
 
-    // For now, just show an alert
-    alert('AI meal plan generation will be implemented soon!')
+    const requestBody = {
+      date: selectedDate,
+      dining_hall_meals: dining_hall_meals,
+      use_profile_data: targetMode === 'account',
+      use_profile_preferences: targetMode === 'account'
+    }
+
+    // Add custom targets if in custom mode
+    if (targetMode === 'custom') {
+      requestBody.target_calories = parseInt(customTargets.calories)
+      requestBody.protein_percent = parseFloat(customTargets.proteinPercent)
+      requestBody.carbs_percent = parseFloat(customTargets.carbsPercent)
+      requestBody.fat_percent = parseFloat(customTargets.fatPercent)
+    }
+
+    // Call API
+    setGenerating(true)
+    setGenerationError(null)
+    setMealPlan(null)
+
+    try {
+      const response = await fetch('/api/meal-plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody)
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        const errorDetail = errorData.detail || 'Failed to generate meal plan'
+
+        // Map technical errors to user-friendly messages
+        let userMessage = errorDetail
+        if (errorDetail.includes('No food data available')) {
+          userMessage = 'No menu data available for the selected date and dining halls. Please try a different date or dining hall.'
+        } else if (errorDetail.includes('AI meal planning temporarily unavailable')) {
+          userMessage = 'AI meal planning is temporarily unavailable. Please try again later.'
+        } else if (errorDetail.includes('tuple') || errorDetail.includes('await') || errorDetail.includes('async')) {
+          userMessage = 'A technical error occurred. Please try again or contact support if the issue persists.'
+        } else if (response.status === 401 || response.status === 403) {
+          userMessage = 'Your session has expired. Please refresh the page and log in again.'
+        } else if (response.status === 500) {
+          userMessage = 'An unexpected error occurred while generating your meal plan. Please try again.'
+        }
+
+        throw new Error(userMessage)
+      }
+
+      const data = await response.json()
+      setMealPlan(data)
+    } catch (error) {
+      console.error('Meal plan generation error:', error)
+
+      // Handle network errors
+      if (error.message.includes('Failed to fetch') || error.message === 'Network request failed') {
+        setGenerationError('Unable to connect to the server. Please check your internet connection and try again.')
+      } else {
+        setGenerationError(error.message)
+      }
+    } finally {
+      setGenerating(false)
+    }
   }
 
   // Check if at least one meal is selected
@@ -548,20 +613,161 @@ const AIMealPlanner = () => {
                 </div>
                 <button
                   onClick={handleGeneratePlan}
-                  disabled={!canGenerate}
+                  disabled={!canGenerate || generating}
                   className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
-                    canGenerate
+                    canGenerate && !generating
                       ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <Sparkles className="h-5 w-5" />
-                  Generate Meal Plan
+                  {generating ? (
+                    <>
+                      <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-5 w-5" />
+                      Generate Meal Plan
+                    </>
+                  )}
                 </button>
               </div>
             </div>
+
+            {/* Loading State */}
+            {generating && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center">
+                <div className="animate-spin h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Creating Your Personalized Meal Plan
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Our AI is analyzing your meal selections and selecting optimal foods for your nutrition goals...
+                  <br />
+                  <span className="text-xs text-gray-500 mt-2 block">This may take 30-60 seconds</span>
+                </p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {generationError && !generating && (
+              <div className="bg-red-50 rounded-xl border border-red-200 p-6">
+                <div className="flex items-start gap-3">
+                  <Shield className="h-6 w-6 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-900 mb-2">
+                      Unable to Generate Meal Plan
+                    </h3>
+                    <p className="text-sm text-red-700 mb-3">
+                      {generationError}
+                    </p>
+                    <button
+                      onClick={() => setGenerationError(null)}
+                      className="text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Success State - Meal Plan Results */}
+            {mealPlan && !generating && (
+              <MealPlanResults plan={mealPlan} />
+            )}
           </>
         )}
+      </div>
+    </div>
+  )
+}
+
+// Meal Plan Results Component
+const MealPlanResults = ({ plan }) => {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="flex items-center gap-2 mb-6">
+        <Sparkles className="h-6 w-6 text-green-600" />
+        <h3 className="text-xl font-bold text-gray-900">Your Meal Plan for {plan.date}</h3>
+      </div>
+
+      {/* Nutrition Summary */}
+      <div className="mb-6 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
+        <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
+          <Target className="h-5 w-5" />
+          Nutrition Summary
+        </h4>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+          <div>
+            <div className="text-green-700 font-medium">Calories</div>
+            <div className="text-lg font-bold text-green-900">
+              {Math.round(plan.total_calories)} <span className="text-sm font-normal text-green-600">/ {plan.target_calories}</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-green-700 font-medium">Protein</div>
+            <div className="text-lg font-bold text-green-900">
+              {Math.round(plan.total_protein)}g
+              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.protein.toFixed(1)}%)</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-green-700 font-medium">Carbs</div>
+            <div className="text-lg font-bold text-green-900">
+              {Math.round(plan.total_carbs)}g
+              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.carbs.toFixed(1)}%)</span>
+            </div>
+          </div>
+          <div>
+            <div className="text-green-700 font-medium">Fat</div>
+            <div className="text-lg font-bold text-green-900">
+              {Math.round(plan.total_fat)}g
+              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.fat.toFixed(1)}%)</span>
+            </div>
+          </div>
+        </div>
+        <div className={`mt-3 text-sm font-medium ${plan.success ? 'text-green-700' : 'text-amber-700'}`}>
+          {plan.success ? '✓ ' : '⚠ '}{plan.message}
+        </div>
+      </div>
+
+      {/* Meals */}
+      <div className="space-y-4">
+        {plan.meals.map((meal, idx) => (
+          <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
+                <Utensils className="h-5 w-5 text-blue-600" />
+                {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)} - {meal.dining_hall}
+              </h4>
+              <div className="text-sm text-gray-600">
+                {Math.round(meal.total_calories)} cal
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-600 mb-3 flex gap-4">
+              <span>Protein: {Math.round(meal.total_protein)}g</span>
+              <span>Carbs: {Math.round(meal.total_carbs)}g</span>
+              <span>Fat: {Math.round(meal.total_fat)}g</span>
+            </div>
+
+            <div className="space-y-2">
+              {meal.foods.map((food, foodIdx) => (
+                <div key={foodIdx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{food.food_name}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Quantity: {food.quantity}x | {Math.round(food.calories)} cal |
+                      P: {Math.round(food.protein)}g | C: {Math.round(food.carbs)}g | F: {Math.round(food.fat)}g
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
