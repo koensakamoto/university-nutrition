@@ -113,19 +113,27 @@ const AIMealPlanner = () => {
     alert('AI meal plan generation will be implemented soon!')
   }
 
+  // Check if at least one meal is selected
+  const hasMealSelection = breakfastHall || lunchHall || dinnerHall
+
   // Check if macros sum to 100%
   const macroSum = parseFloat(customTargets.proteinPercent || 0) +
                    parseFloat(customTargets.carbsPercent || 0) +
                    parseFloat(customTargets.fatPercent || 0)
   const macrosValid = Math.abs(macroSum - 100) < 0.1
 
-  // Validation for custom mode
-  const customModeValid = targetMode === 'custom'
-    ? (customTargets.calories && parseFloat(customTargets.calories) >= 1000 && macrosValid)
-    : true
-
-  // Can generate if at least one meal is selected and custom mode validation passes
-  const canGenerate = (breakfastHall || lunchHall || dinnerHall) && customModeValid
+  // Validation for generate button
+  let canGenerate = false
+  if (targetMode === 'account') {
+    // Account mode: just need at least one meal selected
+    canGenerate = hasMealSelection
+  } else {
+    // Custom mode: need meal + valid calories + valid macros
+    canGenerate = hasMealSelection &&
+                  customTargets.calories &&
+                  parseFloat(customTargets.calories) >= 1000 &&
+                  macrosValid
+  }
 
   // Macro preset options
   const macroPresets = [
