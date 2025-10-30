@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Pencil, Info, Mail, User, Camera, Key, Lock } from 'lucide-react';
+import { Pencil, Info, Mail, User, Camera, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AccountInfoToolTip } from './AccountInfoToolTip';
 import { useAuth, useFetchWithAuth } from '../../AuthProvider';
@@ -431,13 +431,13 @@ export const AccountSection = () => {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8" style={{width: '100%', maxWidth: 'none'}}>
-      <div className="flex items-center justify-between mb-6 w-full max-w-2xl">
-        <div className="flex items-center">
-          <h2 className="text-xl font-semibold text-gray-800">Account Information</h2>
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
           <button
             type="button"
-            className="ml-2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
+            className="text-gray-400 hover:text-gray-600 focus:outline-none transition-colors"
             onClick={() => setShowTooltip(true)}
             aria-label="Show account info"
           >
@@ -445,328 +445,329 @@ export const AccountSection = () => {
           </button>
         </div>
       </div>
-      <AccountInfoToolTip
-        isOpen={showTooltip}
-        onClose={() => setShowTooltip(false)}
-        section="info"
-      />
-      
-      <div className="space-y-6">  
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-8 border-b border-gray-200">
-          <div className="flex items-center mb-4 md:mb-0">
-            <div className="flex items-center">
-              <div className="relative w-24 h-24 rounded-full overflow-hidden flex items-center justify-center bg-gray-200 ring-4 ring-gray-100">
-                {previewImage ? (
-                  <img
-                    src={getImageUrl(previewImage)}
-                    alt="Preview"
-                    className="w-full h-full object-cover object-center"
-                  />
-                ) : image ? (
-                  <img
-                    src={getImageUrl(image)}
-                    alt="Profile"
-                    className="w-full h-full object-cover object-center"
-                  />
-                ) : (
-                  <span className="text-4xl font-bold text-white uppercase">
-                    {name ? name[0] : '?'}
-                  </span>
-                )}
-                <button
-                  type="button"
-                  className="absolute bottom-0 right-0 bg-white border-2 border-gray-300 rounded-full p-2 shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
-                  onClick={handleImageUploadClick}
-                >
-                  <Camera className="w-4 h-4 text-gray-600" />
-                </button>
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={fileInputRef}
-                  className="hidden"
-                  onChange={handleImageChange}
-                />
-              </div>
 
-              
-              <div className="ml-5">
-                <span className="text-2xl font-bold text-gray-900">{name}</span>
-               
-              </div>
+      <div className="p-6">
+        <AccountInfoToolTip
+          isOpen={showTooltip}
+          onClose={() => setShowTooltip(false)}
+          section="info"
+        />
+
+        {/* Profile Header with Image */}
+        <div className="flex items-center gap-6 lg:gap-8 pb-6 lg:pb-8 border-b border-gray-100">
+          <div className="relative">
+            <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
+              {previewImage ? (
+                <img
+                  src={getImageUrl(previewImage)}
+                  alt="Preview"
+                  className="w-full h-full object-cover object-center"
+                />
+              ) : image ? (
+                <img
+                  src={getImageUrl(image)}
+                  alt="Profile"
+                  className="w-full h-full object-cover object-center"
+                />
+              ) : (
+                <span className="text-3xl lg:text-4xl font-semibold text-white uppercase">
+                  {name ? name[0] : '?'}
+                </span>
+              )}
             </div>
+            <button
+              type="button"
+              className="absolute bottom-0 right-0 bg-white rounded-full p-2 lg:p-2.5 shadow-md hover:shadow-lg transition-all hover:scale-110 border border-gray-200"
+              onClick={handleImageUploadClick}
+            >
+              <Camera className="w-4 h-4 lg:w-5 lg:h-5 text-gray-700" />
+            </button>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              className="hidden"
+              onChange={handleImageChange}
+            />
+          </div>
+
+          <div className="flex-1">
+            <p className="text-2xl lg:text-3xl font-semibold text-gray-900">{name}</p>
+            <p className="text-sm lg:text-base text-gray-500 mt-1">{email}</p>
           </div>
         </div>
 
-        {previewImage && (
-          <div className="flex items-center space-x-2 mb-2">
-            <button
-              onClick={handleImageUpload}
-              className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-all duration-200"
-              disabled={imageLoading}
-            >
-              {imageLoading ? 'Uploading...' : 'Save Image'}
-            </button>
-            <button
-              onClick={() => { setPreviewImage(''); setTempImage(null); setImageError(''); setImageSuccess(''); }}
-              className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition"
-              disabled={imageLoading}
-            >
-              Cancel
-            </button>
+          {previewImage && (
+            <div className="flex items-center gap-2 pb-6 border-b border-gray-100">
+              <button
+                onClick={handleImageUpload}
+                className="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+                disabled={imageLoading}
+              >
+                {imageLoading ? 'Uploading...' : 'Save Image'}
+              </button>
+              <button
+                onClick={() => { setPreviewImage(''); setTempImage(null); setImageError(''); setImageSuccess(''); }}
+                className="text-gray-600 hover:text-gray-800 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                disabled={imageLoading}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+          {imageError && <div className="text-red-600 text-sm pb-6 border-b border-gray-100">{imageError}</div>}
+          {imageSuccess && <div className="text-green-600 text-sm pb-6 border-b border-gray-100">{imageSuccess}</div>}
+
+        {/* Form Fields */}
+        <div className="space-y-1 lg:space-y-2">
+          {/* Name Field */}
+          <div className="group hover:bg-gray-50 rounded-lg transition-colors">
+            {editingName ? (
+              <div className="p-4 lg:p-6">
+                <label className="block text-xs lg:text-sm font-medium text-gray-500 mb-2 lg:mb-3">Name</label>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={tempName}
+                    onChange={(e) => setTempName(e.target.value)}
+                    aria-label="Edit name"
+                    aria-describedby={nameError ? "name-error" : undefined}
+                    className="w-full border border-gray-300 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm lg:text-base"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleNameUpdate}
+                      disabled={nameLoading}
+                      className={`px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg font-medium text-sm lg:text-base ${nameLoading
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors`}
+                    >
+                      {nameLoading ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTempName(name);
+                        setEditingName(false);
+                        setNameError('');
+                      }}
+                      className="text-gray-600 hover:text-gray-800 px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm lg:text-base"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {nameError && (
+                    <div id="name-error" className="text-red-600 text-sm" role="alert">{nameError}</div>
+                  )}
+                  {nameSuccess && (
+                    <div className="text-green-600 text-sm">{nameSuccess}</div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-4 lg:p-6 cursor-pointer" onClick={() => {
+                setEditingName(true);
+                setNameSuccess('');
+                setNameError('');
+              }}>
+                <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
+                  <User size={18} className="text-gray-400 flex-shrink-0 lg:w-5 lg:h-5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs lg:text-sm text-gray-500 mb-0.5 lg:mb-1">Name</div>
+                    <div className="text-sm lg:text-base text-gray-900 truncate">{name}</div>
+                  </div>
+                </div>
+                <Pencil size={16} className="text-gray-400 group-hover:text-blue-600 flex-shrink-0 transition-colors lg:w-5 lg:h-5" />
+              </div>
+            )}
           </div>
-        )}
-        {imageError && <div className="text-red-600 mb-2">{imageError}</div>}
-        {imageSuccess && <div className="text-green-600 mb-2">{imageSuccess}</div>}
 
-        <div className="bg-gray-50 rounded-lg p-6">
-          <label className="block text-gray-800 font-semibold mb-3">Name</label>
-          {editingName ? (
-            <div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input 
-                  type="text" 
-                  value={tempName} 
-                  onChange={(e) => setTempName(e.target.value)}
-                  aria-label="Edit name"
-                  aria-describedby={nameError ? "name-error" : undefined}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <div className="flex gap-2">
-                  <button 
-                    onClick={handleNameUpdate} 
-                    disabled={nameLoading}
-                    className={`px-6 py-3 rounded-lg font-medium ${nameLoading 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
-                  >
-                    {nameLoading ? 'Saving...' : 'Save'}
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setTempName(name);
-                      setEditingName(false);
-                      setNameError('');
-                    }} 
-                    className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
+          {/* Email Field */}
+          <div className="group hover:bg-gray-50 rounded-lg transition-colors">
+            {editingEmail ? (
+              <div className="p-4 lg:p-6">
+                <label className="block text-xs lg:text-sm font-medium text-gray-500 mb-2 lg:mb-3">Email</label>
+                <div className="space-y-3">
+                  <input
+                    type="email"
+                    value={tempEmail}
+                    onChange={(e) => setTempEmail(e.target.value)}
+                    aria-label="Edit email address"
+                    aria-describedby={emailError ? "email-error" : undefined}
+                    className="w-full border border-gray-300 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm lg:text-base"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleEmailUpdate}
+                      disabled={emailLoading}
+                      className={`px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg font-medium text-sm lg:text-base ${emailLoading
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors`}
+                    >
+                      {emailLoading ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTempEmail(email);
+                        setEditingEmail(false);
+                        setEmailError('');
+                      }}
+                      className="text-gray-600 hover:text-gray-800 px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm lg:text-base"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {emailError && (
+                    <div id="email-error" className="text-red-600 text-sm" role="alert">{emailError}</div>
+                  )}
+                  {emailSuccess && (
+                    <div className="text-green-600 text-sm">{emailSuccess}</div>
+                  )}
                 </div>
               </div>
-              {nameError && (
-                <div id="name-error" className="mt-2 text-red-600 text-sm" role="alert">{nameError}</div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <User size={20} className="text-gray-500 mr-3" />
-                <span className="text-gray-900 text-lg">{name}</span>
-              </div>
-              <button
-                onClick={() => {
-                  setEditingName(true);
-                  setNameSuccess('');
-                  setNameError('');
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-                aria-label="Edit Name"
-              >
-                <Pencil size={16} />
-                <span className="hidden sm:inline">Edit</span>
-              </button>
-            </div>
-          )}
-          {nameSuccess && (
-            <div className="mt-2 text-green-600 text-sm">{nameSuccess}</div>
-          )}
-        </div>
-        
-        <div className="bg-gray-50 rounded-lg p-6">
-          <label className="block text-gray-800 font-semibold mb-3">Email</label>
-          {editingEmail ? (
-            <div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <input 
-                  type="email" 
-                  value={tempEmail} 
-                  onChange={(e) => setTempEmail(e.target.value)}
-                  aria-label="Edit email address"
-                  aria-describedby={emailError ? "email-error" : undefined}
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                />
-                <div className="flex gap-2">
-                  <button 
-                    onClick={handleEmailUpdate} 
-                    disabled={emailLoading}
-                    className={`px-6 py-3 rounded-lg font-medium ${emailLoading 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
-                  >
-                    {emailLoading ? 'Saving...' : 'Save'}
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setTempEmail(email);
-                      setEditingEmail(false);
-                      setEmailError('');
-                    }} 
-                    className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                  >
-                    Cancel
-                  </button>
+            ) : (
+              <div className="flex items-center justify-between p-4 lg:p-6 cursor-pointer" onClick={() => {
+                setEditingEmail(true);
+                setEmailSuccess('');
+                setEmailError('');
+              }}>
+                <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
+                  <Mail size={18} className="text-gray-400 flex-shrink-0 lg:w-5 lg:h-5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs lg:text-sm text-gray-500 mb-0.5 lg:mb-1">Email</div>
+                    <div className="text-sm lg:text-base text-gray-900 truncate">{email}</div>
+                  </div>
                 </div>
+                <Pencil size={16} className="text-gray-400 group-hover:text-blue-600 flex-shrink-0 transition-colors lg:w-5 lg:h-5" />
               </div>
-              {emailError && (
-                <div id="email-error" className="mt-2 text-red-600 text-sm" role="alert">{emailError}</div>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Mail size={20} className="text-gray-500 mr-3" />
-                <span className="text-gray-900 text-lg">{email}</span>
-              </div>
-              <button
-                onClick={() => {
-                  setEditingEmail(true);
-                  setEmailSuccess('');
-                  setEmailError('');
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-                aria-label="Edit Email"
-              >
-                <Pencil size={16} />
-                <span className="hidden sm:inline">Edit</span>
-              </button>
-            </div>
-          )}
-          {emailSuccess && (
-            <div className="mt-2 text-green-600 text-sm">{emailSuccess}</div>
-          )}
+            )}
+          </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-6">
-          <label className="block text-gray-800 font-semibold mb-3">Password</label>
+        {/* Password Field */}
+        <div className="group hover:bg-gray-50 rounded-lg transition-colors mt-1 lg:mt-2">
           {editingPassword ? (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-medium">Current Password</label>
-                <div className="relative">
-                  <input 
-                    type={showCurrentPassword ? "text" : "password"} 
-                    value={currentPassword} 
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    aria-label="Current password"
-                    aria-describedby={passwordError ? "password-error" : undefined}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)} 
-                    aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+            <div className="p-4 lg:p-6">
+              <label className="block text-xs lg:text-sm font-medium text-gray-500 mb-3 lg:mb-4">Change Password</label>
+              <div className="space-y-3 lg:space-y-4">
+                <div>
+                  <label className="block text-xs lg:text-sm text-gray-500 mb-1.5 lg:mb-2">Current Password</label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? "text" : "password"}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      aria-label="Current password"
+                      aria-describedby={passwordError ? "password-error" : undefined}
+                      className="w-full border border-gray-300 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 pr-16 lg:pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm lg:text-base"
+                    />
+                    <button
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+                      className="absolute right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-xs lg:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      type="button"
+                    >
+                      {showCurrentPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs lg:text-sm text-gray-500 mb-1.5 lg:mb-2">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                      aria-label="New password"
+                      aria-describedby={passwordError ? "password-error" : undefined}
+                      className="w-full border border-gray-300 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 pr-16 lg:pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm lg:text-base"
+                    />
+                    <button
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                      className="absolute right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-xs lg:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      type="button"
+                    >
+                      {showNewPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs lg:text-sm text-gray-500 mb-1.5 lg:mb-2">Confirm New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      aria-label="Confirm new password"
+                      aria-describedby={passwordError ? "password-error" : undefined}
+                      className="w-full border border-gray-300 rounded-lg px-3 lg:px-4 py-2 lg:py-2.5 pr-16 lg:pr-20 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm lg:text-base"
+                    />
+                    <button
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      className="absolute right-3 lg:right-4 top-1/2 transform -translate-y-1/2 text-xs lg:text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      type="button"
+                    >
+                      {showConfirmPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <div id="password-error" className="text-red-600 text-sm" role="alert">{passwordError}</div>
+                )}
+                {passwordSuccess && (
+                  <div className="text-green-600 text-sm">{passwordSuccess}</div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handlePasswordUpdate}
+                    disabled={passwordLoading}
+                    className={`px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg font-medium text-sm lg:text-base ${passwordLoading
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700'} text-white transition-colors`}
                   >
-                    {showCurrentPassword ? "Hide" : "Show"}
+                    {passwordLoading ? 'Updating...' : 'Update Password'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingPassword(false);
+                      setPasswordError('');
+                      setPasswordSuccess('');
+                      setTempPassword('');
+                      setConfirmPassword('');
+                      setCurrentPassword('');
+                      setShowCurrentPassword(false);
+                      setShowNewPassword(false);
+                      setShowConfirmPassword(false);
+                    }}
+                    className="text-gray-600 hover:text-gray-800 px-4 lg:px-5 py-2 lg:py-2.5 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm lg:text-base"
+                  >
+                    Cancel
                   </button>
                 </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-medium">New Password</label>
-                <div className="relative">
-                  <input 
-                    type={showNewPassword ? "text" : "password"} 
-                    value={tempPassword} 
-                    onChange={(e) => setTempPassword(e.target.value)}
-                    aria-label="New password"
-                    aria-describedby={passwordError ? "password-error" : undefined}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={() => setShowNewPassword(!showNewPassword)} 
-                    aria-label={showNewPassword ? "Hide new password" : "Show new password"}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    {showNewPassword ? "Hide" : "Show"}
-                  </button>
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-sm text-gray-700 mb-2 font-medium">Confirm New Password</label>
-                <div className="relative">
-                  <input 
-                    type={showConfirmPassword ? "text" : "password"} 
-                    value={confirmPassword} 
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    aria-label="Confirm new password"
-                    aria-describedby={passwordError ? "password-error" : undefined}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                  />
-                  <button 
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
-                    aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    {showConfirmPassword ? "Hide" : "Show"}
-                  </button>
-                </div>
-              </div>
-              
-              {passwordError && (
-                <div id="password-error" className="text-red-500 text-sm" role="alert">{passwordError}</div>
-              )}
-              
-              <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <button 
-                  onClick={handlePasswordUpdate} 
-                  disabled={passwordLoading}
-                  className={`px-6 py-3 rounded-lg font-medium ${passwordLoading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-red-600 hover:bg-red-700'} text-white transition-colors`}
-                >
-                  {passwordLoading ? 'Updating...' : 'Update Password'}
-                </button>
-                <button 
-                  onClick={() => {
-                    setEditingPassword(false);
-                    setPasswordError('');
-                    setPasswordSuccess('');
-                    setTempPassword('');
-                    setConfirmPassword('');
-                    setCurrentPassword('');
-                    setShowCurrentPassword(false);
-                    setShowNewPassword(false);
-                    setShowConfirmPassword(false);
-                  }} 
-                  className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
               </div>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Lock size={20} className="text-gray-500 mr-3" />
-                <span className="text-gray-900 text-lg">••••••••••••</span>
+            <div className="flex items-center justify-between p-4 lg:p-6 cursor-pointer" onClick={() => {
+              setEditingPassword(true);
+              setPasswordSuccess('');
+              setPasswordError('');
+            }}>
+              <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0">
+                <Lock size={18} className="text-gray-400 flex-shrink-0 lg:w-5 lg:h-5" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs lg:text-sm text-gray-500 mb-0.5 lg:mb-1">Password</div>
+                  <div className="text-sm lg:text-base text-gray-900">••••••••••••</div>
+                </div>
               </div>
-              <button 
-                onClick={() => {
-                  setEditingPassword(true);
-                  setPasswordSuccess('');
-                  setPasswordError('');
-                }} 
-                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium"
-              >
-                <Key size={16} />
-                <span className="hidden sm:inline">Change Password</span>
-              </button>
+              <Pencil size={16} className="text-gray-400 group-hover:text-blue-600 flex-shrink-0 transition-colors lg:w-5 lg:h-5" />
             </div>
-          )}
-          {passwordSuccess && (
-            <div className="mt-2 text-green-600 text-sm">{passwordSuccess}</div>
           )}
         </div>
       </div>
