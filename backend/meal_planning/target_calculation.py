@@ -113,9 +113,9 @@ def get_macro_targets_from_profile(user_profile: Dict) -> Dict[str, float]:
     Get macro percentage targets from user profile
     """
     return {
-        "protein": user_profile.get("macro_protein", 30.0),
-        "carbs": user_profile.get("macro_carbs", 40.0),
-        "fat": user_profile.get("macro_fat", 30.0)
+        "protein": float(user_profile.get("protein_ratio", 30.0)),
+        "carbs": float(user_profile.get("carb_ratio", 40.0)),
+        "fat": float(user_profile.get("fat_ratio", 30.0))
     }
 
 def validate_macro_percentages(protein_pct: float, carbs_pct: float, fat_pct: float) -> bool:
@@ -137,7 +137,20 @@ def get_user_targets(request, user_profile: Dict) -> Tuple[int, Dict[str, float]
         target_calories = calculate_energy_target_from_profile(user_profile)
         target_macros = get_macro_targets_from_profile(user_profile)
 
+        # Log profile data being used
+        logger.info(f"Profile data - weight: {user_profile.get('weight')}, height: {user_profile.get('height')}, activity: {user_profile.get('activity_level')}")
+        logger.info(f"Profile data - weight_goal_type: {user_profile.get('weight_goal_type')}, weight_goal_rate: {user_profile.get('weight_goal_rate')}")
+        logger.info(f"Profile data - protein_ratio: {user_profile.get('protein_ratio')}, carb_ratio: {user_profile.get('carb_ratio')}, fat_ratio: {user_profile.get('fat_ratio')}")
         logger.info(f"Using profile targets: {target_calories} cal, {target_macros}")
+
+        # Validate profile macros sum to 100%
+        if not validate_macro_percentages(
+            target_macros["protein"],
+            target_macros["carbs"],
+            target_macros["fat"]
+        ):
+            logger.warning(f"Profile macros don't sum to 100%: {target_macros}. Using defaults instead.")
+            target_macros = {"protein": 30.0, "carbs": 40.0, "fat": 30.0}
     else:
         # Use provided values
         target_calories = request.target_calories

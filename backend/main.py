@@ -1642,7 +1642,8 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
     try:
         # Get current user
         user = get_current_user(req, users_collection)
-        user_profile = users_collection.find_one({"_id": ObjectId(user["_id"])})
+        user_doc = users_collection.find_one({"_id": ObjectId(user["_id"])})
+        user_profile = user_doc.get("profile", {})
 
         # Calculate nutrition targets
         target_calories, target_macros = get_user_targets(request_body, user_profile)

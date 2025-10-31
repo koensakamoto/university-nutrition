@@ -115,7 +115,7 @@ const Header = () => {
                   <div className="flex items-center space-x-4">
                     {/* User Info */}
                     <div className="hidden lg:flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
                         {user.profile?.image ? (
                           <img
                             src={getImageUrl(user.profile.image)}
@@ -123,7 +123,7 @@ const Header = () => {
                             className="w-8 h-8 rounded-full object-cover"
                           />
                         ) : (
-                          <span className="text-red-600 font-semibold text-sm">
+                          <span className="text-white font-semibold text-sm">
                             {user.profile?.name ? user.profile.name.charAt(0).toUpperCase() : 'U'}
                           </span>
                         )}
@@ -175,7 +175,7 @@ const Header = () => {
                   {!user.guest && (
                     <div className="px-4 py-4 bg-gray-50 rounded-xl mb-4 mx-2">
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-sm">
                           {user.profile?.image ? (
                             <img
                               src={getImageUrl(user.profile.image)}
@@ -183,7 +183,7 @@ const Header = () => {
                               className="w-12 h-12 rounded-full object-cover"
                             />
                           ) : (
-                            <span className="text-red-600 font-semibold text-lg">
+                            <span className="text-white font-semibold text-lg">
                               {user.profile?.name ? user.profile.name.charAt(0).toUpperCase() : 'U'}
                             </span>
                           )}
