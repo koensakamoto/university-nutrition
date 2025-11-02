@@ -286,26 +286,36 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
       
       {/* Goal Summary */}
       {goalDirection && (
-        <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <div className="flex items-center mb-2">
-            {goalDirection === 'losing' && <TrendingDown size={20} className="text-blue-600 mr-2" />}
-            {goalDirection === 'gaining' && <TrendingUp size={20} className="text-blue-600 mr-2" />}
-            {goalDirection === 'maintaining' && <Minimize size={20} className="text-blue-600 mr-2" />}
-            <h4 className="font-medium text-blue-800">Your Goal</h4>
+        <div className="border border-gray-200 rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div>
+                {goalDirection === 'losing' && <TrendingDown size={20} className="text-blue-500" strokeWidth={2} />}
+                {goalDirection === 'gaining' && <TrendingUp size={20} className="text-green-500" strokeWidth={2} />}
+                {goalDirection === 'maintaining' && <Minimize size={20} className="text-gray-500" strokeWidth={2} />}
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-500 mb-0.5">Your Goal</p>
+                <p className="text-base text-gray-900 font-semibold">
+                  {goalDirection === 'gaining' && `Gain ${(parseFloat(weightGoal) - parseFloat(currentWeight)).toFixed(1)} lbs`}
+                  {goalDirection === 'losing' && `Lose ${(parseFloat(currentWeight) - parseFloat(weightGoal)).toFixed(1)} lbs`}
+                  {goalDirection === 'maintaining' && `Maintain ${currentWeight} lbs`}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-xs font-medium text-gray-500 mb-0.5">Target Weight</p>
+              <p className="text-base text-gray-900 font-semibold">{weightGoal} lbs</p>
+            </div>
           </div>
-          <div className="text-blue-700">
-            <p className="mb-2">
-              {goalDirection === 'gaining' && `Gain ${(parseFloat(weightGoal) - parseFloat(currentWeight)).toFixed(1)} lbs (${currentWeight} → ${weightGoal} lbs)`}
-              {goalDirection === 'losing' && `Lose ${(parseFloat(currentWeight) - parseFloat(weightGoal)).toFixed(1)} lbs (${currentWeight} → ${weightGoal} lbs)`}
-              {goalDirection === 'maintaining' && `Maintain current weight (~${currentWeight} lbs)`}
-            </p>
-            {goalDirection !== 'maintaining' && rateOption && (
-              <p className="text-sm text-blue-600">
-                <strong>Estimated time:</strong> {(() => {
+          {goalDirection !== 'maintaining' && rateOption && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs text-gray-500">
+                <span className="font-medium">Estimated time:</span> {(() => {
                   const current = parseFloat(currentWeight);
                   const goal = parseFloat(weightGoal);
                   const totalWeightChange = Math.abs(goal - current);
-                  
+
                   let lbsPerWeek = 0;
                   if (rateOption === 'custom') {
                     lbsPerWeek = Math.abs(parseFloat(customRate)) || 0;
@@ -316,11 +326,11 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
                       case 'fast': lbsPerWeek = 1.5; break;
                     }
                   }
-                  
+
                   if (lbsPerWeek === 0) return 'N/A';
-                  
+
                   const estimatedWeeks = totalWeightChange / lbsPerWeek;
-                  
+
                   if (estimatedWeeks < 1) {
                     const estimatedDays = Math.ceil(estimatedWeeks * 7);
                     return estimatedDays === 1 ? '1 day' : `${estimatedDays} days`;
@@ -330,14 +340,14 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
                   }
                 })()}
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
       {!goalDirection && (
-        <div className="bg-gray-50 p-4 rounded-lg mb-6">
-          <p className="text-gray-600">Please set your current weight and weight goal in the Profile section first.</p>
+        <div className="border border-gray-200 p-5 rounded-xl mb-6">
+          <p className="text-sm text-gray-600">Please set your current weight and weight goal in the Profile section first.</p>
         </div>
       )}
       
@@ -424,28 +434,32 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
           </div>
         </div>
         {energyTarget && goalDirection && (
-          <div className="flex flex-col items-center mt-6 mb-0">
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl shadow p-8 text-center border border-gray-200">
-              <span className="block text-lg font-medium mb-2 text-gray-700">Your current daily energy target</span>
-              <span className="text-4xl font-extrabold text-[#c41e3a] tracking-tight">{energyTarget} kcal</span>
-            </div>
-            {goalDirection && showSaveButton && (
-              <button
-                className="mt-6 bg-[#c41e3a] text-white px-8 py-3 rounded-lg font-semibold shadow hover:bg-[#a41930] transition"
-                onClick={handleSave}
-              >
-                Save
-              </button>
-            )}
-            {showSaveButton && (
-              <div className="text-sm text-gray-500 mt-3 text-center">Save to update your energy target.</div>
-            )}
-            {saveSuccess && (
-              <div className="flex flex-col items-center mt-4 animate-fade-in">
-                <svg className="w-7 h-7 text-green-500 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                <span className="text-green-600 font-medium text-base">Weight goal saved successfully!</span>
+          <div className="mt-8 mb-0">
+            <div className="border border-gray-200 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-500 mb-1">Your current daily energy target</p>
+                  <p className="text-3xl font-bold text-gray-900">{energyTarget} <span className="text-lg font-normal text-gray-500">kcal</span></p>
+                </div>
+                {goalDirection && showSaveButton && (
+                  <button
+                    className="ml-6 bg-[#c41e3a] text-white px-6 py-2.5 rounded-lg font-medium text-sm shadow-sm hover:bg-[#a41930] transition-colors"
+                    onClick={handleSave}
+                  >
+                    Save Changes
+                  </button>
+                )}
               </div>
-            )}
+              {showSaveButton && (
+                <p className="text-xs text-gray-500 mt-3">Changes will update your daily calorie target.</p>
+              )}
+              {saveSuccess && (
+                <div className="flex items-center gap-2 mt-3 animate-fade-in">
+                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  <span className="text-green-600 font-medium text-sm">Weight goal saved successfully!</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

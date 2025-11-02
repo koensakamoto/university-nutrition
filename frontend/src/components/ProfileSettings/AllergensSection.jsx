@@ -161,13 +161,13 @@ export const AllergensSection = () => {
         onClose={() => setShowTooltip(false)}
         section="allergens"
       />
-      <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-6">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
+      <div className="border border-orange-200 rounded-xl p-4 mb-6 bg-orange-50/30">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5">
+            <AlertTriangle className="h-5 w-5 text-orange-500" strokeWidth={2} aria-hidden="true" />
           </div>
-          <div className="ml-3">
-            <p className="text-sm text-amber-700">
+          <div className="flex-1">
+            <p className="text-sm text-gray-700 font-medium">
               For severe allergies, please also notify the campus dining staff directly.
             </p>
           </div>

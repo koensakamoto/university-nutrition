@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Sparkles, Utensils, User, Settings, Activity, Target, Shield, Heart } from 'lucide-react'
+import { ChevronLeft, Sparkles, Utensils, User, Settings, Activity, Target, Shield, Heart, Zap, PieChart, Leaf, Scale, Star } from 'lucide-react'
 import LoadingSpinner from './LoadingSpinner'
 
 // Format date for API (defined outside component to avoid hoisting issues)
@@ -237,8 +237,7 @@ const AIMealPlanner = () => {
             <ChevronLeft className="h-4 w-4 mr-1" />
             Back to Dashboard
           </button>
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
+          <div className="mb-2">
             <h1 className="text-xl font-bold text-gray-900">AI Meal Planner</h1>
           </div>
           <p className="text-sm text-gray-600">
@@ -335,73 +334,113 @@ const AIMealPlanner = () => {
 
               {/* Profile Preview - Enhanced */}
               {targetMode === 'account' && userProfile && (
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-blue-600" />
-                    <p className="text-xs font-semibold text-blue-900">Your Profile Summary</p>
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-gray-900">Your Profile Summary</p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Body Stats */}
-                    {userProfile.weight && userProfile.height && (
-                      <div className="flex items-start gap-2">
-                        <Activity className="h-4 w-4 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-medium text-blue-900">Body Stats</p>
-                          <p className="text-xs text-blue-700">
-                            {userProfile.weight} lbs, {userProfile.height} in
-                            {userProfile.activity_level && (
-                              <span className="block text-blue-600">{userProfile.activity_level}</span>
-                            )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
+                    {/* Row 1, Col 1: Daily Calorie Target */}
+                    {userProfile.daily_calorie_target && (
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <Zap className="h-5 w-5 text-orange-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Daily Calorie Target</p>
+                          <p className="text-base text-gray-900 font-semibold">
+                            {userProfile.daily_calorie_target} kcal
                           </p>
                         </div>
                       </div>
                     )}
 
-                    {/* Macro Targets */}
+                    {/* Row 1, Col 2: Macro Targets */}
                     {(userProfile.protein_ratio || userProfile.carb_ratio || userProfile.fat_ratio) && (
-                      <div className="flex items-start gap-2">
-                        <Target className="h-4 w-4 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-medium text-blue-900">Macro Targets</p>
-                          <p className="text-xs text-blue-700">
-                            P: {userProfile.protein_ratio || 0}% / C: {userProfile.carb_ratio || 0}% / F: {userProfile.fat_ratio || 0}%
-                          </p>
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <PieChart className="h-5 w-5 text-purple-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Macro Targets</p>
+                          <div className="text-xs text-gray-600 space-y-1">
+                            {userProfile.protein_grams !== undefined && (
+                              <div>P: <span className="font-semibold text-gray-900">{userProfile.protein_grams}g</span> <span className="text-gray-400">({userProfile.protein_ratio || 0}%)</span></div>
+                            )}
+                            {userProfile.carb_grams !== undefined && (
+                              <div>C: <span className="font-semibold text-gray-900">{userProfile.carb_grams}g</span> <span className="text-gray-400">({userProfile.carb_ratio || 0}%)</span></div>
+                            )}
+                            {userProfile.fat_grams !== undefined && (
+                              <div>F: <span className="font-semibold text-gray-900">{userProfile.fat_grams}g</span> <span className="text-gray-400">({userProfile.fat_ratio || 0}%)</span></div>
+                            )}
+                            {!userProfile.protein_grams && !userProfile.carb_grams && !userProfile.fat_grams && (
+                              <div>P: {userProfile.protein_ratio || 0}% / C: {userProfile.carb_ratio || 0}% / F: {userProfile.fat_ratio || 0}%</div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     )}
 
-                    {/* Diet Type */}
+                    {/* Row 2, Col 1: Diet Type */}
                     {userProfile.diet_type && (
-                      <div className="flex items-start gap-2">
-                        <Heart className="h-4 w-4 text-blue-600 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-medium text-blue-900">Diet Type</p>
-                          <p className="text-xs text-blue-700">{userProfile.diet_type}</p>
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <Leaf className="h-5 w-5 text-green-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Diet Type</p>
+                          <p className="text-sm text-gray-900 font-medium capitalize">{userProfile.diet_type}</p>
                         </div>
                       </div>
                     )}
 
-                    {/* Allergens */}
-                    {userProfile.allergens && userProfile.allergens.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <Shield className="h-4 w-4 text-red-500 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-medium text-blue-900">Avoiding</p>
-                          <p className="text-xs text-blue-700">{userProfile.allergens.join(', ')}</p>
+                    {/* Row 2, Col 2: Allergens */}
+                    {((userProfile.allergens && userProfile.allergens.length > 0) || userProfile.allergen_notes || userProfile.allergy_notes) && (
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <Shield className="h-5 w-5 text-red-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Avoiding</p>
+                          {userProfile.allergens && userProfile.allergens.length > 0 && (
+                            <p className="text-sm text-gray-900 font-medium">{userProfile.allergens.join(', ')}</p>
+                          )}
+                          {(userProfile.allergen_notes || userProfile.allergy_notes) && (
+                            <p className="text-xs text-orange-500 mt-1 font-medium">{userProfile.allergen_notes || userProfile.allergy_notes}</p>
+                          )}
                         </div>
                       </div>
                     )}
 
-                    {/* Meal Preferences */}
+                    {/* Row 3, Col 1: Body Stats */}
+                    {userProfile.weight && userProfile.height && (
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <Scale className="h-5 w-5 text-indigo-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Body Stats</p>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {userProfile.weight} lbs, {userProfile.height} in
+                          </p>
+                          {userProfile.activity_level && (
+                            <p className="text-xs text-gray-500 capitalize mt-1">Activity: {userProfile.activity_level}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Row 3, Col 2: Meal Preferences */}
                     {userProfile.meal_preference && userProfile.meal_preference.length > 0 && (
-                      <div className="flex items-start gap-2 sm:col-span-2">
-                        <Heart className="h-4 w-4 text-green-500 mt-0.5" />
-                        <div>
-                          <p className="text-xs font-medium text-blue-900">Preferences</p>
-                          <div className="flex flex-wrap gap-1 mt-1">
+                      <div className="flex items-start gap-3.5">
+                        <div className="mt-0.5">
+                          <Star className="h-5 w-5 text-blue-500" strokeWidth={2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1.5">Preferences</p>
+                          <div className="flex flex-wrap gap-1.5">
                             {userProfile.meal_preference.map((pref, idx) => (
-                              <span key={idx} className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">
+                              <span key={idx} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-medium">
                                 {pref}
                               </span>
                             ))}
@@ -627,7 +666,6 @@ const AIMealPlanner = () => {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="h-5 w-5" />
                       Generate Meal Plan
                     </>
                   )}

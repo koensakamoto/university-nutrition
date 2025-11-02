@@ -4,7 +4,7 @@ import Filter from './Filter'
 import FoodStations from './FoodStations'
 import CustomMealForm from './CustomMealForm'
 import LoadingSpinner from './LoadingSpinner'
-import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon, Sparkles } from 'lucide-react'
+import { PlusCircleIcon, CalendarIcon, BuildingIcon, ClockIcon, UtensilsIcon, ArrowRightIcon } from 'lucide-react'
 import NutrientTracker from './NutrientTracker'
 import { useFetchWithAuth, useAuth } from '../AuthProvider'
 
@@ -449,16 +449,11 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
             className="w-full bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5 hover:border-blue-300 hover:shadow-md transition-all duration-200 group"
           >
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-100 p-2 rounded-lg">
-                  <Sparkles className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-lg text-gray-900">AI Meal Planner</h3>
-                  <p className="text-sm text-gray-600">
-                    Generate a personalized nutrition plan
-                  </p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-semibold text-lg text-gray-900">AI Meal Planner</h3>
+                <p className="text-sm text-gray-600">
+                  Generate a personalized nutrition plan
+                </p>
               </div>
               <ArrowRightIcon className="h-5 w-5 text-gray-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
             </div>

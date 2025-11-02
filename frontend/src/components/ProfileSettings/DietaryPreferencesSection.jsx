@@ -17,18 +17,9 @@ const dietTypes = [
   { value: "low-carb", label: "Low Carb" }
 ];
 
-const culturalPreferences = [
-  { value: "none", label: "No Specific Preference" },
-  { value: "halal", label: "Halal" },
-  { value: "kosher", label: "Kosher" },
-  { value: "hindu", label: "Hindu Dietary Customs" },
-  { value: "buddhist", label: "Buddhist Dietary Customs" }
-];
-
 export const DietaryPreferencesSection = () => {
   const [dietType, setDietType] = useState("regular");
   const [mealPreferences, setMealPreferences] = useState([]);
-  const [culturalPreference, setCulturalPreference] = useState("none");
   const [original, setOriginal] = useState({});
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -44,11 +35,9 @@ export const DietaryPreferencesSection = () => {
       .then(data => {
         setDietType(data.profile.diet_type || "regular");
         setMealPreferences(data.profile.meal_preference || []);
-        setCulturalPreference(data.profile.cultural_preference || "none");
         setOriginal({
           dietType: data.profile.diet_type || "regular",
-          mealPreferences: data.profile.meal_preference || [],
-          culturalPreference: data.profile.cultural_preference || "none"
+          mealPreferences: data.profile.meal_preference || []
         });
         setFetchError(null);
       })
@@ -56,11 +45,9 @@ export const DietaryPreferencesSection = () => {
         setFetchError('Could not load profile.');
         setDietType("regular");
         setMealPreferences([]);
-        setCulturalPreference("none");
         setOriginal({
           dietType: "regular",
-          mealPreferences: [],
-          culturalPreference: "none"
+          mealPreferences: []
         });
       });
   }, []);
@@ -69,8 +56,7 @@ export const DietaryPreferencesSection = () => {
     setDietType(e.target.value);
     setShowSaveButton(
       e.target.value !== original.dietType ||
-      JSON.stringify(mealPreferences) !== JSON.stringify(original.mealPreferences) ||
-      culturalPreference !== original.culturalPreference
+      JSON.stringify(mealPreferences) !== JSON.stringify(original.mealPreferences)
     );
     setSaveSuccess(false);
   };
@@ -86,18 +72,7 @@ export const DietaryPreferencesSection = () => {
     setMealPreferences(updated);
     setShowSaveButton(
       dietType !== original.dietType ||
-      JSON.stringify(updated) !== JSON.stringify(original.mealPreferences) ||
-      culturalPreference !== original.culturalPreference
-    );
-    setSaveSuccess(false);
-  };
-
-  const handleCulturalPreferenceChange = (e) => {
-    setCulturalPreference(e.target.value);
-    setShowSaveButton(
-      dietType !== original.dietType ||
-      JSON.stringify(mealPreferences) !== JSON.stringify(original.mealPreferences) ||
-      e.target.value !== original.culturalPreference
+      JSON.stringify(updated) !== JSON.stringify(original.mealPreferences)
     );
     setSaveSuccess(false);
   };
@@ -110,15 +85,13 @@ export const DietaryPreferencesSection = () => {
         credentials: 'include',
         body: JSON.stringify({
           diet_type: dietType,
-          meal_preference: mealPreferences,
-          cultural_preference: culturalPreference
+          meal_preference: mealPreferences
         })
       });
       if (!res.ok) throw new Error('Failed to update preferences');
       setOriginal({
         dietType,
-        mealPreferences,
-        culturalPreference
+        mealPreferences
       });
       setShowSaveButton(false);
       setSaveSuccess(true);
@@ -178,18 +151,6 @@ export const DietaryPreferencesSection = () => {
               </label>
             ))}
           </div>
-        </div>
-        <div>
-          <label className="block text-gray-700 font-medium mb-2">Cultural Preferences</label>
-          <select
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent"
-            value={culturalPreference}
-            onChange={handleCulturalPreferenceChange}
-          >
-            {culturalPreferences.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
         </div>
         <div className="bg-gray-50 p-4 rounded-lg flex items-center">
           <Utensils size={24} className="text-[#c41e3a] mr-3" />

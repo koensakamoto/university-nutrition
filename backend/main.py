@@ -684,9 +684,32 @@ async def exchange_token(request: Request, response: Response):
 @app.get("/api/profile")
 def get_profile(request: Request):
     user = get_current_user(request, users_collection)
+    profile = user.get("profile", {})
+
+    # Calculate daily calorie target and macro grams
+    try:
+        from meal_planning.target_calculation import calculate_energy_target_from_profile, get_macro_targets_from_profile
+
+        daily_calories = calculate_energy_target_from_profile(profile)
+        macro_percentages = get_macro_targets_from_profile(profile)
+
+        # Calculate macro grams from calories and percentages
+        protein_grams = round((daily_calories * (macro_percentages["protein"] / 100)) / 4)
+        carb_grams = round((daily_calories * (macro_percentages["carbs"] / 100)) / 4)
+        fat_grams = round((daily_calories * (macro_percentages["fat"] / 100)) / 9)
+
+        # Add calculated fields to profile
+        profile["daily_calorie_target"] = daily_calories
+        profile["protein_grams"] = protein_grams
+        profile["carb_grams"] = carb_grams
+        profile["fat_grams"] = fat_grams
+    except Exception as e:
+        print(f"Error calculating targets: {e}")
+        # Continue without calculated fields if error occurs
+
     return {
         "email": user.get("email"),
-        "profile": user.get("profile", {}),
+        "profile": profile,
         "hasPassword": bool(user.get("hashed_password"))
     }
 
