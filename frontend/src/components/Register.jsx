@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, User, Mail, Lock, X } from 'lucide-react';
+import { ChevronRight, User, Mail, Lock, X, Sparkles, BarChart3, History } from 'lucide-react';
 import { useAuth } from '../AuthProvider';
 import ULogo from '../images/ULogo.png';
 
@@ -278,7 +278,7 @@ export default function Register() {
             />
           </div>
           <div className={`transition-all duration-700 delay-100 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Campus Nutrition</h1>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">CrimsonBites</h1>
             <p className="text-gray-400 text-xs md:text-sm font-light text-center">Track your nutrition journey</p>
           </div>
         </div>
@@ -286,21 +286,19 @@ export default function Register() {
         {/* Main Card - Same as Login */}
         <div className={`bg-white rounded-2xl shadow-2xl p-6 md:p-8 border border-white/60 transition-all duration-700 delay-200 hover:shadow-3xl ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Welcome Message */}
-          <div className="flex flex-col items-center mb-2 md:mb-3">
+          <div className="flex flex-col items-center mb-4 md:mb-6">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Create Your Account</h2>
-            <p className="text-gray-400 text-xs md:text-sm font-light text-center">Start tracking your campus nutrition today</p>
+            <p className="text-gray-500 text-xs md:text-sm text-center">Get access to AI meal planning, meal history & charts</p>
           </div>
 
           {/* API Error Message */}
-          <div className="h-12 mb-1">
-            {apiError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
-                <div>
-                  <p className="text-sm text-red-700">{apiError}</p>
-                </div>
+          {apiError && (
+            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start">
+              <div>
+                <p className="text-sm text-red-700">{apiError}</p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
             {/* Name Fields */}

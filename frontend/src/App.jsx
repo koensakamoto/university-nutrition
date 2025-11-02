@@ -162,7 +162,7 @@ export default function App() {
           <Route path="profile" element={<PrivateRoute><ProfileSettings /></PrivateRoute>} />
           <Route path="account" element={<PrivateRoute><UserAccount /></PrivateRoute>} />
           <Route path="history" element={<PrivateRoute><NutritionHistory /></PrivateRoute>} />
-          <Route path="ai-meal-planner" element={<AIMealPlanner />} />
+          <Route path="ai-meal-planner" element={<PrivateRoute><AIMealPlanner /></PrivateRoute>} />
           <Route
             path="*"
             element={<Navigate to="/" />}

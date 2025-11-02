@@ -52,10 +52,10 @@ const Login = () => {
       {/* Modern Gradient Background - Enhanced */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"></div>
       <div className="absolute inset-0 bg-gradient-to-tl from-purple-50/60 via-transparent to-cyan-50/40"></div>
-      
+
       {/* Subtle Geometric Elements */}
       <div className="absolute inset-0 opacity-[0.03]">
-        <div 
+        <div
           className="w-full h-full"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%236366f1' fill-opacity='0.4'%3E%3Ccircle cx='30' cy='30' r='1.5'/%3E%3C/g%3E%3C/svg%3E")`,
@@ -65,35 +65,37 @@ const Login = () => {
       </div>
 
       {/* Background Image (optional) */}
-      <img 
-        src="/bg-nutrition.jpg" 
-        alt="" 
-        aria-hidden="true" 
+      <img
+        src="/bg-nutrition.jpg"
+        alt=""
+        aria-hidden="true"
         className="absolute inset-0 w-full h-full object-cover opacity-5 blur-lg pointer-events-none select-none"
       />
 
+      {/* Centered Layout */}
       <div className="w-full max-w-md relative z-10">
-        {/* Logo Section - Responsive */}
-        <div className="flex flex-col items-center mb-4 md:mb-6">
-          <div className={`inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl mb-2 md:mb-3 border border-white/20 transition-all duration-700 ${animate ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-            <img
-              src={ULogo}
-              alt="University Logo"
-              className="w-8 h-8 md:w-10 md:h-10"
-            />
-          </div>
-          <div className={`transition-all duration-700 delay-100 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">CrimsonBites</h1>
-            <p className="text-gray-400 text-xs md:text-sm font-light text-center">Track your nutrition journey</p>
-          </div>
-        </div>
 
-        {/* Main Card - Match Register Page */}
-        <div className={`bg-white rounded-2xl shadow-2xl p-6 md:p-8 border border-white/60 transition-all duration-700 delay-200 hover:shadow-3xl ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        {/* Logo Section */}
+        <div className="flex flex-col items-center mb-4 md:mb-6">
+            <div className={`inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl mb-2 md:mb-3 border border-white/20 transition-all duration-700 ${animate ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+              <img
+                src={ULogo}
+                alt="University Logo"
+                className="w-8 h-8 md:w-10 md:h-10"
+              />
+            </div>
+            <div className={`transition-all duration-700 delay-100 ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">CrimsonBites</h1>
+              <p className="text-gray-400 text-xs md:text-sm font-light text-center">Track your nutrition journey</p>
+            </div>
+          </div>
+
+          {/* Login Card */}
+          <div className={`bg-white rounded-2xl shadow-2xl p-6 md:p-8 border border-white/60 transition-all duration-700 delay-200 hover:shadow-3xl ${animate ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           {/* Welcome Message - Responsive */}
           <div className="flex flex-col items-center mb-4 md:mb-6">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Welcome back!</h2>
-            <p className="text-gray-400 text-xs md:text-sm font-light text-center">Sign in to track your nutrition</p>
+            <p className="text-gray-500 text-xs md:text-sm text-center">Sign in for AI meal planning, meal history & charts</p>
           </div>
 
           {/* Error Message */}
@@ -252,8 +254,6 @@ const Login = () => {
             </p>
           </div>
         </div>
-
-
       </div>
     </div>
   )
