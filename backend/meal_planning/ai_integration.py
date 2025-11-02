@@ -16,18 +16,23 @@ class MealPlannerAI:
     def organize_foods_for_ai(
         self,
         foods_by_meal: Dict[str, List[Dict]],
-        max_foods_per_meal: int = 50
-    ) -> Dict[str, List[Dict]]:
+        max_foods_per_meal: int = 40  # Reduced to minimize ID confusion
+    ) -> Tuple[Dict[str, List[Dict]], Dict[str, Dict[int, str]]]:
         """
         Format food data for AI consumption with ultra-compact structure to save tokens
+
+        Returns:
+            (ai_foods_by_meal, id_mappings) where id_mappings maps simple indices to MongoDB IDs
         """
         ai_foods_by_meal = {}
+        id_mappings = {}  # meal_type -> {index -> mongodb_id}
 
         for meal_type, foods in foods_by_meal.items():
             # Convert to ultra-compact format for AI (saves ~70% tokens)
             ai_foods = []
+            meal_id_map = {}
 
-            for food in foods[:max_foods_per_meal]:  # Limit foods to fit in context
+            for idx, food in enumerate(foods[:max_foods_per_meal]):  # Limit foods to fit in context
                 nutrients = food.get("nutrients", {})
 
                 # Extract nutrition data with fallbacks
@@ -40,10 +45,13 @@ class MealPlannerAI:
                 if calories == 0 and protein == 0 and carbs == 0 and fat == 0:
                     continue
 
-                # Ultra-compact format: [id, name, cal, prot, carb, fat]
-                # Remove .0 decimals to save tokens
+                # Store mapping from simple index to MongoDB ID
+                meal_id_map[idx] = str(food["_id"])
+
+                # Ultra-compact format: [index, name, cal, prot, carb, fat]
+                # Use simple index instead of long MongoDB ID to reduce confusion
                 ai_food = [
-                    str(food["_id"]),
+                    idx,  # Simple integer index instead of long ObjectId
                     food.get("name", "Unknown"),
                     int(calories) if calories == int(calories) else calories,
                     int(protein) if protein == int(protein) else protein,
@@ -54,9 +62,10 @@ class MealPlannerAI:
                 ai_foods.append(ai_food)
 
             ai_foods_by_meal[meal_type] = ai_foods
+            id_mappings[meal_type] = meal_id_map
             logger.info(f"Prepared {len(ai_foods)} foods for {meal_type} AI processing")
 
-        return ai_foods_by_meal
+        return ai_foods_by_meal, id_mappings
 
     def _safe_float(self, value) -> float:
         """Safely convert value to float"""
@@ -109,10 +118,12 @@ Breakfast: {meal_targets['breakfast']['calories']:.0f}cal, {meal_targets['breakf
 Lunch: {meal_targets['lunch']['calories']:.0f}cal, {meal_targets['lunch']['protein_g']:.1f}g protein
 Dinner: {meal_targets['dinner']['calories']:.0f}cal, {meal_targets['dinner']['protein_g']:.1f}g protein
 
-FOODS [id,name,cal,prot,carb,fat]:
+FOODS [index,name,cal,prot,carb,fat]:
 Breakfast: {json.dumps(foods_by_meal.get('breakfast', []))}
 Lunch: {json.dumps(foods_by_meal.get('lunch', []))}
 Dinner: {json.dumps(foods_by_meal.get('dinner', []))}
+
+CRITICAL: Only use food indices from the lists above. Do NOT make up indices.
 
 PROCESS:
 1. Start with high-protein foods (chicken, eggs, tofu, greek yogurt)
@@ -121,7 +132,7 @@ PROCESS:
 4. Adjust quantities in 0.1 increments until targets met
 
 Return JSON format:
-{{"breakfast":[{{"food_id":"id","quantity":1.5}}],"lunch":[...],"dinner":[...]}}"""
+{{"breakfast":[{{"food_index":0,"quantity":1.5}}],"lunch":[...],"dinner":[...]}}"""
 
         return prompt
 
@@ -148,7 +159,7 @@ Return JSON format:
                     }
                 ],
                 # GPT-5 only supports default temperature (1), parameter omitted
-                max_completion_tokens=4000,  # Generous limit to avoid hitting token ceiling
+                max_completion_tokens=16000,  # Increased limit to prevent truncation issues
                 response_format=meal_plan_schema  # Using json_object mode to minimize token overhead
             )
 
@@ -223,17 +234,21 @@ Return JSON format:
     def validate_ai_response(
         self,
         ai_response: Dict,
-        foods_by_meal: Dict[str, List[Dict]]
+        foods_by_meal: Dict[str, List[Dict]],
+        id_mappings: Dict[str, Dict[int, str]]
     ) -> Dict:
         """
-        Validate and clean AI response to ensure all food IDs exist
+        Validate and clean AI response, mapping indices back to MongoDB IDs
+
+        Args:
+            ai_response: AI response with food_index fields
+            foods_by_meal: Original food data for validation
+            id_mappings: Mapping from indices to MongoDB IDs
+
+        Returns:
+            Validated meal plan with food_id fields
         """
         validated_response = {}
-
-        # Create lookup maps for food IDs
-        food_id_maps = {}
-        for meal_type, foods in foods_by_meal.items():
-            food_id_maps[meal_type] = {str(food["_id"]): food for food in foods}
 
         for meal_type in ["breakfast", "lunch", "dinner"]:
             validated_meal = []
@@ -247,11 +262,22 @@ Return JSON format:
                 if not isinstance(item, dict):
                     continue
 
-                food_id = str(item.get("food_id", ""))
+                # Get food index from AI response
+                food_index = item.get("food_index")
                 quantity = item.get("quantity", 1.0)
 
-                # Validate food ID exists
-                if food_id in food_id_maps.get(meal_type, {}):
+                # Convert to int if it's a valid index
+                try:
+                    food_index = int(food_index)
+                except (ValueError, TypeError):
+                    logger.warning(f"AI returned invalid food_index '{food_index}' for {meal_type}")
+                    continue
+
+                # Map index to MongoDB ID
+                meal_mapping = id_mappings.get(meal_type, {})
+                food_id = meal_mapping.get(food_index)
+
+                if food_id:
                     # Constrain quantity to reasonable range
                     quantity = max(0.5, min(3.0, float(quantity)))
 
@@ -260,7 +286,7 @@ Return JSON format:
                         "quantity": round(quantity, 1)
                     })
                 else:
-                    logger.warning(f"AI selected invalid food ID {food_id} for {meal_type}")
+                    logger.warning(f"AI selected invalid food_index {food_index} for {meal_type}")
 
             validated_response[meal_type] = validated_meal
             logger.info(f"Validated {len(validated_meal)} foods for {meal_type}")
@@ -352,8 +378,8 @@ Return JSON format:
             Dict with meal plan or None if generation failed
         """
         try:
-            # Organize foods for AI consumption
-            ai_foods = self.organize_foods_for_ai(foods_by_meal)
+            # Organize foods for AI consumption (now returns tuple with ID mappings)
+            ai_foods, id_mappings = self.organize_foods_for_ai(foods_by_meal)
 
             # Check if we have foods for all meals
             for meal_type in ["breakfast", "lunch", "dinner"]:
@@ -381,8 +407,8 @@ Return JSON format:
                 if not ai_response:
                     continue
 
-                # Validate response (check food IDs exist)
-                validated_plan = self.validate_ai_response(ai_response, foods_by_meal)
+                # Validate response (map indices to food IDs)
+                validated_plan = self.validate_ai_response(ai_response, foods_by_meal, id_mappings)
 
                 # Ensure all meals have at least one food
                 missing_meals = [m for m in ["breakfast", "lunch", "dinner"] if not validated_plan.get(m)]

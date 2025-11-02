@@ -42,6 +42,8 @@ from meal_planning.food_filtering import get_filtered_foods_for_meal_plan
 from meal_planning.target_calculation import get_user_targets, calculate_meal_targets
 from meal_planning.meal_validation import enhance_meal_plan_response
 
+from rate_limiting import check_rate_limit, record_meal_plan_request, get_rate_limit_status
+
 from starlette.middleware.sessions import SessionMiddleware
 
 
@@ -319,11 +321,11 @@ client = MongoClient(
     # Connection pooling settings
     maxPoolSize=20,  # Maximum connections in pool
     minPoolSize=5,   # Minimum connections to maintain
-    maxIdleTimeMS=30000,  # Close connections after 30s idle
+    maxIdleTimeMS=120000,  # Close connections after 2 minutes idle (increased for long operations)
     # Timeout settings
-    connectTimeoutMS=5000,    # 5s connection timeout
-    serverSelectionTimeoutMS=5000,  # 5s server selection timeout
-    socketTimeoutMS=10000,    # 10s socket timeout
+    connectTimeoutMS=10000,    # 10s connection timeout (increased)
+    serverSelectionTimeoutMS=10000,  # 10s server selection timeout (increased)
+    socketTimeoutMS=60000,    # 60s socket timeout (increased for AI operations)
     # Retry settings
     retryWrites=True,
     retryReads=True,
@@ -1637,6 +1639,19 @@ def get_available_options(date: str):
         "meal_types_by_hall": meal_types_by_hall
     }
 
+@app.get("/api/meal-plan/rate-limit-status")
+def get_meal_plan_rate_limit_status(req: Request):
+    """Get current rate limit status for AI meal plan generation"""
+    try:
+        user = get_current_user(req, users_collection)
+        status = get_rate_limit_status(user["_id"], users_collection)
+        return status
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting rate limit status: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get rate limit status")
+
 @app.post("/api/meal-plan", response_model=MealPlanResponse)
 def generate_meal_plan(request_body: MealPlanRequest, req: Request):
     try:
@@ -1644,6 +1659,9 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
         user = get_current_user(req, users_collection)
         user_doc = users_collection.find_one({"_id": ObjectId(user["_id"])})
         user_profile = user_doc.get("profile", {})
+
+        # Check rate limit (will raise HTTPException if exceeded)
+        check_rate_limit(user["_id"], users_collection)
 
         # Calculate nutrition targets
         target_calories, target_macros = get_user_targets(request_body, user_profile)
@@ -1697,6 +1715,9 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
             ai_meal_plan, foods_by_meal, dining_hall_meals_dicts,
             target_calories, target_macros, request_body.date
         )
+
+        # Record successful meal plan generation for rate limiting
+        record_meal_plan_request(user["_id"], users_collection)
 
         return response
 
