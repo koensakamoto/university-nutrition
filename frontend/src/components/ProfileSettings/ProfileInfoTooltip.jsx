@@ -164,7 +164,7 @@ export const ProfileInfoTooltip =  ({ isOpen, onClose, section }) => {
         <div className="border-t border-gray-200 px-6 py-4">
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-[#c41e3a] hover:bg-[#a41930] text-white rounded-md transition-colors"
+            className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
           >
             Got it
           </button>

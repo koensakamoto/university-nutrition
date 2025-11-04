@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info, Scale } from 'lucide-react';
+import { Info, Scale, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
@@ -143,7 +143,7 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
         <div className="flex justify-end mt-2" style={{ minHeight: '40px' }}>
           {showSaveButton ? (
             <button
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
               onClick={handleSave}
             >
               Save
@@ -153,8 +153,9 @@ export const WeightGoalSection = ({ energyTarget, refreshEnergyTarget }) => {
           )}
         </div>
         {saveSuccess && (
-          <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-            <span>Weight info saved successfully!</span>
+          <div className="flex items-center gap-2 text-emerald-600 mt-3">
+            <CheckCircle2 size={18} className="flex-shrink-0" />
+            <span className="text-sm">Weight info saved successfully</span>
           </div>
         )}
         <div>

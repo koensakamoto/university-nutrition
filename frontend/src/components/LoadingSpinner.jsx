@@ -9,8 +9,8 @@ export const LoadingSpinner = ({ size = 'md', message, className = '' }) => {
 
   return (
     <div className={`flex flex-col items-center justify-center py-8 ${className}`}>
-      <div 
-        className={`animate-spin rounded-full border-b-2 border-red-600 ${sizeClasses[size]}`}
+      <div
+        className={`animate-spin rounded-full border-b-2 border-blue-600 ${sizeClasses[size]}`}
         role="status"
         aria-live="polite"
         aria-label="Loading"

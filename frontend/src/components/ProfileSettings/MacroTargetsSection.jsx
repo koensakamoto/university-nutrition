@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info, Lock, Unlock } from 'lucide-react';
+import { Info, Lock, Unlock, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget, triggerProfileRefresh }) => {
@@ -332,14 +332,17 @@ export const MacroTargetsSection = ({ energyTarget, refreshEnergyTarget, trigger
       <div className="flex justify-end mt-6">
         {showSaveButton && (
           <button
-            className="bg-[#c41e3a] text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-[#a81b2b] transition"
+            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition"
             onClick={handleSave}
           >
             Save
           </button>
         )}
         {saveSuccess && (
-          <span className="text-green-600 ml-4 self-center">Saved!</span>
+          <div className="flex items-center gap-2 text-emerald-600 ml-4 self-center">
+            <CheckCircle2 size={18} className="flex-shrink-0" />
+            <span className="text-sm">Saved successfully</span>
+          </div>
         )}
       </div>
     </div>

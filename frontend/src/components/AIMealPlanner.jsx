@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, Sparkles, Utensils, User, Settings, Activity, Target, Shield, Heart, Zap, PieChart, Leaf, Scale, Star } from 'lucide-react'
+import { ChevronLeft, Utensils, User, Settings, Shield, Zap, PieChart, Leaf, Scale, Star } from 'lucide-react'
 import LoadingSpinner from './LoadingSpinner'
 
 // Format date for API (defined outside component to avoid hoisting issues)
@@ -334,20 +334,20 @@ const AIMealPlanner = () => {
 
               {/* Profile Preview - Enhanced */}
               {targetMode === 'account' && userProfile && (
-                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="mb-3">
+                <div className="p-5 bg-white rounded-2xl border border-gray-200">
+                  <div className="mb-4">
                     <p className="text-sm font-semibold text-gray-900">Your Profile Summary</p>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                     {/* Row 1, Col 1: Daily Calorie Target */}
                     {userProfile.daily_calorie_target && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <Zap className="h-5 w-5 text-orange-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <Zap className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Daily Calorie Target</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Daily Calorie Target</p>
                           <p className="text-base text-gray-900 font-semibold">
                             {userProfile.daily_calorie_target} kcal
                           </p>
@@ -357,13 +357,13 @@ const AIMealPlanner = () => {
 
                     {/* Row 1, Col 2: Macro Targets */}
                     {(userProfile.protein_ratio || userProfile.carb_ratio || userProfile.fat_ratio) && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <PieChart className="h-5 w-5 text-purple-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <PieChart className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Macro Targets</p>
-                          <div className="text-xs text-gray-600 space-y-1">
+                          <p className="text-xs font-medium text-gray-500 mb-1">Macro Targets</p>
+                          <div className="text-xs text-gray-600 space-y-0.5">
                             {userProfile.protein_grams !== undefined && (
                               <div>P: <span className="font-semibold text-gray-900">{userProfile.protein_grams}g</span> <span className="text-gray-400">({userProfile.protein_ratio || 0}%)</span></div>
                             )}
@@ -383,12 +383,12 @@ const AIMealPlanner = () => {
 
                     {/* Row 2, Col 1: Diet Type */}
                     {userProfile.diet_type && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <Leaf className="h-5 w-5 text-green-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <Leaf className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Diet Type</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Diet Type</p>
                           <p className="text-sm text-gray-900 font-medium capitalize">{userProfile.diet_type}</p>
                         </div>
                       </div>
@@ -396,17 +396,17 @@ const AIMealPlanner = () => {
 
                     {/* Row 2, Col 2: Allergens */}
                     {((userProfile.allergens && userProfile.allergens.length > 0) || userProfile.allergen_notes || userProfile.allergy_notes) && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <Shield className="h-5 w-5 text-red-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <Shield className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Avoiding</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Avoiding</p>
                           {userProfile.allergens && userProfile.allergens.length > 0 && (
                             <p className="text-sm text-gray-900 font-medium">{userProfile.allergens.join(', ')}</p>
                           )}
                           {(userProfile.allergen_notes || userProfile.allergy_notes) && (
-                            <p className="text-xs text-orange-500 mt-1 font-medium">{userProfile.allergen_notes || userProfile.allergy_notes}</p>
+                            <p className="text-xs text-gray-600 mt-1">{userProfile.allergen_notes || userProfile.allergy_notes}</p>
                           )}
                         </div>
                       </div>
@@ -414,12 +414,12 @@ const AIMealPlanner = () => {
 
                     {/* Row 3, Col 1: Body Stats */}
                     {userProfile.weight && userProfile.height && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <Scale className="h-5 w-5 text-indigo-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <Scale className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Body Stats</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Body Stats</p>
                           <p className="text-sm text-gray-900 font-medium">
                             {userProfile.weight} lbs, {userProfile.height} in
                           </p>
@@ -432,15 +432,15 @@ const AIMealPlanner = () => {
 
                     {/* Row 3, Col 2: Meal Preferences */}
                     {userProfile.meal_preference && userProfile.meal_preference.length > 0 && (
-                      <div className="flex items-start gap-3.5">
-                        <div className="mt-0.5">
-                          <Star className="h-5 w-5 text-blue-500" strokeWidth={2} />
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 flex-shrink-0">
+                          <Star className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-500 mb-1.5">Preferences</p>
+                          <p className="text-xs font-medium text-gray-500 mb-1">Preferences</p>
                           <div className="flex flex-wrap gap-1.5">
                             {userProfile.meal_preference.map((pref, idx) => (
-                              <span key={idx} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-md font-medium">
+                              <span key={idx} className="text-xs px-2.5 py-1 bg-gray-100 text-gray-700 rounded-lg font-medium">
                                 {pref}
                               </span>
                             ))}
@@ -629,33 +629,35 @@ const AIMealPlanner = () => {
             </div>
 
             {/* Generate Button */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="text-center sm:text-left flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                    Ready to generate your meal plan?
-                  </h3>
-                  <p className="text-sm text-gray-600">
-                    {canGenerate ? (
-                      'AI will create a personalized nutrition plan based on your selections'
-                    ) : (
-                      <>
-                        {!(breakfastHall || lunchHall || dinnerHall) && 'Select at least one dining hall to get started'}
-                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && !customTargets.calories && 'Enter your daily calorie target'}
-                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) < 1000 && 'Calorie target must be at least 1000'}
-                        {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) >= 1000 && !macrosValid && (
-                          <span className="text-amber-600">⚠ Macros must sum to 100% (currently {macroSum.toFixed(1)}%)</span>
-                        )}
-                      </>
-                    )}
-                  </p>
+                  {canGenerate ? (
+                    <>
+                      <h3 className="text-base font-semibold text-gray-900 mb-0.5">
+                        Ready to generate
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        AI-powered meal planning based on your goals
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      {!(breakfastHall || lunchHall || dinnerHall) && 'Select at least one dining hall to get started'}
+                      {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && !customTargets.calories && 'Enter your daily calorie target'}
+                      {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) < 1000 && 'Calorie target must be at least 1000'}
+                      {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) >= 1000 && !macrosValid && (
+                        <span className="text-gray-700">⚠ Macros must sum to 100% (currently {macroSum.toFixed(1)}%)</span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={handleGeneratePlan}
                   disabled={!canGenerate || generating}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold transition-all duration-200 whitespace-nowrap ${
                     canGenerate && !generating
-                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow-md'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
                       : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
@@ -713,7 +715,9 @@ const AIMealPlanner = () => {
 
             {/* Success State - Meal Plan Results */}
             {mealPlan && !generating && (
-              <MealPlanResults plan={mealPlan} />
+              <div className="mt-8">
+                <MealPlanResults plan={mealPlan} />
+              </div>
             )}
           </>
         )}
@@ -724,81 +728,126 @@ const AIMealPlanner = () => {
 
 // Meal Plan Results Component
 const MealPlanResults = ({ plan }) => {
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Sparkles className="h-6 w-6 text-green-600" />
-        <h3 className="text-xl font-bold text-gray-900">Your Meal Plan for {plan.date}</h3>
-      </div>
+  // Calculate percentage of target
+  const caloriePercentage = Math.round((plan.total_calories / plan.target_calories) * 100)
 
+  // Format date nicely
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00')
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  }
+
+  return (
+    <div className="space-y-4">
       {/* Nutrition Summary */}
-      <div className="mb-6 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border border-green-100">
-        <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
-          <Target className="h-5 w-5" />
-          Nutrition Summary
-        </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-          <div>
-            <div className="text-green-700 font-medium">Calories</div>
-            <div className="text-lg font-bold text-green-900">
-              {Math.round(plan.total_calories)} <span className="text-sm font-normal text-green-600">/ {plan.target_calories}</span>
+      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+        {/* Header */}
+        <div className="mb-5">
+          <div className="text-xs font-medium text-blue-600 uppercase tracking-wider mb-1">Meal Plan</div>
+          <h3 className="text-xl font-bold text-gray-900">{formatDate(plan.date)}</h3>
+        </div>
+
+        {/* Calories */}
+        <div className="mb-5">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <div className="text-xs text-gray-500 mb-1">Calories</div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-gray-900">{Math.round(plan.total_calories)}</span>
+                <span className="text-base text-gray-400">/ {plan.target_calories}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm font-medium text-blue-600">{caloriePercentage}%</div>
             </div>
           </div>
-          <div>
-            <div className="text-green-700 font-medium">Protein</div>
-            <div className="text-lg font-bold text-green-900">
-              {Math.round(plan.total_protein)}g
-              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.protein.toFixed(1)}%)</span>
-            </div>
-          </div>
-          <div>
-            <div className="text-green-700 font-medium">Carbs</div>
-            <div className="text-lg font-bold text-green-900">
-              {Math.round(plan.total_carbs)}g
-              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.carbs.toFixed(1)}%)</span>
-            </div>
-          </div>
-          <div>
-            <div className="text-green-700 font-medium">Fat</div>
-            <div className="text-lg font-bold text-green-900">
-              {Math.round(plan.total_fat)}g
-              <span className="text-sm font-normal text-green-600 ml-1">({plan.actual_macros.fat.toFixed(1)}%)</span>
-            </div>
+          <div className="relative w-full bg-gray-100 rounded-full h-2">
+            <div
+              className="h-2 rounded-full transition-all duration-500 bg-blue-600"
+              style={{ width: `${Math.min(caloriePercentage, 100)}%` }}
+            />
           </div>
         </div>
-        <div className={`mt-3 text-sm font-medium ${plan.success ? 'text-green-700' : 'text-amber-700'}`}>
-          {plan.success ? '✓ ' : '⚠ '}{plan.message}
+
+        {/* Macros */}
+        <div className="grid grid-cols-3 gap-4 mb-5">
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Protein</div>
+            <div className="text-xl font-bold text-gray-900">{Math.round(plan.total_protein)}g</div>
+            <div className="text-xs text-gray-400 mt-0.5">{plan.actual_macros.protein.toFixed(0)}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Carbs</div>
+            <div className="text-xl font-bold text-gray-900">{Math.round(plan.total_carbs)}g</div>
+            <div className="text-xs text-gray-400 mt-0.5">{plan.actual_macros.carbs.toFixed(0)}%</div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Fat</div>
+            <div className="text-xl font-bold text-gray-900">{Math.round(plan.total_fat)}g</div>
+            <div className="text-xs text-gray-400 mt-0.5">{plan.actual_macros.fat.toFixed(0)}%</div>
+          </div>
         </div>
+
+        {/* Status message */}
+        {!plan.success && plan.message && (
+          <div className="pt-5 border-t border-gray-100">
+            <div className="text-sm text-gray-600">
+              {plan.message.replace(/⚠️|⚠/g, '').trim()}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Meals */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {plan.meals.map((meal, idx) => (
-          <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                <Utensils className="h-5 w-5 text-blue-600" />
-                {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)} - {meal.dining_hall}
-              </h4>
-              <div className="text-sm text-gray-600">
-                {Math.round(meal.total_calories)} cal
+          <div key={idx} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+            {/* Meal Header */}
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <h4 className="text-lg font-bold text-gray-900">
+                    {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)}
+                  </h4>
+                  <span className="bg-white text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200">
+                    {meal.dining_hall}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">{Math.round(meal.total_calories)}</div>
+                  <div className="text-xs text-gray-500 font-medium">calories</div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="bg-white rounded-lg px-3 py-1.5 border border-gray-200">
+                  <span className="text-xs text-gray-500 font-medium">Protein</span>
+                  <span className="ml-1.5 text-sm font-semibold text-gray-900">{Math.round(meal.total_protein)}g</span>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-1.5 border border-gray-200">
+                  <span className="text-xs text-gray-500 font-medium">Carbs</span>
+                  <span className="ml-1.5 text-sm font-semibold text-gray-900">{Math.round(meal.total_carbs)}g</span>
+                </div>
+                <div className="bg-white rounded-lg px-3 py-1.5 border border-gray-200">
+                  <span className="text-xs text-gray-500 font-medium">Fat</span>
+                  <span className="ml-1.5 text-sm font-semibold text-gray-900">{Math.round(meal.total_fat)}g</span>
+                </div>
               </div>
             </div>
 
-            <div className="text-xs text-gray-600 mb-3 flex gap-4">
-              <span>Protein: {Math.round(meal.total_protein)}g</span>
-              <span>Carbs: {Math.round(meal.total_carbs)}g</span>
-              <span>Fat: {Math.round(meal.total_fat)}g</span>
-            </div>
-
-            <div className="space-y-2">
+            {/* Foods */}
+            <div className="divide-y divide-gray-100">
               {meal.foods.map((food, foodIdx) => (
-                <div key={foodIdx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                  <div className="flex-1">
-                    <div className="font-medium text-gray-900">{food.food_name}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Quantity: {food.quantity}x | {Math.round(food.calories)} cal |
-                      P: {Math.round(food.protein)}g | C: {Math.round(food.carbs)}g | F: {Math.round(food.fat)}g
+                <div key={foodIdx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-gray-900 mb-1.5">{food.food_name}</div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+                        <span className="font-medium">Qty: {food.quantity}x</span>
+                        <span>{Math.round(food.calories)} cal</span>
+                        <span>P: {Math.round(food.protein)}g</span>
+                        <span>C: {Math.round(food.carbs)}g</span>
+                        <span>F: {Math.round(food.fat)}g</span>
+                      </div>
                     </div>
                   </div>
                 </div>

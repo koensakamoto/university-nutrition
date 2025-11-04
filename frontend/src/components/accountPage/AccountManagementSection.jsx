@@ -139,7 +139,7 @@ export const AccountManagementSection = () => {
               onClick={handleLogout}
             >
               <div className="flex items-center gap-3 lg:gap-4">
-                <LogOut size={18} className="text-gray-400 group-hover:text-red-500 transition-colors lg:w-5 lg:h-5" />
+                <LogOut size={18} className="text-gray-400 group-hover:text-blue-600 transition-colors lg:w-5 lg:h-5" />
                 <span>Log Out</span>
               </div>
               <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -169,7 +169,7 @@ export const AccountManagementSection = () => {
                 className="w-full flex items-center justify-between px-4 lg:px-5 py-3 lg:py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm lg:text-base border border-gray-200 group"
               >
                 <div className="flex items-center gap-3 lg:gap-4">
-                  <Trash2 size={18} className="text-gray-400 group-hover:text-red-500 transition-colors lg:w-5 lg:h-5" />
+                  <Trash2 size={18} className="text-gray-400 group-hover:text-blue-600 transition-colors lg:w-5 lg:h-5" />
                   <span>Delete Account</span>
                 </div>
                 <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +189,7 @@ export const AccountManagementSection = () => {
               className="w-full flex items-center justify-between px-4 lg:px-5 py-3 lg:py-4 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors text-sm lg:text-base border border-gray-200 group"
             >
               <div className="flex items-center gap-3 lg:gap-4">
-                <CircleHelp size={18} className="text-gray-400 group-hover:text-green-500 transition-colors lg:w-5 lg:h-5" />
+                <CircleHelp size={18} className="text-gray-400 group-hover:text-blue-600 transition-colors lg:w-5 lg:h-5" />
                 <span>Contact Support</span>
               </div>
               <svg className="w-4 h-4 lg:w-5 lg:h-5 text-gray-400 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

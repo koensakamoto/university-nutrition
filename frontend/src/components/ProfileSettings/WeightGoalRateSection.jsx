@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Info, Minimize, TrendingDown, TrendingUp } from 'lucide-react';
+import { Info, Minimize, TrendingDown, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profileRefreshTrigger }) => {
@@ -443,7 +443,7 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
                 </div>
                 {goalDirection && showSaveButton && (
                   <button
-                    className="ml-6 bg-[#c41e3a] text-white px-6 py-2.5 rounded-lg font-medium text-sm shadow-sm hover:bg-[#a41930] transition-colors"
+                    className="ml-6 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium text-sm shadow-sm hover:bg-blue-700 transition-colors"
                     onClick={handleSave}
                   >
                     Save Changes
@@ -454,9 +454,9 @@ export const WeightGoalRateSection = ({ energyTarget, refreshEnergyTarget, profi
                 <p className="text-xs text-gray-500 mt-3">Changes will update your daily calorie target.</p>
               )}
               {saveSuccess && (
-                <div className="flex items-center gap-2 mt-3 animate-fade-in">
-                  <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                  <span className="text-green-600 font-medium text-sm">Weight goal saved successfully!</span>
+                <div className="flex items-center gap-2 text-emerald-600 mt-3">
+                  <CheckCircle2 size={18} className="flex-shrink-0" />
+                  <span className="text-sm">Weight goal saved successfully</span>
                 </div>
               )}
             </div>

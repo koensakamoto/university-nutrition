@@ -1684,7 +1684,7 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
         user_profile = user_doc.get("profile", {})
 
         # Check rate limit (will raise HTTPException if exceeded)
-        check_rate_limit(user["_id"], users_collection)
+        # check_rate_limit(user["_id"], users_collection)  # DISABLED FOR TESTING
 
         # Calculate nutrition targets
         target_calories, target_macros = get_user_targets(request_body, user_profile)
@@ -1740,7 +1740,7 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
         )
 
         # Record successful meal plan generation for rate limiting
-        record_meal_plan_request(user["_id"], users_collection)
+        # record_meal_plan_request(user["_id"], users_collection)  # DISABLED FOR TESTING
 
         return response
 

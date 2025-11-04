@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info, Utensils, CheckCircle } from 'lucide-react';
+import { Info, Utensils, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const mealPreferenceOptions = [
@@ -162,7 +162,7 @@ export const DietaryPreferencesSection = () => {
         <div className="flex justify-end mt-4">
           {showSaveButton && (
             <button
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
               onClick={handleSave}
             >
               Save Preferences
@@ -170,9 +170,9 @@ export const DietaryPreferencesSection = () => {
           )}
         </div>
         {saveSuccess && (
-          <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-            <CheckCircle size={16} className="mr-1" />
-            <span>Preferences saved successfully!</span>
+          <div className="flex items-center gap-2 text-emerald-600 mt-3">
+            <CheckCircle2 size={18} className="flex-shrink-0" />
+            <span className="text-sm">Preferences saved successfully</span>
           </div>
         )}
       </div>

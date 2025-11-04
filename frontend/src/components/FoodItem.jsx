@@ -143,8 +143,8 @@ const FoodItem = ({ item, addToTracker }) => {
             className={`${
               item.trackable === false
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                : "bg-red-600 hover:bg-red-700 text-white hover:shadow-md transform hover:-translate-y-0.5"
-            } p-2.5 sm:p-3 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 touch-manipulation`}
+                : "bg-blue-600 hover:bg-blue-700 text-white hover:shadow-md transform hover:-translate-y-0.5"
+            } p-2.5 sm:p-3 rounded-lg shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 touch-manipulation`}
             aria-label={item.trackable === false ? "Cannot track - incomplete nutrition data" : "Add item to plate"}
           >
             <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -166,7 +166,7 @@ const FoodItem = ({ item, addToTracker }) => {
 
       <button
         onClick={() => setShowDetails(!showDetails)}
-        className="flex items-center mt-4 text-sm text-red-600 hover:text-red-800 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors duration-150 touch-manipulation"
+        className="flex items-center mt-4 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 px-3 py-2 rounded-lg transition-colors duration-150 touch-manipulation"
       >
         <InfoIcon className="h-4 w-4 mr-2" />
         {showDetails ? 'Hide details' : 'Show details'}
@@ -213,14 +213,13 @@ const FoodItem = ({ item, addToTracker }) => {
               <div><span className="font-medium">Vitamin C:</span> {displayNutrient(item.vitaminC, 'mg')}</div>
             </div>
 
-            {item.description && (
-              <div className="text-xs text-gray-600 mt-2 p-2 bg-gray-50 rounded">{item.description}</div>
-            )}
-            {item.ingredients && item.ingredients.length > 0 && (
-              <div className="mt-2 text-xs p-2 bg-amber-50 rounded">
-                <span className="font-medium text-amber-800">Ingredients:</span>{' '}
-                <span className="text-amber-700">{item.ingredients.join(', ')}</span>
+            {item.ingredients && item.ingredients.length > 0 ? (
+              <div className="mt-2 text-xs p-2 bg-gray-50 rounded">
+                <span className="font-medium text-gray-700">Ingredients:</span>{' '}
+                <span className="text-gray-600">{item.ingredients.join(', ')}</span>
               </div>
+            ) : item.description && (
+              <div className="text-xs text-gray-600 mt-2 p-2 bg-gray-50 rounded">{item.description}</div>
             )}
           </div>
         </div>

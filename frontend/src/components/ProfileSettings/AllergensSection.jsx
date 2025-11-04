@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import { AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const commonAllergens = [
@@ -219,7 +219,7 @@ export const AllergensSection = () => {
         <div className="mt-4">
           <label className="block text-gray-700 font-medium mb-2">Additional Allergies or Notes</label>
           <textarea
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent"
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={3}
             placeholder="List any other food allergies or special considerations..."
             value={allergyNotes}
@@ -229,7 +229,7 @@ export const AllergensSection = () => {
         <div className="flex justify-end mt-4">
           {showSaveButton && (
             <button
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
               onClick={handleSave}
             >
               Save Allergen Information
@@ -237,9 +237,9 @@ export const AllergensSection = () => {
           )}
         </div>
         {saveSuccess && (
-          <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-            <CheckCircle size={16} className="mr-1" />
-            <span>Allergen information saved successfully!</span>
+          <div className="flex items-center gap-2 text-emerald-600 mt-3">
+            <CheckCircle2 size={18} className="flex-shrink-0" />
+            <span className="text-sm">Allergen information saved successfully</span>
           </div>
         )}
       </div>

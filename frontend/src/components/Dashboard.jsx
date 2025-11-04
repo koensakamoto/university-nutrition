@@ -348,7 +348,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
                     }`}>
                       {meal}
                       {isCurrentMeal && meal !== 'Everyday' && (
-                        <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
                           Now serving
                         </span>
                       )}
@@ -392,7 +392,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
             <div className="flex justify-end">
               <button
                 onClick={() => setIsCustomMealFormOpen(true)}
-                className="flex items-center justify-center bg-gradient-to-r from-red-600 to-red-700 text-white px-4 sm:px-5 py-2.5 rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:scale-95 whitespace-nowrap touch-manipulation"
+                className="flex items-center justify-center bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-5 py-2.5 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:scale-95 whitespace-nowrap touch-manipulation"
               >
                 <PlusCircleIcon size={18} className="mr-2 flex-shrink-0" />
                 <span className="hidden sm:inline">Add Custom Meal</span>

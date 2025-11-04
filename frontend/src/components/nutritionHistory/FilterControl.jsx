@@ -7,8 +7,8 @@ export const FilterControl = ({ viewMode, onViewModeChange }) => {
       <div className="flex">
         <button
           className={`px-4 py-1 text-sm font-medium ${
-            viewMode === 'daily' 
-              ? 'bg-[#c41e3a] text-white' 
+            viewMode === 'daily'
+              ? 'bg-blue-600 text-white'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
           onClick={() => onViewModeChange('daily')}
@@ -19,8 +19,8 @@ export const FilterControl = ({ viewMode, onViewModeChange }) => {
 
         <button
           className={`px-4 py-1 text-sm font-medium ${
-            viewMode === 'weekly' 
-              ? 'bg-[#c41e3a] text-white' 
+            viewMode === 'weekly'
+              ? 'bg-blue-600 text-white'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
           onClick={() => onViewModeChange('weekly')}
@@ -31,8 +31,8 @@ export const FilterControl = ({ viewMode, onViewModeChange }) => {
 
         <button
           className={`px-4 py-1 text-sm font-medium rounded-r-md ${
-            viewMode === 'monthly' 
-              ? 'bg-[#c41e3a] text-white' 
+            viewMode === 'monthly'
+              ? 'bg-blue-600 text-white'
               : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
           }`}
           onClick={() => onViewModeChange('monthly')}

@@ -82,7 +82,7 @@ const FoodStations = ({ stations, addToTracker }) => {
         >
           <button
             onClick={() => toggleStation(station.station_id)}
-            className={`w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-inset hover:bg-gray-50 transition-colors duration-150 ${
+            className={`w-full flex justify-between items-center p-6 text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset hover:bg-gray-50 transition-colors duration-150 ${
               expandedStations[station.station_id] ? 'rounded-t-xl' : 'rounded-xl'
             }`}
           >

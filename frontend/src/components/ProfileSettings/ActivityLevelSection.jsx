@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Info, Check } from 'lucide-react';
+import { Activity, Info, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const activityLevels = [
@@ -126,16 +126,16 @@ export const ActivityLevelSection = ({ energyTarget, refreshEnergyTarget, trigge
         {showSaveButton && (
           <button
             onClick={handleSave}
-            className="ml-4 bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition flex items-center"
+            className="ml-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center"
           >
             Save Activity Level
           </button>
         )}
       </div>
       {saveSuccess && (
-        <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-          <Check size={16} className="mr-1" />
-          <span>Activity level saved successfully!</span>
+        <div className="flex items-center gap-2 text-emerald-600 mt-3">
+          <CheckCircle2 size={18} className="flex-shrink-0" />
+          <span className="text-sm">Activity level saved successfully</span>
         </div>
       )}
     </div>

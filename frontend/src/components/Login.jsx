@@ -124,7 +124,7 @@ const Login = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="you@example.com"
                   autoComplete="username"
                   required
@@ -146,14 +146,14 @@ const Login = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="pl-10 pr-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus:text-red-500 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none focus:text-blue-500 transition-colors"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
@@ -171,7 +171,7 @@ const Login = () => {
                 />
                 <span className="ml-2 text-sm text-gray-700">Remember me</span> */}
               </label>
-              <Link to="/forgot-password" className="text-sm text-red-600 hover:underline font-medium">
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline font-medium">
                 Forgot password?
               </Link>
             </div>
@@ -180,7 +180,7 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
             >
               {loading ? (
                 <>
@@ -248,7 +248,7 @@ const Login = () => {
           <div className="text-center mt-3 md:mt-4">
             <p className="text-gray-600">
               Don't have an account?{' '}
-              <Link to="/register" className="text-red-600 hover:underline font-medium">
+              <Link to="/register" className="text-blue-600 hover:underline font-medium">
                 Create an account
               </Link>
             </p>

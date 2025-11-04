@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info } from 'lucide-react';
+import { Info, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfileRefresh }) => {
@@ -409,7 +409,11 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
     { value: '7', label: 'Jul' }, { value: '8', label: 'Aug' }, { value: '9', label: 'Sep' },
     { value: '10', label: 'Oct' }, { value: '11', label: 'Nov' }, { value: '12', label: 'Dec' },
   ];
-  const years = Array.from({ length: 100 }, (_, i) => (new Date().getFullYear() - i).toString());
+  // Show years for ages 13-80 (more realistic range for most users)
+  const currentYear = new Date().getFullYear();
+  const minAge = 13;
+  const maxAge = 80;
+  const years = Array.from({ length: maxAge - minAge + 1 }, (_, i) => (currentYear - minAge - i).toString());
 
   return (
     <div className="bg-white rounded-xl shadow-lg border border-gray-100 p-8 overflow-visible">
@@ -450,7 +454,7 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
                     id="sex-male"
                     aria-describedby="sex-description"
                   />
-                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'male' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'male' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'} mr-3 flex-shrink-0`}>
                     {sex === 'male' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
                   </div>
                 </div>
@@ -458,17 +462,17 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
               </label>
               <label className="flex items-center cursor-pointer" htmlFor="sex-female">
                 <div className="relative">
-                  <input 
-                    type="radio" 
-                    name="sex" 
-                    value="female" 
-                    className="sr-only" 
-                    checked={sex === 'female'} 
-                    onChange={handleSexChange} 
+                  <input
+                    type="radio"
+                    name="sex"
+                    value="female"
+                    className="sr-only"
+                    checked={sex === 'female'}
+                    onChange={handleSexChange}
                     id="sex-female"
                     aria-describedby="sex-description"
                   />
-                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'female' ? 'border-[#c41e3a] bg-[#c41e3a]' : 'border-gray-300'} mr-3 flex-shrink-0`}>
+                  <div className={`w-4 h-4 rounded-full border-2 ${sex === 'female' ? 'border-blue-600 bg-blue-600' : 'border-gray-300'} mr-3 flex-shrink-0`}>
                     {sex === 'female' && <div className="w-2 h-2 rounded-full bg-white m-0.5"></div>}
                   </div>
                 </div>
@@ -483,21 +487,21 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-gray-500 mb-1">Day</label>
-              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent" value={birthday.day} onChange={e => handleBirthdayChange('day', e.target.value)}>
+              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={birthday.day} onChange={e => handleBirthdayChange('day', e.target.value)}>
                 <option value="">Day</option>
                 {days.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">Month</label>
-              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent" value={birthday.month} onChange={e => handleBirthdayChange('month', e.target.value)}>
+              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={birthday.month} onChange={e => handleBirthdayChange('month', e.target.value)}>
                 <option value="">Month</option>
                 {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm text-gray-500 mb-1">Year</label>
-              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent" value={birthday.year} onChange={e => handleBirthdayChange('year', e.target.value)}>
+              <select className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" value={birthday.year} onChange={e => handleBirthdayChange('year', e.target.value)}>
                 <option value="">Year</option>
                 {years.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
@@ -510,18 +514,18 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
         <div>
           <label className="block text-gray-700 font-medium mb-2">Height</label>
           <div className="flex items-center">
-            <input 
-              type="text" 
-              value={heightFt} 
-              onChange={handleHeightFt} 
-              className={`w-16 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent ${validationErrors.heightFt ? 'border-red-500' : 'border-gray-300'}`}
+            <input
+              type="text"
+              value={heightFt}
+              onChange={handleHeightFt}
+              className={`w-16 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.heightFt ? 'border-red-500' : 'border-gray-300'}`}
             />
             <span className="mx-2">ft</span>
-            <input 
-              type="text" 
-              value={heightIn} 
-              onChange={handleHeightIn} 
-              className={`w-16 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent ${validationErrors.heightIn ? 'border-red-500' : 'border-gray-300'}`}
+            <input
+              type="text"
+              value={heightIn}
+              onChange={handleHeightIn}
+              className={`w-16 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.heightIn ? 'border-red-500' : 'border-gray-300'}`}
             />
             <span className="mx-2">in</span>
           </div>
@@ -535,11 +539,11 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
           <div>
             <label className="block text-gray-700 font-medium mb-2">Current Weight</label>
             <div className="flex items-center">
-              <input 
-                type="text" 
-                value={weight} 
-                onChange={handleWeight} 
-                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent ${validationErrors.weight ? 'border-red-500' : 'border-gray-300'}`}
+              <input
+                type="text"
+                value={weight}
+                onChange={handleWeight}
+                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.weight ? 'border-red-500' : 'border-gray-300'}`}
               />
               <span className="mx-2">lbs</span>
             </div>
@@ -552,11 +556,11 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
           <div>
             <label className="block text-gray-700 font-medium mb-2">Weight Goal</label>
             <div className="flex items-center">
-              <input 
-                type="text" 
-                value={weightGoal} 
-                onChange={handleWeightGoal} 
-                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent ${validationErrors.weightGoal ? 'border-red-500' : 'border-gray-300'}`}
+              <input
+                type="text"
+                value={weightGoal}
+                onChange={handleWeightGoal}
+                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.weightGoal ? 'border-red-500' : 'border-gray-300'}`}
               />
               <span className="mx-2">lbs</span>
             </div>
@@ -569,11 +573,11 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
           <div>
             <label className="block text-gray-700 font-medium mb-2">Body Fat %</label>
             <div className="flex items-center">
-              <input 
-                type="text" 
-                value={bodyFat} 
-                onChange={handleBodyFat} 
-                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent ${validationErrors.bodyFat ? 'border-red-500' : 'border-gray-300'}`}
+              <input
+                type="text"
+                value={bodyFat}
+                onChange={handleBodyFat}
+                className={`w-24 border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${validationErrors.bodyFat ? 'border-red-500' : 'border-gray-300'}`}
               />
               <span className="mx-2">%</span>
             </div>
@@ -625,7 +629,7 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
         <div className="flex justify-end mt-4">
           {showSaveButton && (
             <button
-              className="bg-[#c41e3a] text-white px-4 py-2 rounded-md hover:bg-[#a41930] transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
               onClick={handleSave}
             >
               Save Profile
@@ -633,8 +637,9 @@ export const ProfileSection = ({ energyTarget, refreshEnergyTarget, triggerProfi
           )}
         </div>
         {saveSuccess && (
-          <div className="flex items-center text-green-600 bg-green-50 p-2 rounded my-2">
-            <span>Profile saved successfully!</span>
+          <div className="flex items-center gap-2 text-emerald-600 mt-3">
+            <CheckCircle2 size={18} className="flex-shrink-0" />
+            <span className="text-sm">Profile saved successfully</span>
           </div>
         )}
       </div>

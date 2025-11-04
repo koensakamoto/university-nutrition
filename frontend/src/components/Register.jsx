@@ -77,7 +77,7 @@ function TermsOfServiceModal({ isOpen, onClose }) {
           </div>
         </div>
         <div className="p-4 border-t flex justify-end">
-          <button onClick={onClose} className="bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
+          <button onClick={onClose} className="bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200">
             I Understand
           </button>
         </div>
@@ -159,7 +159,7 @@ function PrivacyPolicyModal({ isOpen, onClose }) {
           </div>
         </div>
         <div className="p-4 border-t flex justify-end">
-          <button onClick={onClose} className="bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 transition-all duration-200">
+          <button onClick={onClose} className="bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-all duration-200">
             I Understand
           </button>
         </div>
@@ -317,7 +317,7 @@ export default function Register() {
                     type="text"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                    className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                     placeholder="John"
                     required
                   />
@@ -335,7 +335,7 @@ export default function Register() {
                   type="text"
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="Doe"
                   required
                 />
@@ -358,7 +358,7 @@ export default function Register() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="you@example.com"
                   autoComplete="username"
                   required
@@ -382,7 +382,7 @@ export default function Register() {
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="Create a strong password"
                   autoComplete="new-password"
                   required
@@ -406,7 +406,7 @@ export default function Register() {
                   type="password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
+                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 placeholder-gray-400 hover:border-gray-400"
                   placeholder="Confirm your password"
                   autoComplete="new-password"
                   required
@@ -425,7 +425,7 @@ export default function Register() {
                     type="checkbox"
                     checked={formData.agreeTerms}
                     onChange={handleChange}
-                    className="h-4 w-4 text-red-600 border-gray-300 rounded focus:outline-none transition-all duration-200 hover:border-gray-400"
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:outline-none transition-all duration-200 hover:border-gray-400"
                   />
                 </div>
                 <div className="ml-3 text-sm">
@@ -434,7 +434,7 @@ export default function Register() {
                     <button
                       type="button"
                       onClick={() => setTermsModalOpen(true)}
-                      className="text-red-600 hover:text-red-700 hover:underline font-medium transition-colors duration-200"
+                      className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors duration-200"
                     >
                       Terms of Service
                     </button>
@@ -442,7 +442,7 @@ export default function Register() {
                     <button
                       type="button"
                       onClick={() => setPrivacyModalOpen(true)}
-                      className="text-red-600 hover:text-red-700 hover:underline font-medium transition-colors duration-200"
+                      className="text-blue-600 hover:text-blue-700 hover:underline font-medium transition-colors duration-200"
                     >
                       Privacy Policy
                     </button>
@@ -456,7 +456,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-700 focus:ring-4 focus:ring-red-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:transform-none disabled:hover:transform-none flex items-center justify-center"
             >
               {loading ? (
                 <>
@@ -499,7 +499,7 @@ export default function Register() {
           <div className="text-center mt-3 md:mt-4">
             <p className="text-gray-600">
               Already have an account?{' '}
-              <Link to="/login" className="text-red-600 hover:underline font-medium">
+              <Link to="/login" className="text-blue-600 hover:underline font-medium">
                 Sign In
               </Link>
             </p>

@@ -63,7 +63,7 @@ const Header = () => {
                 {!user.guest && (
                   <Link
                     to="dashboard"
-                    className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+                    className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group font-medium"
                   >
                     <LayoutDashboard className="mr-2 group-hover:scale-110 transition-transform duration-200" size={18} />
                     <span>Dashboard</span>
@@ -75,21 +75,21 @@ const Header = () => {
                   <>
                     <Link
                       to="history"
-                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group font-medium"
                     >
                       <ChartBarBig className="mr-2 group-hover:scale-110 transition-transform duration-200" size={18} />
                       <span>History</span>
                     </Link>
                     <Link
                       to="profile"
-                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group font-medium"
                     >
                       <UserIcon className="mr-2 group-hover:scale-110 transition-transform duration-200" size={18} />
                       <span>Profile</span>
                     </Link>
                     <Link
                       to="account"
-                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+                      className="flex items-center px-4 py-2.5 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group font-medium"
                     >
                       <Settings className="mr-2 group-hover:scale-110 transition-transform duration-200" size={18} />
                       <span>Account</span>
@@ -107,7 +107,7 @@ const Header = () => {
                       await logout();
                       navigate('/login');
                     }}
-                    className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-red-700 hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
+                    className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
                   >
                     Sign In
                   </button>
@@ -135,7 +135,7 @@ const Header = () => {
                     </div>
                     {/* Sign Out Button */}
                     <button
-                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 group font-medium"
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 group font-medium"
                       onClick={logout}
                     >
                       <LogOutIcon size={18} className="group-hover:scale-110 transition-transform duration-200" />
@@ -147,7 +147,7 @@ const Header = () => {
             ) : (
               <button
                 onClick={() => navigate('/login')}
-                className="bg-red-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-red-700 hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold hover:bg-blue-700 hover:shadow-md transform hover:-translate-y-0.5 transition-all duration-200"
               >
                 Sign In
               </button>
@@ -200,7 +200,7 @@ const Header = () => {
                   {!user.guest && (
                     <Link
                       to="dashboard"
-                      className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 font-medium"
+                      className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <LayoutDashboard className="mr-3" size={20} />
@@ -213,7 +213,7 @@ const Header = () => {
                     <>
                       <Link
                         to="history"
-                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 font-medium"
+                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <ChartBarBig className="mr-3" size={20} />
@@ -221,7 +221,7 @@ const Header = () => {
                       </Link>
                       <Link
                         to="profile"
-                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 font-medium"
+                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <UserIcon className="mr-3" size={20} />
@@ -229,7 +229,7 @@ const Header = () => {
                       </Link>
                       <Link
                         to="account"
-                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 font-medium"
+                        className="flex items-center px-4 py-3 mx-2 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 font-medium"
                         onClick={() => setMobileMenuOpen(false)}
                       >
                         <Settings className="mr-3" size={20} />
@@ -247,13 +247,13 @@ const Header = () => {
                           navigate('/login');
                           setMobileMenuOpen(false);
                         }}
-                        className="w-full bg-red-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200"
+                        className="w-full bg-blue-600 text-white px-4 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200"
                       >
                         Sign In
                       </button>
                     ) : (
                       <button
-                        className="flex items-center px-4 py-3 rounded-xl text-gray-700 hover:text-red-600 hover:bg-red-50 transition-all duration-200 w-full font-medium"
+                        className="flex items-center px-4 py-3 rounded-xl text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 w-full font-medium"
                         onClick={() => {
                           logout();
                           setMobileMenuOpen(false);
@@ -271,7 +271,7 @@ const Header = () => {
                     navigate('/login');
                     setMobileMenuOpen(false);
                   }}
-                  className="w-full bg-red-600 text-white px-4 py-3 mx-2 rounded-xl font-semibold hover:bg-red-700 transition-all duration-200"
+                  className="w-full bg-blue-600 text-white px-4 py-3 mx-2 rounded-xl font-semibold hover:bg-blue-700 transition-all duration-200"
                 >
                   Sign In
                 </button>

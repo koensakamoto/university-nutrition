@@ -152,7 +152,7 @@ const NutrientTracker = ({ trackedItems, removeItem, clearItems, selectedDate, o
                     {user && !user.guest && (
                         <button
                             onClick={handleSave}
-                            className={`w-full flex items-center justify-center gap-2 bg-red-600 text-white font-semibold ${isMobile ? 'py-2.5 text-sm' : 'py-3'} rounded-lg shadow hover:bg-red-700 transition-all duration-200 ${isMobile ? 'mb-2' : 'mb-2'} touch-manipulation`}
+                            className={`w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-semibold ${isMobile ? 'py-2.5 text-sm' : 'py-3'} rounded-lg shadow hover:bg-blue-700 transition-all duration-200 ${isMobile ? 'mb-2' : 'mb-2'} touch-manipulation`}
                             disabled={saveSuccess}
                         >
                             {saveSuccess ? (
