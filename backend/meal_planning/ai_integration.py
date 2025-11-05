@@ -13,10 +13,78 @@ class MealPlannerAI:
         """Initialize AI meal planner with OpenAI API key"""
         self.client = OpenAI(api_key=api_key)
 
+    def build_dietary_context_from_profile(self, user_profile: Dict, dietary_labels: List[str]) -> str:
+        """
+        Build dietary context string from actual user profile data.
+        Only includes fields that exist and have values.
+
+        Args:
+            user_profile: User profile dictionary from database
+            dietary_labels: List of food filtering labels (from extract_dietary_labels)
+
+        Returns:
+            Formatted string for AI prompt (empty if no dietary restrictions)
+        """
+        context_lines = []
+
+        # 1. Diet Type - primary dietary restriction
+        # Options: regular, vegetarian, vegan, pescatarian, keto, paleo, mediterranean, low-carb
+        diet_type = user_profile.get("diet_type", "")
+        if diet_type and diet_type != "regular":
+            if diet_type == "vegan":
+                context_lines.append("CRITICAL: User is VEGAN. ONLY select foods labeled 'Vegan'.")
+            elif diet_type == "vegetarian":
+                context_lines.append("CRITICAL: User is VEGETARIAN. ONLY select foods labeled 'Vegetarian' or 'Vegan'.")
+            elif diet_type == "pescatarian":
+                context_lines.append("User is PESCATARIAN. Include fish/seafood but avoid other meats.")
+            elif diet_type == "keto":
+                context_lines.append("User follows KETOGENIC diet. Prioritize very low carb, high fat foods.")
+            elif diet_type == "paleo":
+                context_lines.append("User follows PALEO diet. Avoid grains, legumes, and dairy.")
+            elif diet_type == "mediterranean":
+                context_lines.append("User follows MEDITERRANEAN diet. Emphasize fish, olive oil, vegetables, whole grains.")
+            elif diet_type == "low-carb":
+                context_lines.append("User follows LOW-CARB diet. Minimize carbohydrates.")
+
+        # 2. Allergens - CRITICAL (must avoid)
+        # Options: milk, eggs, fish, shellfish, tree_nuts, peanuts, wheat, soybeans
+        allergens = user_profile.get("allergens", [])
+        if allergens and isinstance(allergens, list) and len(allergens) > 0:
+            allergen_list = [str(a) for a in allergens if a]
+            if allergen_list:
+                allergens_str = ", ".join(allergen_list)
+                context_lines.append(f"⚠️ ALLERGENS - MUST AVOID: {allergens_str}")
+                context_lines.append(f"DO NOT select foods containing: {allergens_str}")
+
+        # 3. Food Sensitivities (handle both field name variations)
+        # Options: gluten, lactose, msg, sulfites, fodmap, histamine
+        food_sens = user_profile.get("food_sensitivities") or user_profile.get("foode_sensitivities") or []
+        if food_sens and isinstance(food_sens, list) and len(food_sens) > 0:
+            sens_list = [str(s) for s in food_sens if s]
+            if sens_list:
+                sens_str = ", ".join(sens_list)
+                context_lines.append(f"⚠️ FOOD SENSITIVITIES - AVOID: {sens_str}")
+
+        # 4. Allergen/Allergy Notes (handle both field name variations)
+        allergy_notes = user_profile.get("allergy_notes") or user_profile.get("allergen_notes") or ""
+        if allergy_notes and str(allergy_notes).strip():
+            context_lines.append(f"ALLERGY NOTES: {str(allergy_notes).strip()}")
+
+        # 5. Meal Preferences
+        # Options: Low Sodium, Low Sugar, High Protein, High Fiber, Gluten-Free, Dairy-Free
+        meal_prefs = user_profile.get("meal_preference", [])
+        if meal_prefs and isinstance(meal_prefs, list) and len(meal_prefs) > 0:
+            pref_list = [str(p) for p in meal_prefs if p]
+            if pref_list:
+                prefs_str = ", ".join(pref_list)
+                context_lines.append(f"PREFERENCES: User prefers {prefs_str}. Prioritize when available.")
+
+        return "\n".join(context_lines) if context_lines else ""
+
     def organize_foods_for_ai(
         self,
         foods_by_meal: Dict[str, List[Dict]],
-        max_foods_per_meal: int = 40  # Reduced to minimize ID confusion
+        max_foods_per_meal: int = 35  # Reduced for faster AI processing (was 60)
     ) -> Tuple[Dict[str, List[Dict]], Dict[str, Dict[int, str]]]:
         """
         Format food data for AI consumption with ultra-compact structure to save tokens
@@ -79,20 +147,26 @@ class MealPlannerAI:
         foods_by_meal: Dict[str, List[Dict]],
         meal_targets: Dict[str, Dict[str, float]],
         dietary_labels: List[str],
-        dining_hall_meals: List[Dict]
+        dining_hall_meals: List[Dict],
+        user_profile: Dict = None
     ) -> str:
         """
-        Create structured prompt for AI meal planning
+        Create structured prompt for AI meal planning with user dietary context
         """
 
-        # Build dietary context
+        # Build dietary context from user profile if available
         dietary_context = ""
-        if dietary_labels:
-            if "vegan" in dietary_labels:
+        if user_profile:
+            dietary_context = self.build_dietary_context_from_profile(user_profile, dietary_labels)
+
+        # Fallback to simple dietary labels if no profile or no context generated
+        if not dietary_context and dietary_labels:
+            dietary_labels_lower = [str(label).lower() for label in dietary_labels]
+            if "vegan" in dietary_labels_lower:
                 dietary_context = "IMPORTANT: User follows a VEGAN diet. Only select vegan foods."
-            elif "vegetarian" in dietary_labels:
+            elif "vegetarian" in dietary_labels_lower:
                 dietary_context = "IMPORTANT: User follows a VEGETARIAN diet. Only select vegetarian or vegan foods."
-            elif "climate friendly" in dietary_labels:
+            elif "climate friendly" in dietary_labels_lower:
                 dietary_context = "IMPORTANT: User prefers CLIMATE-FRIENDLY options when available."
 
         # Create hall mapping for context
@@ -109,30 +183,20 @@ class MealPlannerAI:
         total_target_carbs = sum(meal['carbs_g'] for meal in meal_targets.values())
         total_target_fat = sum(meal['fat_g'] for meal in meal_targets.values())
 
-        prompt = f"""Create precise meal plan hitting targets within 97-103%.
+        prompt = f"""TARGETS (90-110% of each required):
+Breakfast: {meal_targets['breakfast']['calories']:.0f}cal {meal_targets['breakfast']['protein_g']:.0f}P {meal_targets['breakfast']['carbs_g']:.0f}C {meal_targets['breakfast']['fat_g']:.0f}F
+Lunch: {meal_targets['lunch']['calories']:.0f}cal {meal_targets['lunch']['protein_g']:.0f}P {meal_targets['lunch']['carbs_g']:.0f}C {meal_targets['lunch']['fat_g']:.0f}F
+Dinner: {meal_targets['dinner']['calories']:.0f}cal {meal_targets['dinner']['protein_g']:.0f}P {meal_targets['dinner']['carbs_g']:.0f}C {meal_targets['dinner']['fat_g']:.0f}F
 
 {dietary_context}
 
-TARGETS:
-Breakfast: {meal_targets['breakfast']['calories']:.0f}cal, {meal_targets['breakfast']['protein_g']:.1f}g protein
-Lunch: {meal_targets['lunch']['calories']:.0f}cal, {meal_targets['lunch']['protein_g']:.1f}g protein
-Dinner: {meal_targets['dinner']['calories']:.0f}cal, {meal_targets['dinner']['protein_g']:.1f}g protein
+FOODS [idx,name,cal,P,C,F]:
+B:{json.dumps(foods_by_meal.get('breakfast',[]))}
+L:{json.dumps(foods_by_meal.get('lunch',[]))}
+D:{json.dumps(foods_by_meal.get('dinner',[]))}
 
-FOODS [index,name,cal,prot,carb,fat]:
-Breakfast: {json.dumps(foods_by_meal.get('breakfast', []))}
-Lunch: {json.dumps(foods_by_meal.get('lunch', []))}
-Dinner: {json.dumps(foods_by_meal.get('dinner', []))}
-
-CRITICAL: Only use food indices from the lists above. Do NOT make up indices.
-
-PROCESS:
-1. Start with high-protein foods (chicken, eggs, tofu, greek yogurt)
-2. Use fractional quantities (0.5, 1.2, 1.8, 2.3) to hit BOTH calories AND protein targets
-3. Verify math: sum(food_cal × qty) must be 97-103% of target
-4. Adjust quantities in 0.1 increments until targets met
-
-Return JSON format:
-{{"breakfast":[{{"food_index":0,"quantity":1.5}}],"lunch":[...],"dinner":[...]}}"""
+RULES: Calculate totals internally. Adjust quantities to hit 90-110% of ALL 4 nutrients. If fat low, use oils/butter/nuts. Return JSON only:
+{{"breakfast":[{{"food_index":0,"quantity":1.0}}],"lunch":[{{"food_index":1,"quantity":1.0}}],"dinner":[{{"food_index":2,"quantity":1.0}}]}}"""
 
         return prompt
 
@@ -151,14 +215,14 @@ Return JSON format:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are an expert nutritionist specializing in college dining hall meal plans. You must calculate exact nutritional totals and hit precise targets. Always return valid JSON exactly as requested."
+                        "content": "Calculate meal plan hitting 90-110% of ALL nutrients (cal,P,C,F). Do math internally, return only JSON. No explanations."
                     },
                     {
                         "role": "user",
                         "content": prompt
                     }
                 ],
-                # GPT-5 only supports default temperature (1), parameter omitted
+                # GPT-5-mini only supports default temperature (1), parameter omitted
                 max_completion_tokens=16000,  # Increased limit to prevent truncation issues
                 response_format=meal_plan_schema  # Using json_object mode to minimize token overhead
             )
@@ -298,10 +362,10 @@ Return JSON format:
         meal_plan: Dict,
         foods_by_meal: Dict[str, List[Dict]],
         meal_targets: Dict[str, Dict[str, float]],
-        tolerance: float = 0.03
+        tolerance: float = 0.10
     ) -> Tuple[bool, Dict[str, str]]:
         """
-        Validate that meal plan meets nutritional accuracy requirements
+        Validate that meal plan meets nutritional accuracy requirements (90-110% for calories, macros)
 
         Returns:
             (is_valid, errors_dict) where errors_dict contains meal_type -> error message
@@ -341,24 +405,41 @@ Return JSON format:
                 total_carbs += self._safe_float(nutrients.get("total_carbohydrates", 0)) * quantity
                 total_fat += self._safe_float(nutrients.get("total_fat", 0)) * quantity
 
-            # Check accuracy requirements
+            # Get all targets
             target_calories = target.get("calories", 0)
             target_protein = target.get("protein_g", 0)
+            target_carbs = target.get("carbs_g", 0)
+            target_fat = target.get("fat_g", 0)
 
-            # Calculate percentage differences
+            # Check accuracy requirements for ALL macros (each nutrient individually)
+            nutrient_errors = []
+
             if target_calories > 0:
                 cal_diff = abs(total_calories - target_calories) / target_calories
                 if cal_diff > tolerance:
-                    errors[meal_type] = f"Calories off by {cal_diff*100:.1f}% (got {total_calories:.0f}, target {target_calories:.0f})"
-                    continue
+                    nutrient_errors.append(f"Cal {cal_diff*100:.0f}% off ({total_calories:.0f}/{target_calories:.0f})")
 
             if target_protein > 0:
                 prot_diff = abs(total_protein - target_protein) / target_protein
                 if prot_diff > tolerance:
-                    errors[meal_type] = f"Protein off by {prot_diff*100:.1f}% (got {total_protein:.1f}g, target {target_protein:.1f}g)"
-                    continue
+                    nutrient_errors.append(f"P {prot_diff*100:.0f}% off ({total_protein:.1f}g/{target_protein:.1f}g)")
 
-            logger.info(f"{meal_type}: calories={total_calories:.0f}/{target_calories:.0f}, protein={total_protein:.1f}g/{target_protein:.1f}g")
+            if target_carbs > 0:
+                carb_diff = abs(total_carbs - target_carbs) / target_carbs
+                if carb_diff > tolerance:
+                    nutrient_errors.append(f"C {carb_diff*100:.0f}% off ({total_carbs:.1f}g/{target_carbs:.1f}g)")
+
+            if target_fat > 0:
+                fat_diff = abs(total_fat - target_fat) / target_fat
+                if fat_diff > tolerance:
+                    nutrient_errors.append(f"F {fat_diff*100:.0f}% off ({total_fat:.1f}g/{target_fat:.1f}g)")
+
+            # If ANY nutrient is off, this meal fails
+            if nutrient_errors:
+                errors[meal_type] = ", ".join(nutrient_errors)
+                continue
+
+            logger.info(f"{meal_type}: cal={total_calories:.0f}/{target_calories:.0f}, prot={total_protein:.1f}g/{target_protein:.1f}g, carb={total_carbs:.1f}g/{target_carbs:.1f}g, fat={total_fat:.1f}g/{target_fat:.1f}g")
 
         is_valid = len(errors) == 0
         return is_valid, errors
@@ -369,10 +450,19 @@ Return JSON format:
         meal_targets: Dict[str, Dict[str, float]],
         dietary_labels: List[str],
         dining_hall_meals: List[Dict],
+        user_profile: Dict = None,
         max_retries: int = 2  # Reduced from 3 to avoid rate limiting
     ) -> Optional[Dict]:
         """
         Main function to generate AI meal plan with retry logic
+
+        Args:
+            foods_by_meal: Foods organized by meal type
+            meal_targets: Nutrition targets for each meal
+            dietary_labels: Labels used for food filtering
+            dining_hall_meals: List of selected dining hall/meal combinations
+            user_profile: User profile with dietary preferences, allergens, etc.
+            max_retries: Maximum retry attempts
 
         Returns:
             Dict with meal plan or None if generation failed
@@ -387,23 +477,25 @@ Return JSON format:
                     logger.error(f"No foods available for {meal_type}")
                     return None
 
-            # Create prompt
+            # Create prompt with user profile dietary context
             prompt = self.create_meal_plan_prompt(
                 ai_foods,
                 meal_targets,
                 dietary_labels,
-                dining_hall_meals
+                dining_hall_meals,
+                user_profile
             )
 
-            # Try generating meal plan with retries
+            # Try generating meal plan with retries and feedback
             best_plan = None
             best_errors = None
+            retry_prompt = prompt
 
             for attempt in range(max_retries):
                 logger.info(f"Meal plan generation attempt {attempt + 1}/{max_retries}")
 
-                # Call OpenAI
-                ai_response = self.call_openai_for_meal_plan(prompt)
+                # Call OpenAI with current prompt (includes feedback from previous attempt)
+                ai_response = self.call_openai_for_meal_plan(retry_prompt)
                 if not ai_response:
                     continue
 
@@ -432,6 +524,14 @@ Return JSON format:
                     if best_plan is None or len(errors) < len(best_errors):
                         best_plan = validated_plan
                         best_errors = errors
+
+                    # Add feedback for next retry
+                    if attempt < max_retries - 1:  # Don't add feedback on last attempt
+                        feedback = "\n\nPREVIOUS ATTEMPT FAILED:\n"
+                        for meal_type, error_msg in errors.items():
+                            feedback += f"- {meal_type.capitalize()}: {error_msg}\n"
+                        feedback += "\nPLEASE ADJUST your food selections and quantities to fix these errors. Try different foods or quantities."
+                        retry_prompt = prompt + feedback
 
             # If we exhausted retries, return best attempt or None
             if best_plan:

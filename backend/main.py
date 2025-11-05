@@ -1723,7 +1723,7 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
 
         ai_planner = MealPlannerAI(openai_key)
         ai_meal_plan = ai_planner.generate_meal_plan(
-            foods_by_meal, meal_targets, dietary_labels, dining_hall_meals_dicts
+            foods_by_meal, meal_targets, dietary_labels, dining_hall_meals_dicts, user_profile
         )
 
         # Check if AI generation was successful

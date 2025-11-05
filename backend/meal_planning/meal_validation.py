@@ -289,7 +289,7 @@ def check_target_achievement(
     actual_macros: Dict[str, float],
     target_calories: int,
     target_macros: Dict[str, float],
-    calorie_tolerance: float = 0.15,  # ±15% (more lenient for protein-focused plans)
+    calorie_tolerance: float = 0.10,  # ±10% (90-110% of target)
     macro_tolerance: float = 6.0      # ±6 percentage points (slightly more lenient)
 ) -> Tuple[bool, str]:
     """

@@ -187,11 +187,22 @@ const AIMealPlanner = () => {
                    parseFloat(customTargets.fatPercent || 0)
   const macrosValid = Math.abs(macroSum - 100) < 0.1
 
+  // Check if profile is complete (has all required fields)
+  const isProfileComplete = userProfile &&
+                           userProfile.weight &&
+                           userProfile.height &&
+                           userProfile.age &&
+                           userProfile.activity_level &&
+                           userProfile.weight_goal &&
+                           (userProfile.protein_ratio || userProfile.protein_grams) &&
+                           (userProfile.carb_ratio || userProfile.carb_grams) &&
+                           (userProfile.fat_ratio || userProfile.fat_grams)
+
   // Validation for generate button
   let canGenerate = false
   if (targetMode === 'account') {
-    // Account mode: just need at least one meal selected
-    canGenerate = hasMealSelection
+    // Account mode: need at least one meal selected AND complete profile
+    canGenerate = hasMealSelection && isProfileComplete
   } else {
     // Custom mode: need meal + valid calories + valid macros
     canGenerate = hasMealSelection &&
@@ -338,6 +349,39 @@ const AIMealPlanner = () => {
                   <div className="mb-4">
                     <p className="text-sm font-semibold text-gray-900">Your Profile Summary</p>
                   </div>
+
+                  {/* Warning when profile data is incomplete */}
+                  {!isProfileComplete && (
+                    <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-gray-900">
+                          Complete your profile to generate personalized meal plans
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Add the following information in Settings:
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 mb-1.5">Required</p>
+                          <div className="text-xs text-gray-600 space-y-0.5">
+                            <div>• Age, gender, weight, and height</div>
+                            <div>• Activity level and weight goal</div>
+                            <div>• Macro targets (protein, carbs, fat)</div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 mb-1.5">Optional</p>
+                          <div className="text-xs text-gray-600 space-y-0.5">
+                            <div>• Diet type and meal preferences</div>
+                            <div>• Allergens and dietary restrictions</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
                     {/* Row 1, Col 1: Daily Calorie Target */}
@@ -644,6 +688,7 @@ const AIMealPlanner = () => {
                   ) : (
                     <p className="text-sm text-gray-600">
                       {!(breakfastHall || lunchHall || dinnerHall) && 'Select at least one dining hall to get started'}
+                      {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'account' && !isProfileComplete && 'Complete your profile to generate personalized meal plans'}
                       {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && !customTargets.calories && 'Enter your daily calorie target'}
                       {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) < 1000 && 'Calorie target must be at least 1000'}
                       {(breakfastHall || lunchHall || dinnerHall) && targetMode === 'custom' && customTargets.calories && parseFloat(customTargets.calories) >= 1000 && !macrosValid && (

@@ -126,7 +126,7 @@ export const DietaryPreferencesSection = () => {
         <div>
           <label className="block text-gray-700 font-medium mb-2">Diet Type</label>
           <select
-            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#c41e3a] focus:border-transparent"
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={dietType}
             onChange={handleDietTypeChange}
           >
@@ -142,7 +142,7 @@ export const DietaryPreferencesSection = () => {
               <label key={opt} className="flex items-center bg-white border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-gray-50 transition">
                 <input
                   type="checkbox"
-                  className="form-checkbox h-4 w-4 text-[#c41e3a] rounded"
+                  className="form-checkbox h-4 w-4 text-blue-600 rounded"
                   value={opt}
                   checked={mealPreferences.includes(opt)}
                   onChange={handleMealPreferenceChange}
@@ -153,7 +153,7 @@ export const DietaryPreferencesSection = () => {
           </div>
         </div>
         <div className="bg-gray-50 p-4 rounded-lg flex items-center">
-          <Utensils size={24} className="text-[#c41e3a] mr-3" />
+          <Utensils size={24} className="text-blue-600 mr-3" />
           <div>
             <div className="font-medium text-gray-800">Your meal plans will be customized based on these preferences</div>
             <p className="text-sm text-gray-600">You can update these settings any time</p>
