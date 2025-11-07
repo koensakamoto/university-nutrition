@@ -9,6 +9,7 @@ langchain-openai
 langgraph
 tavily-python
 openai
+anthropic
 authlib
 passlib
 python-jose
