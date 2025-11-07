@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+// import { useNavigate } from 'react-router-dom'
 import Filter from './Filter'
 import FoodStations from './FoodStations'
 import CustomMealForm from './CustomMealForm'
@@ -94,7 +94,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
 
   const fetchWithAuth = useFetchWithAuth();
   const { user, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  // const navigate = useNavigate();
 
   // Auto-set today's date on mount if not set
   useEffect(() => {
@@ -442,7 +442,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
       </div>
 
       {/* AI Meal Planner Button - Only show for authenticated, non-guest users */}
-      {user && !user.guest && (
+      {/* {user && !user.guest && (
         <div className="mb-4 sm:mb-6">
           <button
             onClick={() => navigate('/ai-meal-planner')}
@@ -459,7 +459,7 @@ const Dashboard = ({ addToTracker, trackedItems, setTrackedItems, removeItem, cl
             </div>
           </button>
         </div>
-      )}
+      )} */}
 
       {/* Mobile Nutrient Tracker with Card Design */}
       <div className="lg:hidden mb-4 sm:mb-6">

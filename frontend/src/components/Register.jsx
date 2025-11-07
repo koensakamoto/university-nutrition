@@ -288,7 +288,7 @@ export default function Register() {
           {/* Welcome Message */}
           <div className="flex flex-col items-center mb-4 md:mb-6">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Create Your Account</h2>
-            <p className="text-gray-500 text-xs md:text-sm text-center">Get access to AI meal planning, meal history & charts</p>
+            <p className="text-gray-500 text-xs md:text-sm text-center">Get access to meal history & charts</p>
           </div>
 
           {/* API Error Message */}

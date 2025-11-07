@@ -1714,14 +1714,14 @@ def generate_meal_plan(request_body: MealPlanRequest, req: Request):
             )
 
         # Initialize AI and generate plan
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if not openai_key:
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        if not anthropic_key:
             raise HTTPException(
                 status_code=503,
                 detail="AI meal planning temporarily unavailable. Please contact support."
             )
 
-        ai_planner = MealPlannerAI(openai_key)
+        ai_planner = MealPlannerAI(anthropic_key)
         ai_meal_plan = ai_planner.generate_meal_plan(
             foods_by_meal, meal_targets, dietary_labels, dining_hall_meals_dicts, user_profile
         )

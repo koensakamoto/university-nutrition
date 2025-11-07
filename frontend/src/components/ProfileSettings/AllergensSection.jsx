@@ -3,22 +3,18 @@ import { AlertTriangle, Info, CheckCircle2 } from 'lucide-react';
 import { ProfileInfoTooltip } from './ProfileInfoTooltip';
 
 const commonAllergens = [
-  { id: 'milk', label: 'Milk' },
+  { id: 'milk', label: 'Dairy' },
   { id: 'eggs', label: 'Eggs' },
   { id: 'fish', label: 'Fish' },
   { id: 'shellfish', label: 'Shellfish' },
   { id: 'tree_nuts', label: 'Tree Nuts' },
   { id: 'peanuts', label: 'Peanuts' },
   { id: 'wheat', label: 'Wheat' },
-  { id: 'soybeans', label: 'Soybeans' },
+  { id: 'soybeans', label: 'Soy' },
 ];
 const otherSensitivities = [
   { id: 'gluten', label: 'Gluten' },
   { id: 'lactose', label: 'Lactose' },
-  { id: 'msg', label: 'MSG' },
-  { id: 'sulfites', label: 'Sulfites' },
-  { id: 'fodmap', label: 'FODMAP' },
-  { id: 'histamine', label: 'Histamine' },
 ];
 
 export const AllergensSection = () => {
@@ -168,13 +164,13 @@ export const AllergensSection = () => {
           </div>
           <div className="flex-1">
             <p className="text-sm text-gray-700 font-medium">
-              For severe allergies, please also notify the campus dining staff directly.
+              For severe allergies, notify dining staff directly.
             </p>
           </div>
         </div>
       </div>
       <p className="text-gray-600 mb-6">
-        Select any allergies or intolerances to help us mark foods that may be unsafe for you.
+        Select allergies or intolerances to flag unsafe foods.
       </p>
       {fetchError && (
         <div className="text-red-600 mb-4">{fetchError}</div>

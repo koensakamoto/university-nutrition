@@ -95,7 +95,7 @@ const Login = () => {
           {/* Welcome Message - Responsive */}
           <div className="flex flex-col items-center mb-4 md:mb-6">
             <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1 text-center">Welcome back!</h2>
-            <p className="text-gray-500 text-xs md:text-sm text-center">Sign in for AI meal planning, meal history & charts</p>
+            <p className="text-gray-500 text-xs md:text-sm text-center">Sign in for meal history & charts</p>
           </div>
 
           {/* Error Message */}

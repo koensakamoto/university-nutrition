@@ -243,9 +243,12 @@ def enhance_meal_plan_response(
         total_calories, total_protein, total_carbs, total_fat
     )
 
-    # Check if targets were achieved
+    # Check if targets were achieved (pass actual grams for accurate error messages)
     success, message = check_target_achievement(
-        total_calories, actual_macros, target_calories, target_macros
+        total_calories, actual_macros, target_calories, target_macros,
+        actual_protein_g=total_protein,
+        actual_carbs_g=total_carbs,
+        actual_fat_g=total_fat
     )
 
     return MealPlanResponse(
@@ -289,6 +292,9 @@ def check_target_achievement(
     actual_macros: Dict[str, float],
     target_calories: int,
     target_macros: Dict[str, float],
+    actual_protein_g: float = None,
+    actual_carbs_g: float = None,
+    actual_fat_g: float = None,
     calorie_tolerance: float = 0.10,  # ±10% (90-110% of target)
     macro_tolerance: float = 6.0      # ±6 percentage points (slightly more lenient)
 ) -> Tuple[bool, str]:
@@ -299,7 +305,7 @@ def check_target_achievement(
     calorie_diff_pct = abs(actual_calories - target_calories) / target_calories
     calorie_ok = calorie_diff_pct <= calorie_tolerance
 
-    # Check macro targets
+    # Check macro targets (percentage points)
     protein_diff = abs(actual_macros["protein"] - target_macros["protein"])
     carbs_diff = abs(actual_macros["carbs"] - target_macros["carbs"])
     fat_diff = abs(actual_macros["fat"] - target_macros["fat"])
@@ -310,16 +316,33 @@ def check_target_achievement(
 
     success = calorie_ok and macros_ok
 
+    # Calculate actual gram differences (for more accurate error messages)
+    if actual_protein_g is not None and actual_carbs_g is not None and actual_fat_g is not None:
+        # Calculate target grams from percentages
+        target_protein_g = (target_macros["protein"] / 100 * target_calories) / 4
+        target_carbs_g = (target_macros["carbs"] / 100 * target_calories) / 4
+        target_fat_g = (target_macros["fat"] / 100 * target_calories) / 9
+
+        # Calculate percentage difference in grams (not percentage points)
+        protein_gram_diff = abs(actual_protein_g - target_protein_g) / target_protein_g * 100 if target_protein_g > 0 else 0
+        carbs_gram_diff = abs(actual_carbs_g - target_carbs_g) / target_carbs_g * 100 if target_carbs_g > 0 else 0
+        fat_gram_diff = abs(actual_fat_g - target_fat_g) / target_fat_g * 100 if target_fat_g > 0 else 0
+    else:
+        # Fallback to percentage point differences
+        protein_gram_diff = protein_diff
+        carbs_gram_diff = carbs_diff
+        fat_gram_diff = fat_diff
+
     if success:
         message = f"🎯 Excellent! All targets met within tolerance. Calories: {actual_calories:.0f}/{target_calories} ({actual_calories/target_calories*100:.1f}%)"
     elif not calorie_ok and not macros_ok:
         diff_cal = actual_calories - target_calories
-        message = f"❌ Both calories and macros off target. Calories: {'+' if diff_cal > 0 else ''}{diff_cal:.0f} ({actual_calories:.0f}/{target_calories}), Macro diffs: P:{protein_diff:.1f}%, C:{carbs_diff:.1f}%, F:{fat_diff:.1f}%"
+        message = f"❌ Both calories and macros off target. Calories: {'+' if diff_cal > 0 else ''}{diff_cal:.0f} ({actual_calories:.0f}/{target_calories}), Macro diffs: P:{protein_gram_diff:.1f}%, C:{carbs_gram_diff:.1f}%, F:{fat_gram_diff:.1f}%"
     elif not calorie_ok:
         diff_cal = actual_calories - target_calories
         message = f"⚠️ Calories off target: {'+' if diff_cal > 0 else ''}{diff_cal:.0f} ({actual_calories:.0f}/{target_calories}, {actual_calories/target_calories*100:.1f}%)"
     else:
-        message = f"⚠️ Macros outside tolerance - Protein: {protein_diff:.1f}%, Carbs: {carbs_diff:.1f}%, Fat: {fat_diff:.1f}% off target"
+        message = f"⚠️ Macros outside tolerance - Protein: {protein_gram_diff:.1f}%, Carbs: {carbs_gram_diff:.1f}%, Fat: {fat_gram_diff:.1f}% off target"
 
     logger.info(f"Target achievement: {success} - {message}")
 

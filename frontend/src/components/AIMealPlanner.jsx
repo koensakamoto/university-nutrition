@@ -10,6 +10,27 @@ const getLocalDateString = (date) => {
          String(date.getDate()).padStart(2, '0')
 }
 
+// Map allergen IDs to display labels
+const allergenLabels = {
+  'milk': 'Dairy',
+  'eggs': 'Eggs',
+  'fish': 'Fish',
+  'shellfish': 'Shellfish',
+  'tree_nuts': 'Tree Nuts',
+  'peanuts': 'Peanuts',
+  'wheat': 'Wheat',
+  'soybeans': 'Soy',
+  'gluten': 'Gluten',
+  'lactose': 'Lactose',
+}
+
+const formatAllergenDisplay = (allergenIds) => {
+  if (!allergenIds || allergenIds.length === 0) return ''
+  return allergenIds
+    .map(id => allergenLabels[id] || id.charAt(0).toUpperCase() + id.slice(1))
+    .join(', ')
+}
+
 const AIMealPlanner = () => {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(false)
@@ -191,7 +212,7 @@ const AIMealPlanner = () => {
   const isProfileComplete = userProfile &&
                            userProfile.weight &&
                            userProfile.height &&
-                           userProfile.age &&
+                           userProfile.birthday &&
                            userProfile.activity_level &&
                            userProfile.weight_goal &&
                            (userProfile.protein_ratio || userProfile.protein_grams) &&
@@ -439,16 +460,24 @@ const AIMealPlanner = () => {
                     )}
 
                     {/* Row 2, Col 2: Allergens */}
-                    {((userProfile.allergens && userProfile.allergens.length > 0) || userProfile.allergen_notes || userProfile.allergy_notes) && (
+                    {((userProfile.allergens && userProfile.allergens.length > 0) || (userProfile.food_sensitivities && userProfile.food_sensitivities.length > 0) || userProfile.allergen_notes || userProfile.allergy_notes) && (
                       <div className="flex items-start gap-3">
                         <div className="mt-1 flex-shrink-0">
                           <Shield className="h-5 w-5 text-gray-400" strokeWidth={2} />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-medium text-gray-500 mb-1">Avoiding</p>
-                          {userProfile.allergens && userProfile.allergens.length > 0 && (
-                            <p className="text-sm text-gray-900 font-medium">{userProfile.allergens.join(', ')}</p>
-                          )}
+                          {(userProfile.allergens && userProfile.allergens.length > 0) || (userProfile.food_sensitivities && userProfile.food_sensitivities.length > 0) ? (
+                            <p className="text-sm text-gray-900 font-medium">
+                              {[
+                                ...(userProfile.allergens || []),
+                                ...(userProfile.food_sensitivities || [])
+                              ].length > 0 ? formatAllergenDisplay([
+                                ...(userProfile.allergens || []),
+                                ...(userProfile.food_sensitivities || [])
+                              ]) : ''}
+                            </p>
+                          ) : null}
                           {(userProfile.allergen_notes || userProfile.allergy_notes) && (
                             <p className="text-xs text-gray-600 mt-1">{userProfile.allergen_notes || userProfile.allergy_notes}</p>
                           )}
