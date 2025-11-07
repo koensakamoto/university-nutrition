@@ -456,7 +456,7 @@ export const AccountSection = () => {
         {/* Profile Header with Image */}
         <div className="flex items-center gap-6 lg:gap-8 pb-6 lg:pb-8 border-b border-gray-100">
           <div className="relative">
-            <div className="w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden flex items-center justify-center bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
+            <div className={`w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden flex items-center justify-center shadow-md ${previewImage || image ? '' : 'bg-gradient-to-br from-blue-500 to-blue-600'}`}>
               {previewImage ? (
                 <img
                   src={getImageUrl(previewImage)}
